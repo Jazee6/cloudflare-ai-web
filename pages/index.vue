@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const input = ref('')
+const loading = ref(false)
 
 interface HistoryItem {
   id: number
@@ -18,30 +19,57 @@ const history = ref<HistoryItem[]>([
   }
 ])
 
+const models = [{
+  id: '@cf/meta/llama-2-7b-chat-fp16',
+  name: 'llama-2-7b-chat-fp16'
+}, {
+  id: '@cf/meta/llama-2-7b-chat-int8',
+  name: 'llama-2-7b-chat-int8'
+}, {
+  id: '@cf/mistral/mistral-7b-instruct-v0.1',
+  name: 'mistral-7b-instruct-v0.1'
+}, {
+  id: '@hf/thebloke/codellama-7b-instruct-awq',
+  name: 'codellama-7b-instruct-awq'
+}]
+const selectedModel = ref(models[0].id)
+
 interface Response {
   result: {
     response: string
   }
 }
 
-const handleReq = async () => {
+const handleReq = () => {
   if (!input.value) return
+  const text = input.value
+  input.value = ''
   history.value.push({
     id: history.value.length + 1,
-    content: input.value,
+    content: text,
   })
-  const data: Response = await $fetch('/api/chat', {
+  loading.value = true
+  $fetch('/api/chat', {
     method: 'POST',
     body: JSON.stringify({
-      prompt: input.value,
+      prompt: text,
+      model: selectedModel.value,
     }),
-  })
-  history.value.push({
-    id: history.value.length + 1,
-    content: data.result.response,
-    is_output: true,
+  }).then((res) => {
+    const data = res as Response
+    history.value.push({
+      id: history.value.length + 1,
+      content: data.result.response,
+      is_output: true,
+    })
+  }).finally(() => {
+    loading.value = false
   })
 }
+
+const current = computed(() =>
+    models.find(i => i.id === selectedModel.value)
+)
 </script>
 
 <template>
@@ -55,13 +83,19 @@ const handleReq = async () => {
           {{ i.content }}
         </div>
       </div>
+      <UProgress v-if="loading" class="mt-4" animation="carousel"/>
     </UContainer>
   </div>
   <div>
     <UContainer>
-      <div class="flex">
+      <div class="flex space-x-2">
         <UInput v-model="input" placeholder="请输入文本" @keydown.enter="handleReq" class="flex-1"/>
-        <UButton class="ml-2" @click="handleReq">发送</UButton>
+        <USelectMenu v-model="selectedModel" :options="models" value-attribute="id" option-attribute="name">
+          <template #label>
+            {{ current.name }}
+          </template>
+        </USelectMenu>
+        <UButton @click="handleReq">发送</UButton>
       </div>
     </UContainer>
   </div>
