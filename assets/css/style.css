@@ -1,0 +1,7 @@
+html, body {
+    @apply h-full
+}
+
+#__nuxt {
+    @apply h-full
+}
