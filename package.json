@@ -1,5 +1,6 @@
 {
   "name": "cf-ai-web",
+  "version": "0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,6 +17,7 @@
     "vue-router": "^4.2.5"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@nuxt/ui": "^2.11.0"
   }
 }

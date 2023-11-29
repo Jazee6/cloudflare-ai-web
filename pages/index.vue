@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import {fetchEventSource} from "@microsoft/fetch-event-source";
+
 const input = ref('')
 const loading = ref(false)
 
@@ -32,15 +34,9 @@ const models = [{
   id: '@hf/thebloke/codellama-7b-instruct-awq',
   name: 'codellama-7b-instruct-awq'
 }]
-const selectedModel = ref(models[0].id)
+const selectedModel = ref(models[1].id)
 
-interface Response {
-  result: {
-    response: string
-  }
-}
-
-const handleReq = () => {
+const handleReq = async () => {
   if (!input.value) return
   const text = input.value
   input.value = ''
@@ -49,21 +45,32 @@ const handleReq = () => {
     content: text,
   })
   loading.value = true
-  $fetch('/api/chat', {
+  history.value.push({
+    id: history.value.length + 1,
+    content: '',
+    is_output: true,
+  })
+  console.log(JSON.stringify({
+    prompt: text,
+    model: selectedModel.value,
+  }))
+  await fetchEventSource('/api/chat', {
     method: 'POST',
     body: JSON.stringify({
       prompt: text,
       model: selectedModel.value,
     }),
-  }).then((res) => {
-    const data = res as Response
-    history.value.push({
-      id: history.value.length + 1,
-      content: data.result.response,
-      is_output: true,
-    })
-  }).finally(() => {
-    loading.value = false
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    onmessage: (e) => {
+      if (e.data === '[DONE]') return
+      const data = JSON.parse(e.data);
+      history.value[history.value.length - 1].content += data.response
+    },
+    onclose: () => {
+      loading.value = false
+    }
   })
 }
 
@@ -78,12 +85,12 @@ const current = computed(() =>
       <div v-for="i in history" :key="i.id" class="flex flex-col">
         <div v-if="i.is_output">
           {{ i.content }}
+          {{ loading ? '...' : '' }}
         </div>
         <div v-else class="self-end">
           {{ i.content }}
         </div>
       </div>
-      <UProgress v-if="loading" class="mt-4" animation="carousel"/>
     </UContainer>
   </div>
   <div>
