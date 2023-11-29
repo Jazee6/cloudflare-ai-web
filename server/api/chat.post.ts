@@ -1,5 +1,3 @@
-import * as http from "http";
-
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const {prompt, model} = body
