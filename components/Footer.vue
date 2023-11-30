@@ -6,8 +6,10 @@ const v = ref(version)
 
 <template>
   <div class="mt-auto shrink-0 h-8">
-    <div class="text-center">
+    <div class="text-center text-xs font-light">
       by Jazee V{{ v }} 开发中，非最终版本，且不对AI的结果负责
+      <a href="https://github.com/Jazee6/cf-ai-web" target="_blank"
+         class="text-neutral-500 hover:text-neutral-900 underline">GitHub</a>
     </div>
   </div>
 </template>

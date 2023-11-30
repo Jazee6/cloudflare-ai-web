@@ -3,12 +3,4 @@ export default defineNuxtConfig({
     devtools: {enabled: true},
     modules: ['@nuxt/ui'],
     css: ['~/assets/css/style.css'],
-    // nitro:{
-    //     devProxy: {
-    //         '/v1': {
-    //             target: '',
-    //             changeOrigin: true,
-    //         }
-    //     }
-    // }
 })

@@ -7,7 +7,10 @@ export default defineEventHandler(async (event) => {
             Authorization: `Bearer ${process.env.CF_TOKEN}`,
         },
         body: JSON.stringify({
-            prompt,
+            messages: [
+                {role: 'system', content: 'You are a friendly assistant'},
+                {role: 'user', content: prompt}
+            ],
             stream: true,
         }),
     })

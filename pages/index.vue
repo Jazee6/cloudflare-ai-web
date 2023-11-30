@@ -37,7 +37,7 @@ const models = [{
 const selectedModel = ref(models[1].id)
 
 const handleReq = async () => {
-  if (!input.value) return
+  if (!input.value || loading.value) return
   const text = input.value
   input.value = ''
   history.value.push({
@@ -82,10 +82,10 @@ const current = computed(() =>
 <template>
   <div class="py-4 h-full overflow-y-auto">
     <UContainer>
-      <div v-for="i in history" :key="i.id" class="flex flex-col">
+      <div v-for="(i,index) in history" :key="i.id" class="flex flex-col">
         <div v-if="i.is_output">
           {{ i.content }}
-          {{ loading ? '...' : '' }}
+          {{ loading && index + 1 === history.length ? '...' : '' }}
         </div>
         <div v-else class="self-end">
           {{ i.content }}
@@ -102,7 +102,7 @@ const current = computed(() =>
             {{ current.name }}
           </template>
         </USelectMenu>
-        <UButton @click="handleReq">发送</UButton>
+        <UButton @click="handleReq" :disabled="loading">发送</UButton>
       </div>
     </UContainer>
   </div>
