@@ -11,3 +11,7 @@
 - `CF_TOKEN` - Cloudflare Workers AI Token
 
 [直达链接](https://dash.cloudflare.com/profile/api-tokens) 使用Workers AIs模板创建
+
+## TODO
+
+- [ ] 对话历史
