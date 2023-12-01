@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {fetchEventSource} from "@microsoft/fetch-event-source";
-import {useStorage} from "@vueuse/core";
 
 const input = ref('')
 const loading = ref(false)
