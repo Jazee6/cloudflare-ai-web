@@ -7,5 +7,8 @@ export default defineNuxtConfig({
         '/': {
             prerender: true,
         }
+    },
+    devServer: {
+        host: '0.0.0.0'
     }
 })

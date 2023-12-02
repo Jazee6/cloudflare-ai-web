@@ -38,14 +38,14 @@ const models = [{
   id: '@cf/meta/m2m100-1.2b',
   name: '翻译-m2m100-1.2b'
 }]
-const selectedModel = ref(models[3].id)
+const selectedModel = ref(models[2].id)
 
 watch(selectedModel, (v) => {
   localStorage.setItem('selectedModel', v)
 })
 
 onMounted(() => {
-  selectedModel.value = localStorage.getItem('selectedModel') || models[3].id
+  selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
 })
 
 const reqStream = async (path: string, body: Object) => {
@@ -178,14 +178,16 @@ const t_lang_selected = ref('english')
     </UContainer>
   </div>
   <div>
-    <UContainer>
+    <UContainer class="space-y-2 flex flex-col">
+      <USelectMenu class="w-fit self-center" v-model="selectedModel" :options="models" value-attribute="id"
+                   option-attribute="name">
+        <template #label>
+          {{ current.name }}
+        </template>
+      </USelectMenu>
       <div class="flex space-x-2">
-        <UInput v-model="input" placeholder="请输入文本" @keydown.enter="handleReq" class="flex-1"/>
-        <USelectMenu v-model="selectedModel" :options="models" value-attribute="id" option-attribute="name">
-          <template #label>
-            {{ current.name }}
-          </template>
-        </USelectMenu>
+        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.enter="handleReq" autofocus rows="2"
+                   class="flex-1"/>
         <UButton @click="handleReq" :disabled="loading">发送</UButton>
       </div>
     </UContainer>
