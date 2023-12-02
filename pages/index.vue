@@ -95,8 +95,8 @@ interface TransRes {
 }
 
 const handleReq = async () => {
-  if (!input.value || loading.value) return
-  const text = input.value
+  const text = input.value.trim()
+  if (!text || loading.value) return
   input.value = ''
   history.value.push({
     id: history.value.length + 1,
@@ -185,10 +185,10 @@ const t_lang_selected = ref('english')
           {{ current.name }}
         </template>
       </USelectMenu>
-      <div class="flex space-x-2">
-        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.enter="handleReq" autofocus rows="2"
-                   class="flex-1"/>
-        <UButton @click="handleReq" :disabled="loading">发送</UButton>
+      <div class="flex">
+        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.enter="handleReq" autofocus :rows="1" autoresize
+                   class="flex-1 max-h-48 overflow-y-auto p-1"/>
+        <UButton @click="handleReq" :disabled="loading" class="self-end m-1">发送</UButton>
       </div>
     </UContainer>
   </div>
