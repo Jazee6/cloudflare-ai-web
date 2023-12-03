@@ -10,7 +10,9 @@
 
 - `CF_TOKEN` - Cloudflare Workers AI Token
 
-[直达链接](https://dash.cloudflare.com/profile/api-tokens) 使用Workers AIs模板创建
+  [直达链接](https://dash.cloudflare.com/profile/api-tokens) 使用Workers AIs模板创建
+
+- `OPENAI_API_KEY` - OpenAI API Key (Optional)
 
 ## TODO
 

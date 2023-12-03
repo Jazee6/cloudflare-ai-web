@@ -9,6 +9,7 @@ interface HistoryItem {
   id: number
   content: string
   is_output?: boolean
+  is_img?: boolean
 }
 
 const history = ref<HistoryItem[]>([
@@ -37,7 +38,14 @@ const models = [{
 }, {
   id: '@cf/meta/m2m100-1.2b',
   name: '翻译-m2m100-1.2b'
+}, {
+  id: '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+  name: 'stable-diffusion-xl-base-1.0'
+}, {
+  id: 'gpt-3.5-turbo',
+  name: 'gpt-3.5-turbo'
 }]
+
 const selectedModel = ref(models[2].id)
 
 watch(selectedModel, (v) => {
@@ -134,6 +142,23 @@ const handleReq = async () => {
     })
     return
   }
+
+  if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
+    req('img', {prompt: text}).then((res) => {
+      history.value[history.value.length - 1].is_img = true
+      history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
+      if (el.value) {
+        el.value.scrollTo({
+          top: el.value.scrollHeight,
+          behavior: 'smooth'
+        })
+      }
+    }).finally(() => {
+      loading.value = false
+    })
+    return
+  }
+
   await reqStream('chat', {prompt: text})
 }
 
@@ -153,7 +178,7 @@ const t_lang_selected = ref('english')
 </script>
 
 <template>
-  <div ref="el" class="py-4 h-full overflow-y-auto">
+  <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
     <UContainer>
       <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center items-center">
         <USelectMenu :options="s_lang" v-model="s_lang_selected">
@@ -166,27 +191,33 @@ const t_lang_selected = ref('english')
 
         </USelectMenu>
       </div>
-      <div v-for="(i,index) in history" :key="i.id" class="flex flex-col">
-        <div v-if="i.is_output">
-          {{ i.content }}
-          {{ loading && index + 1 === history.length ? '...' : '' }}
-        </div>
-        <div v-else class="self-end">
-          {{ i.content }}
-        </div>
-      </div>
+      <ul>
+        <li v-for="(i,index) in history" :key="i.id" class="flex flex-col">
+          <div v-if="i.is_output" id="reply">
+            <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
+            <div v-else>
+              {{ i.content }}
+              {{ loading && index + 1 === history.length ? '...' : '' }}
+            </div>
+          </div>
+          <div v-else id="send">
+            {{ i.content }}
+          </div>
+        </li>
+      </ul>
     </UContainer>
   </div>
   <div>
-    <UContainer class="space-y-2 flex flex-col">
-      <USelectMenu class="w-fit self-center" v-model="selectedModel" :options="models" value-attribute="id"
+    <UContainer class="space-y-1 flex flex-col">
+      <USelectMenu class="w-fit self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
                    option-attribute="name">
         <template #label>
           {{ current.name }}
         </template>
       </USelectMenu>
       <div class="flex">
-        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.enter="handleReq" autofocus :rows="1" autoresize
+        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus :rows="1"
+                   autoresize
                    class="flex-1 max-h-48 overflow-y-auto p-1"/>
         <UButton @click="handleReq" :disabled="loading" class="self-end m-1">发送</UButton>
       </div>
@@ -195,5 +226,17 @@ const t_lang_selected = ref('english')
 </template>
 
 <style scoped>
+#send {
+  max-width: 80%;
+  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 mb-2;
+}
 
+#reply {
+  max-width: 80%;
+  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 mb-2;
+}
+
+#send::selection {
+  @apply text-neutral-900 bg-gray-300;
+}
 </style>
