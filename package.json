@@ -1,6 +1,6 @@
 {
   "name": "cf-ai-web",
-  "version": "0.5",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {

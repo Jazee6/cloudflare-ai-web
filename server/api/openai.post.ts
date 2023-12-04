@@ -1,27 +1,27 @@
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     let {prompt, model} = body
-    let system
-    if (model === '@hf/thebloke/codellama-7b-instruct-awq') {
-        system = {
-            role: 'system',
-            content: 'Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```.'
-        }
-    } else system = {role: 'system', content: 'You are a friendly assistant'}
+    let system = {
+        role: 'system',
+        content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully.'
+    }
 
-    const res = await fetch(`https://gateway.ai.cloudflare.com/v1/02742d0dc0f623b24977b1e8d7333bea/jaz/workers-ai/${model}`, {
+    const res = await fetch(`https://gateway.ai.cloudflare.com/v1/02742d0dc0f623b24977b1e8d7333bea/jaz/openai/chat/completions`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${process.env.CF_TOKEN}`,
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({
             messages: [
                 system,
                 {role: 'user', content: prompt}
             ],
+            model,
             stream: true,
         }),
     })
+
     event.node.res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

@@ -54,6 +54,7 @@ watch(selectedModel, (v) => {
 
 onMounted(() => {
   selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
+
 })
 
 const reqStream = async (path: string, body: Object) => {
@@ -69,7 +70,11 @@ const reqStream = async (path: string, body: Object) => {
     onmessage: (e) => {
       if (e.data === '[DONE]') return
       const data = JSON.parse(e.data);
-      history.value[history.value.length - 1].content += data.response
+      if (path === 'openai') {
+        history.value[history.value.length - 1].content += data.choices[0].delta.content ?? ''
+      } else {
+        history.value[history.value.length - 1].content += data.response
+      }
       if (el.value) {
         (el.value.scrollTop + el.value.clientHeight >= el.value.scrollHeight - 100) && !(el.value.clientHeight + el.value.scrollTop === el.value.scrollHeight) && el.value.scrollTo({
           top: el.value.scrollHeight,
@@ -144,18 +149,25 @@ const handleReq = async () => {
   }
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
-    req('img', {prompt: text}).then((res) => {
+    req('img', {prompt: text}).then(async (res) => {
       history.value[history.value.length - 1].is_img = true
       history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
-      if (el.value) {
-        el.value.scrollTo({
-          top: el.value.scrollHeight,
-          behavior: 'smooth'
-        })
-      }
+      await nextTick(() => {
+        if (el.value) {
+          el.value.scrollTo({
+            top: el.value.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+      })
     }).finally(() => {
       loading.value = false
     })
+    return
+  }
+
+  if (selectedModel.value === 'gpt-3.5-turbo') {
+    await reqStream('openai', {prompt: text})
     return
   }
 
@@ -180,7 +192,7 @@ const t_lang_selected = ref('english')
 <template>
   <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
     <UContainer>
-      <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center items-center">
+      <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center items-center sticky top-0">
         <USelectMenu :options="s_lang" v-model="s_lang_selected">
 
         </USelectMenu>
@@ -216,7 +228,8 @@ const t_lang_selected = ref('english')
         </template>
       </USelectMenu>
       <div class="flex">
-        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus :rows="1"
+        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
+                   :rows="1"
                    autoresize
                    class="flex-1 max-h-48 overflow-y-auto p-1"/>
         <UButton @click="handleReq" :disabled="loading" class="self-end m-1">发送</UButton>
@@ -233,7 +246,7 @@ const t_lang_selected = ref('english')
 
 #reply {
   max-width: 80%;
-  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 mb-2;
+  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 mb-2 transition-all;
 }
 
 #send::selection {
