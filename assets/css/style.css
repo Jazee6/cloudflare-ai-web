@@ -5,3 +5,8 @@ html, body {
 #__nuxt {
     @apply h-full
 }
+
+.blur-global {
+    background: rgba(245, 245, 247, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+}

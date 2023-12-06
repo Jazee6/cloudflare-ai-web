@@ -19,6 +19,10 @@ export default defineEventHandler(async (event) => {
             ],
             model,
             stream: true,
+            temperature: 0.5,
+            presence_penalty: 0,
+            frequency_penalty: 0,
+            top_p: 1,
         }),
     })
 

@@ -1,9 +1,19 @@
 <script setup lang="ts">
-import {fetchEventSource} from "@microsoft/fetch-event-source";
-
 const input = ref('')
 const loading = ref(false)
 const el = ref<HTMLElement>()
+const s_lang = ref(['english', 'chinese', 'japanese', 'french', 'spanish', 'arabic', 'russian', 'german', 'portuguese', 'hindi'])
+const t_lang = computed(() => {
+  const arr = [...s_lang.value]
+  arr.splice(arr.indexOf(s_lang_selected.value), 1)
+  t_lang_selected.value = arr[0]
+  return arr
+})
+const s_lang_selected = ref('chinese')
+const t_lang_selected = ref('english')
+const current = computed(() =>
+    models.find(i => i.id === selectedModel.value)
+)
 
 interface HistoryItem {
   id: number
@@ -54,57 +64,10 @@ watch(selectedModel, (v) => {
 
 onMounted(() => {
   selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
-
 })
 
-const reqStream = async (path: string, body: Object) => {
-  await fetchEventSource(`/api/${path}`, {
-    method: 'POST',
-    body: JSON.stringify({
-      model: selectedModel.value,
-      ...body
-    }),
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    onmessage: (e) => {
-      if (e.data === '[DONE]') return
-      const data = JSON.parse(e.data);
-      if (path === 'openai') {
-        history.value[history.value.length - 1].content += data.choices[0].delta.content ?? ''
-      } else {
-        history.value[history.value.length - 1].content += data.response
-      }
-      if (el.value) {
-        (el.value.scrollTop + el.value.clientHeight >= el.value.scrollHeight - 100) && !(el.value.clientHeight + el.value.scrollTop === el.value.scrollHeight) && el.value.scrollTo({
-          top: el.value.scrollHeight,
-          behavior: 'smooth'
-        })
-      }
-    },
-    onclose: () => {
-      loading.value = false
-    }
-  })
-}
-
-const req = async (path: string, body: Object) => {
-  return await $fetch(`/api/${path}`, {
-    method: 'POST',
-    body: JSON.stringify({
-      model: selectedModel.value,
-      ...body
-    }),
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-}
-
-interface TransRes {
-  result: {
-    translated_text: string
-  }
+const onclose = () => {
+  loading.value = false
 }
 
 const handleReq = async () => {
@@ -130,89 +93,78 @@ const handleReq = async () => {
     }
   })
   if (selectedModel.value === '@cf/meta/m2m100-1.2b') {
-    req('trans', {
+    req('trans', selectedModel.value, {
       text,
       source_lang: s_lang_selected.value,
       target_lang: t_lang_selected.value
     }).then((res) => {
       history.value[history.value.length - 1].content = (res as TransRes).result.translated_text
-      if (el.value) {
-        (el.value.scrollTop + el.value.clientHeight >= el.value.scrollHeight - 300) && el.value.scrollTo({
-          top: el.value.scrollHeight,
-          behavior: 'smooth'
-        })
-      }
     }).finally(() => {
-      loading.value = false
+      scrollOnce(el, 512)
+      onclose()
     })
     return
   }
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
-    req('img', {prompt: text}).then(async (res) => {
+    req('img', selectedModel.value, {prompt: text}).then((res) => {
       history.value[history.value.length - 1].is_img = true
       history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
-      await nextTick(() => {
-        if (el.value) {
-          el.value.scrollTo({
-            top: el.value.scrollHeight,
-            behavior: 'smooth'
-          })
-        }
-      })
     }).finally(() => {
-      loading.value = false
+      setTimeout(() => {
+        scrollOnce(el, 512)
+      }, 20)
+      onclose()
     })
     return
   }
 
   if (selectedModel.value === 'gpt-3.5-turbo') {
-    await reqStream('openai', {prompt: text})
+    await reqStream('openai', {prompt: text}, selectedModel.value, (data: openaiData) => {
+      if (data.choices[0].finish_reason === 'stop') {
+        return
+      }
+      history.value[history.value.length - 1].content += data.choices[0].delta.content
+
+      scrollStream(el)
+    }, onclose)
     return
   }
 
-  await reqStream('chat', {prompt: text})
+  await reqStream('chat', {prompt: text}, selectedModel.value, (data: workersAiData) => {
+    history.value[history.value.length - 1].content += data.response
+
+    scrollStream(el)
+  }, onclose)
 }
-
-const current = computed(() =>
-    models.find(i => i.id === selectedModel.value)
-)
-
-const s_lang = ref(['english', 'chinese', 'japanese', 'french', 'spanish', 'arabic', 'russian', 'german', 'portuguese', 'hindi'])
-const t_lang = computed(() => {
-  const arr = [...s_lang.value]
-  arr.splice(arr.indexOf(s_lang_selected.value), 1)
-  t_lang_selected.value = arr[0]
-  return arr
-})
-const s_lang_selected = ref('chinese')
-const t_lang_selected = ref('english')
 </script>
 
 <template>
   <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
     <UContainer>
-      <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center items-center sticky top-0">
-        <USelectMenu :options="s_lang" v-model="s_lang_selected">
+      <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
+        <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
+          <USelectMenu :options="s_lang" v-model="s_lang_selected">
 
-        </USelectMenu>
-        <div class="px-4">
-          ->
+          </USelectMenu>
+          <div class="px-4">
+            ->
+          </div>
+          <USelectMenu :options="t_lang" v-model="t_lang_selected">
+
+          </USelectMenu>
         </div>
-        <USelectMenu :options="t_lang" v-model="t_lang_selected">
-
-        </USelectMenu>
       </div>
       <ul>
         <li v-for="(i,index) in history" :key="i.id" class="flex flex-col">
-          <div v-if="i.is_output" id="reply">
+          <div v-if="i.is_output" id="reply" class="slide-top">
             <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
             <div v-else>
               {{ i.content }}
               {{ loading && index + 1 === history.length ? '...' : '' }}
             </div>
           </div>
-          <div v-else id="send">
+          <div v-else id="send" class="slide-top">
             {{ i.content }}
           </div>
         </li>
@@ -251,5 +203,20 @@ const t_lang_selected = ref('english')
 
 #send::selection {
   @apply text-neutral-900 bg-gray-300;
+}
+
+.slide-top {
+  animation: slide-top .25s cubic-bezier(.25, .46, .45, .94) both
+}
+
+@keyframes slide-top {
+  0% {
+    transform: translateY(0);
+    opacity: 0
+  }
+  100% {
+    transform: translateY(-16px);
+    opacity: 1
+  }
 }
 </style>
