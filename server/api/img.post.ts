@@ -1,5 +1,9 @@
 const CF_TOKEN = process.env.CF_TOKEN
 
+export const config = {
+    runtime: 'edge',
+};
+
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const {model, ...rest} = body
