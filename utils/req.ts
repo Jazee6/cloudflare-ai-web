@@ -1,4 +1,5 @@
 import {fetchEventSource} from "@microsoft/fetch-event-source";
+import type {EventHandlerRequest, H3Event} from "h3";
 
 export interface openaiData {
     id: string;
@@ -58,4 +59,21 @@ export const req = async (path: string, model: string, body: Object) => {
             'Content-Type': 'application/json'
         }
     })
+}
+
+export const eventStream = async (event: H3Event<EventHandlerRequest>, res: Response) => {
+    event.node.res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    })
+    if (res.body) {
+        const reader = res.body.getReader()
+        while (true) {
+            const {done, value} = await reader.read()
+            if (done) break
+            event.node.res.write(value)
+        }
+        event.node.res.end()
+    }
 }

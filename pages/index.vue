@@ -107,15 +107,21 @@ const handleReq = async () => {
   }
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
-    req('img', selectedModel.value, {prompt: text}).then((res) => {
+    let t = 0
+    await reqStream('img', {prompt: text}, selectedModel.value, (data: workersAiData) => {
+      if (data.response === 'pending') {
+        history.value[history.value.length - 1].content = `已等待${t += 5}s`
+        return
+      }
       history.value[history.value.length - 1].is_img = true
-      history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
-    }).finally(() => {
+      history.value[history.value.length - 1].content = 'data:image/png;base64,' + data.response
+    }, () => {
       setTimeout(() => {
         scrollOnce(el, 512)
       }, 20)
       onclose()
     })
+
     return
   }
 
