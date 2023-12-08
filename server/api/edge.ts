@@ -1,7 +1,3 @@
-export const config = {
-    runtime: 'edge',
-};
-
 export default async function handler() {
     const encoder = new TextEncoder();
     const customReadable = new ReadableStream({
