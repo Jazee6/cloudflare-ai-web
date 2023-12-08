@@ -6,7 +6,9 @@ export default async function handler() {
     const encoder = new TextEncoder();
     const customReadable = new ReadableStream({
         start(controller) {
-            controller.enqueue(encoder.encode('Basic Streaming Test'));
+            if (typeof EdgeRuntime === 'string') {
+                controller.enqueue(encoder.encode("EdgeRuntime!!!"));
+            }
             controller.close();
         },
     });
