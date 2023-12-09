@@ -68,7 +68,6 @@ export const req = async (path: string, model: string, body: Object) => {
 
 export const stream = (res: Response) => {
     // https://web.dev/articles/streams
-    const decoder = new TextDecoder();
     const readableStream = new ReadableStream({
         async start(controller) {
 
@@ -84,7 +83,7 @@ export const stream = (res: Response) => {
             }
 
             for await (const chunk of res.body as any) {
-                controller.enqueue(decoder.decode(chunk));
+                controller.enqueue(chunk);
             }
 
             controller.close();
