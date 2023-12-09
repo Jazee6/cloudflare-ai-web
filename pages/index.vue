@@ -80,6 +80,9 @@ const handleReq = async () => {
     role: 'user',
     content: text,
   }
+  if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
+    send.is_img = true
+  }
   history.value.push(send)
   loading.value = true
   history.value.push({
