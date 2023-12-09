@@ -1,12 +1,10 @@
-const CF_TOKEN = process.env.CF_TOKEN
-
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const {model, ...rest} = body
-    return await $fetch(`https://gateway.ai.cloudflare.com/v1/02742d0dc0f623b24977b1e8d7333bea/jaz/workers-ai/${model}`, {
+    return await $fetch(`${process.env.CF_GATEWAY}/workers-ai/${model}`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${CF_TOKEN}`,
+            Authorization: `Bearer ${process.env.CF_TOKEN}`,
         },
         body: JSON.stringify(rest),
     })

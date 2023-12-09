@@ -1,34 +1,36 @@
-const CF_TOKEN = process.env.CF_TOKEN
-
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
-    const {model, ...rest} = body
+    const {messages, model} = body
 
-    event.node.res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-    })
+    const readableStream = new ReadableStream({
+        async start(controller) {
+            const interval = setInterval(() => {
+                controller.enqueue(`data: ${JSON.stringify({response: 'pending'})}\n\n`)
+            }, 5000)
 
-    const interval = setInterval(() => {
-        event.node.res.write(`data: ${JSON.stringify({response: 'pending'})}\n\n`)
-    }, 5000)
+            const res = await $fetch(`${process.env.CF_GATEWAY}/workers-ai/${model}`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${process.env.CF_TOKEN}`,
+                },
+                body: JSON.stringify({
+                    prompt: messages[0].content,
+                }),
+            })
 
-    $fetch(`https://gateway.ai.cloudflare.com/v1/02742d0dc0f623b24977b1e8d7333bea/jaz/workers-ai/${model}`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${CF_TOKEN}`,
+            const base64 = Buffer.from(await (res as Blob).arrayBuffer()).toString('base64')
+            clearInterval(interval)
+            controller.enqueue(`data: ${JSON.stringify({response: base64})}\n\n`)
+            controller.enqueue(`data: [DONE]\n\n`)
+            controller.close()
         },
-        body: JSON.stringify(rest),
-    }).then(async res => {
-        clearInterval(interval)
-        const base64 = Buffer.from(await (res as Blob).arrayBuffer()).toString('base64')
-        event.node.res.write(`data: ${JSON.stringify({response: base64})}\n\n`)
-        event.node.res.write(`data: [DONE]\n\n`)
-        event.node.res.end()
-    }).catch(() => {
-        clearInterval(interval)
-        event.node.res.write(`data: [DONE]\n\n`)
-        event.node.res.end()
+    });
+
+    return new Response(readableStream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
     })
 })

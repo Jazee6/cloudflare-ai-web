@@ -1,26 +1,26 @@
-import {eventStream} from "~/utils/req";
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+import {stream} from "~/utils/req"
 
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
-    let {prompt, model} = body
+    let {messages, model} = body
     let system = {
         role: 'system',
         content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully.'
     }
 
-    const res = await fetch(`https://gateway.ai.cloudflare.com/v1/02742d0dc0f623b24977b1e8d7333bea/jaz/openai/chat/completions`, {
+    messages = [
+        system,
+        ...messages
+    ]
+
+    const res = await fetch(`${process.env.CF_GATEWAY}/openai/chat/completions`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            messages: [
-                system,
-                {role: 'user', content: prompt}
-            ],
+            messages,
             model,
             stream: true,
             temperature: 0.5,
@@ -30,5 +30,5 @@ export default defineEventHandler(async (event) => {
         }),
     })
 
-    await eventStream(event, res)
+    return stream(res)
 })

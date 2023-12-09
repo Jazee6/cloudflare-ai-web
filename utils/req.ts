@@ -1,5 +1,4 @@
 import {fetchEventSource} from "@microsoft/fetch-event-source";
-import type {EventHandlerRequest, H3Event} from "h3";
 
 export interface openaiData {
     id: string;
@@ -26,13 +25,19 @@ export interface TransRes {
     }
 }
 
-export const reqStream = async (path: string, body: Object, model: string,
+export interface HistoryItem {
+    role: 'user' | 'assistant'
+    content: string
+    is_img?: boolean
+}
+
+export const reqStream = async (path: string, messages: Array<HistoryItem>, model: string,
                                 onmessage: Function, onclose: Function) => {
     await fetchEventSource(`/api/${path}`, {
         method: 'POST',
         body: JSON.stringify({
             model,
-            ...body
+            messages,
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -61,19 +66,36 @@ export const req = async (path: string, model: string, body: Object) => {
     })
 }
 
-export const eventStream = async (event: H3Event<EventHandlerRequest>, res: Response) => {
-    event.node.res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+export const stream = (res: Response) => {
+    // https://web.dev/articles/streams
+    const decoder = new TextDecoder();
+    const readableStream = new ReadableStream({
+        async start(controller) {
+
+            if (res.status !== 200) {
+                const data = {
+                    status: res.status,
+                    statusText: res.statusText,
+                    body: await res.text(),
+                }
+                console.error(`Error: recieved non-200 status code, ${JSON.stringify(data)}`);
+                controller.close();
+                return;
+            }
+
+            for await (const chunk of res.body as any) {
+                controller.enqueue(decoder.decode(chunk));
+            }
+
+            controller.close();
+        },
+    });
+
+    return new Response(readableStream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
     })
-    if (res.body) {
-        const reader = res.body.getReader()
-        while (true) {
-            const {done, value} = await reader.read()
-            if (done) break
-            event.node.res.write(value)
-        }
-        event.node.res.end()
-    }
 }

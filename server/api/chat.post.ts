@@ -1,12 +1,10 @@
-import {eventStream} from "~/utils/req";
-
-const CF_GATEWAY = process.env.CF_GATEWAY
-const CF_TOKEN = process.env.CF_TOKEN
+import {stream} from "~/utils/req";
 
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
-    let {prompt, model} = body
+    let {messages, model} = body
     let system
+
     if (model === '@hf/thebloke/codellama-7b-instruct-awq') {
         system = {
             role: 'system',
@@ -14,18 +12,21 @@ export default defineEventHandler(async (event) => {
         }
     } else system = {role: 'system', content: 'You are a friendly assistant'}
 
-    const res = await fetch(`${CF_GATEWAY}/workers-ai/${model}`, {
+    messages = [
+        system,
+        ...messages
+    ]
+
+    const res = await fetch(`${process.env.CF_GATEWAY}/workers-ai/${model}`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${CF_TOKEN}`,
+            Authorization: `Bearer ${process.env.CF_TOKEN}`,
         },
         body: JSON.stringify({
-            messages: [
-                system,
-                {role: 'user', content: prompt}
-            ],
+            messages,
             stream: true,
         }),
     })
-    await eventStream(event, res)
+
+    return stream(res)
 })

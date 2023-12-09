@@ -15,21 +15,13 @@ const current = computed(() =>
     models.find(i => i.id === selectedModel.value)
 )
 
-interface HistoryItem {
-  id: number
-  content: string
-  is_output?: boolean
-  is_img?: boolean
-}
-
 const history = ref<HistoryItem[]>([
   {
-    id: 1,
+    role: 'user',
     content: '你好',
   }, {
-    id: 2,
+    role: 'assistant',
     content: '你好, 请问有什么可以帮助您的吗?',
-    is_output: true,
   }
 ])
 
@@ -58,31 +50,41 @@ const models = [{
 
 const selectedModel = ref(models[2].id)
 
-watch(selectedModel, (v) => {
+watch(selectedModel, v => {
   localStorage.setItem('selectedModel', v)
+})
+
+const addHistory = ref(true)
+
+watch(addHistory, v => {
+  localStorage.setItem('addHistory', v.toString())
 })
 
 onMounted(() => {
   selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
+  addHistory.value = localStorage.getItem('addHistory') === 'true'
 })
 
 const onclose = () => {
   loading.value = false
 }
 
+const upMessages = () => addHistory.value ? toRaw(history.value).slice(2, history.value.length - 1).filter(i => !i.is_img) :
+    toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
+
 const handleReq = async () => {
   const text = input.value.trim()
   if (!text || loading.value) return
   input.value = ''
-  history.value.push({
-    id: history.value.length + 1,
+  const send: HistoryItem = {
+    role: 'user',
     content: text,
-  })
+  }
+  history.value.push(send)
   loading.value = true
   history.value.push({
-    id: history.value.length + 1,
+    role: 'assistant',
     content: '',
-    is_output: true,
   })
   await nextTick(() => {
     if (el.value) {
@@ -98,7 +100,7 @@ const handleReq = async () => {
       source_lang: s_lang_selected.value,
       target_lang: t_lang_selected.value
     }).then((res) => {
-      history.value[history.value.length - 1].content = (res as TransRes).result.translated_text
+      history.value[history.value.length - 1].content = (res as unknown as TransRes).result.translated_text
     }).finally(() => {
       scrollOnce(el, 512)
       onclose()
@@ -108,7 +110,7 @@ const handleReq = async () => {
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
     let t = 0
-    await reqStream('img', {prompt: text}, selectedModel.value, (data: workersAiData) => {
+    await reqStream('img', [send], selectedModel.value, (data: workersAiData) => {
       if (data.response === 'pending') {
         history.value[history.value.length - 1].content = `已等待${t += 5}s`
         return
@@ -126,7 +128,7 @@ const handleReq = async () => {
   }
 
   if (selectedModel.value === 'gpt-3.5-turbo') {
-    await reqStream('openai', {prompt: text}, selectedModel.value, (data: openaiData) => {
+    await reqStream('openai', upMessages(), selectedModel.value, (data: openaiData) => {
       if (data.choices[0].finish_reason === 'stop') {
         return
       }
@@ -137,7 +139,7 @@ const handleReq = async () => {
     return
   }
 
-  await reqStream('chat', {prompt: text}, selectedModel.value, (data: workersAiData) => {
+  await reqStream('chat', upMessages(), selectedModel.value, (data: workersAiData) => {
     history.value[history.value.length - 1].content += data.response
 
     scrollStream(el)
@@ -162,8 +164,8 @@ const handleReq = async () => {
         </div>
       </div>
       <ul>
-        <li v-for="(i,index) in history" :key="i.id" class="flex flex-col">
-          <div v-if="i.is_output" id="reply" class="slide-top">
+        <li v-for="(i,index) in history" :key="index" class="flex flex-col">
+          <div v-if="i.role === 'assistant'" id="reply" class="slide-top">
             <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
             <div v-else>
               {{ i.content }}
@@ -185,7 +187,11 @@ const handleReq = async () => {
           {{ current.name }}
         </template>
       </USelectMenu>
-      <div class="flex">
+      <div class="flex items-center">
+        <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
+          <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
+                   icon="i-heroicons-clock-solid"/>
+        </UTooltip>
         <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
                    :rows="1"
                    autoresize
