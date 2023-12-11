@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import markdownit from 'markdown-it'
+import Shikiji from 'markdown-it-shikiji'
+
 const input = ref('')
 const loading = ref(false)
 const el = ref<HTMLElement>()
@@ -14,6 +17,19 @@ const t_lang_selected = ref('english')
 const current = computed(() =>
     models.find(i => i.id === selectedModel.value)
 )
+const isOpen = ref(false)
+const config = useRuntimeConfig()
+const {data: needPass} = await useFetch('/api/pass')
+const access_pass = ref('')
+const md = markdownit({
+  linkify: true,
+})
+
+md.use(await Shikiji({
+  themes: {
+    light: 'github-dark',
+  },
+}))
 
 const history = ref<HistoryItem[]>([
   {
@@ -63,6 +79,9 @@ watch(addHistory, v => {
 onMounted(() => {
   selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
+  if ((<any>needPass.value) === 'true' && !localStorage.getItem('access_pass')) {
+    isOpen.value = true
+  }
 })
 
 const onclose = () => {
@@ -71,6 +90,12 @@ const onclose = () => {
 
 const upMessages = () => addHistory.value ? toRaw(history.value).slice(2, history.value.length - 1).filter(i => !i.is_img) :
     toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
+
+const onerror = () => {
+  history.value.pop()
+  history.value.pop()
+  isOpen.value = true
+}
 
 const handleReq = async () => {
   const text = input.value.trim()
@@ -107,7 +132,7 @@ const handleReq = async () => {
     }).finally(() => {
       scrollOnce(el, 512)
       onclose()
-    })
+    }).catch(onerror)
     return
   }
 
@@ -125,7 +150,7 @@ const handleReq = async () => {
         scrollOnce(el, 512)
       }, 20)
       onclose()
-    })
+    }, onerror)
 
     return
   }
@@ -138,7 +163,7 @@ const handleReq = async () => {
       history.value[history.value.length - 1].content += data.choices[0].delta.content
 
       scrollStream(el)
-    }, onclose)
+    }, onclose, onerror)
     return
   }
 
@@ -146,13 +171,33 @@ const handleReq = async () => {
     history.value[history.value.length - 1].content += data.response
 
     scrollStream(el)
-  }, onclose)
+  }, onclose, onerror)
+}
+
+const handlePass = async () => {
+  const pass = access_pass.value.trim()
+  if (!pass) return
+  access_pass.value = ''
+  localStorage.setItem('access_pass', pass)
+  isOpen.value = false
 }
 </script>
 
 <template>
   <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
     <UContainer>
+      <UModal v-model="isOpen">
+        <div class="p-4 flex flex-col space-y-2">
+          <div>
+            请输入访问密码
+          </div>
+          <div class="flex space-x-2">
+            <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
+            <UButton @click="handlePass">确定</UButton>
+          </div>
+        </div>
+      </UModal>
+
       <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
         <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
           <USelectMenu :options="s_lang" v-model="s_lang_selected">
@@ -170,8 +215,11 @@ const handleReq = async () => {
         <li v-for="(i,index) in history" :key="index" class="flex flex-col">
           <div v-if="i.role === 'assistant'" id="reply" class="slide-top">
             <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
-            <div v-else>
+            <div v-else-if="i<2">
               {{ i.content }}
+            </div>
+            <div v-else>
+              <div v-html="md.render(i.content)" class="prose text-black max-w-none"></div>
               {{ loading && index + 1 === history.length ? '...' : '' }}
             </div>
           </div>
@@ -196,10 +244,11 @@ const handleReq = async () => {
                    icon="i-heroicons-clock-solid"/>
         </UTooltip>
         <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
-                   :rows="1"
-                   autoresize
+                   :rows="1" autoresize
                    class="flex-1 max-h-48 overflow-y-auto p-1"/>
-        <UButton @click="handleReq" :disabled="loading" class="self-end m-1">发送</UButton>
+        <UButton @click="handleReq" :disabled="loading" class="m-1">
+          发送
+        </UButton>
       </div>
     </UContainer>
   </div>

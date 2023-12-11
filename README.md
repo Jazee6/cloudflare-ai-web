@@ -8,11 +8,12 @@
 
 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
 
-需要的环境变量：
+环境变量：
 
 - `CF_TOKEN` - Cloudflare Workers AI Token
 - `CF_GATEWAY` - Cloudflare AI Gateway URL
 - `OPENAI_API_KEY` - OpenAI API Key (可选)
+- `PASSWORD` - 访问密码 (可选)
 
 ## 部署说明
 

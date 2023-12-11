@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
     let {messages, model} = body
     let system = {
         role: 'system',
-        content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully.'
+        content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully. Respond using markdown.'
     }
 
     messages = [
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
             messages,
             model,
             stream: true,
-            temperature: 0.5,
+            temperature: 0.8,
             presence_penalty: 0,
             frequency_penalty: 0,
             top_p: 1,

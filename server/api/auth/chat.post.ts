@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
             role: 'system',
             content: 'Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```.'
         }
-    } else system = {role: 'system', content: 'You are a friendly assistant'}
+    } else system = {role: 'system', content: 'You are a friendly assistant. Respond using markdown.'}
 
     messages = [
         system,

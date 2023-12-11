@@ -1,5 +1,8 @@
 import {fetchEventSource} from "@microsoft/fetch-event-source";
 
+const controller = new AbortController()
+const {signal} = controller
+
 export interface openaiData {
     id: string;
     object: string;
@@ -32,14 +35,15 @@ export interface HistoryItem {
 }
 
 export const reqStream = async (path: string, messages: Array<HistoryItem>, model: string,
-                                onmessage: Function, onclose: Function) => {
-    await fetchEventSource(`/api/${path}`, {
+                                onmessage: Function, onclose: Function, onerror: Function) => {
+    await fetchEventSource(`/api/auth/${path}`, {
         method: 'POST',
         body: JSON.stringify({
             model,
             messages,
         }),
         headers: {
+            Authorization: `${localStorage.getItem('access_pass')}`,
             'Content-Type': 'application/json'
         },
         onmessage: (e) => {
@@ -49,20 +53,28 @@ export const reqStream = async (path: string, messages: Array<HistoryItem>, mode
         },
         onclose: () => {
             onclose()
+        },
+        signal,
+        onerror: (e) => {
+            controller.abort()
+            onclose()
+            onerror(e)
         }
     })
 }
 
 export const req = async (path: string, model: string, body: Object) => {
-    return await $fetch(`/api/${path}`, {
+    return await $fetch(`/api/auth/${path}`, {
         method: 'POST',
         body: JSON.stringify({
             model,
             ...body
         }),
         headers: {
+            Authorization: `${localStorage.getItem('access_pass')}`,
             'Content-Type': 'application/json'
-        }
+        },
+        retry: false
     })
 }
 
