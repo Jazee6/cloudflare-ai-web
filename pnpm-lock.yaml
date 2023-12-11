@@ -8,6 +8,9 @@ patchedDependencies:
   '@microsoft/fetch-event-source@2.0.1':
     hash: f4mxwri52lgha5hr6mluarwvf4
     path: patches/@microsoft__fetch-event-source@2.0.1.patch
+  shikiji@0.8.0:
+    hash: mtrt5rpddxwcispzqnqz3zoy2m
+    path: patches/shikiji@0.8.0.patch
 
 dependencies:
   '@microsoft/fetch-event-source':
@@ -38,7 +41,7 @@ devDependencies:
     version: 3.8.2(vite@4.5.0)
   shikiji:
     specifier: ^0.8.0
-    version: 0.8.0
+    version: 0.8.0(patch_hash=mtrt5rpddxwcispzqnqz3zoy2m)
   vue:
     specifier: ^3.3.8
     version: 3.3.9
@@ -4125,7 +4128,7 @@ packages:
     resolution: {integrity: sha512-KOO4Jp9CaRoub3anUAtjSqG8wUgFk/GJ4P21xaJbMY9wpKUFOGvbkxvW9Lz1Ng3etidHdY7eXPLdkjqD9Ediow==}
     dependencies:
       markdown-it: 13.0.2
-      shikiji: 0.8.0
+      shikiji: 0.8.0(patch_hash=mtrt5rpddxwcispzqnqz3zoy2m)
     dev: true
 
   /markdown-it@13.0.2:
@@ -5694,11 +5697,12 @@ packages:
   /shell-quote@1.8.1:
     resolution: {integrity: sha512-6j1W9l1iAs/4xYBI1SYOVZyFcCis9b4KCLQ8fgAGG07QvzaRLVVRQvAy85yNmmZSjYjg4MWh4gNvlPujU/5LpA==}
 
-  /shikiji@0.8.0:
+  /shikiji@0.8.0(patch_hash=mtrt5rpddxwcispzqnqz3zoy2m):
     resolution: {integrity: sha512-E0NkMzk+6111cxnrsQGNsIfXnTfJ2rqlaC1o4e1U1AcNYm6GVig8ZeLXn5g8PfzQZqMqSPO0yxJt3RURVW5D9A==}
     dependencies:
       hast-util-to-html: 9.0.0
     dev: true
+    patched: true
 
   /signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
