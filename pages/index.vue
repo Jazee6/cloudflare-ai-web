@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import markdownit from 'markdown-it'
-import Shikiji from 'markdown-it-shikiji'
+import markdownit from "markdown-it";
 
 const input = ref('')
 const loading = ref(false)
@@ -24,12 +23,6 @@ const access_pass = ref('')
 const md = markdownit({
   linkify: true,
 })
-
-md.use(await Shikiji({
-  themes: {
-    light: 'github-dark',
-  },
-}))
 
 const history = ref<HistoryItem[]>([
   {

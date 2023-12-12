@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build --preset=vercel_edge",
+    "build_node": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
@@ -13,9 +14,7 @@
   "devDependencies": {
     "@nuxt/devtools": "latest",
     "@tailwindcss/typography": "^0.5.10",
-    "markdown-it-shikiji": "^0.8.0",
     "nuxt": "^3.8.2",
-    "shikiji": "^0.8.0",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5"
   },
@@ -27,8 +26,7 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@microsoft/fetch-event-source@2.0.1": "patches/@microsoft__fetch-event-source@2.0.1.patch",
-      "shikiji@0.8.0": "patches/shikiji@0.8.0.patch"
+      "@microsoft/fetch-event-source@2.0.1": "patches/@microsoft__fetch-event-source@2.0.1.patch"
     }
   }
 }
