@@ -29,7 +29,7 @@ const md: MarkdownIt = markdownit({
     if (lang && hljs.getLanguage(lang)) {
       return `<pre class="hljs"><code>${hljs.highlight(lang, str, true).value}</code></pre>`;
     }
-    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+    return `<pre class="hljs"><code>${hljs.highlightAuto(str)}</code></pre>`;
   },
 })
 

@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
                     Authorization: `Bearer ${process.env.CF_TOKEN}`,
                 },
                 body: JSON.stringify({
-                    prompt: `breathtaking ${messages[0].content}. award-winning, professional, highly detailed`,
+                    prompt: messages[0].content,
                 }),
             })
 
