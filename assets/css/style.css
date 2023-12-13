@@ -10,3 +10,21 @@ html, body {
     background: rgba(245, 245, 247, 0.72);
     backdrop-filter: saturate(180%) blur(20px);
 }
+
+.loading > dd:last-child::after,
+.loading > dl:last-child::after,
+.loading > dt:last-child::after,
+.loading > h1:last-child::after,
+.loading > h2:last-child::after,
+.loading > h3:last-child::after,
+.loading > h4:last-child::after,
+.loading > h5:last-child::after,
+.loading > h6:last-child::after,
+.loading > li:last-child::after,
+.loading > ol:last-child li:last-child::after,
+.loading > p:last-child::after,
+.loading > pre:last-child code::after,
+.loading > td:last-child::after,
+.loading > ul:last-child li:last-child::after {
+    content: ' ● ';
+}

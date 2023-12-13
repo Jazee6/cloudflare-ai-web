@@ -8,14 +8,7 @@ const isOpenN = ref(false)
   <div id="navbar" class="blur-global">
     <UContainer class="h-full flex items-center">
       <img src="/MenuRound.svg" class="w-8 h-8 cursor-pointer" alt="Menu" @click="isOpenN=!isOpenN"/>
-      <h1 class="text-2xl font-bold ml-2">cf-ai-web</h1>
-      <UButton class="ml-auto" @click="isOpen=!isOpen">登录</UButton>
-
-      <UModal v-model="isOpen">
-        <div class="p-4">
-          开发中...
-        </div>
-      </UModal>
+      <h1 class="text-2xl font-bold ml-2">cloudflare-ai-web</h1>
 
       <USlideover v-model="isOpenN" side="left" class="w-64">
         <UVerticalNavigation>

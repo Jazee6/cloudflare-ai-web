@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import markdownit from "markdown-it";
+import MarkdownIt from "markdown-it";
+import hljs from "highlight.js";
+import 'highlight.js/styles/github.css';
 
 const input = ref('')
 const loading = ref(false)
@@ -20,19 +23,17 @@ const isOpen = ref(false)
 const config = useRuntimeConfig()
 const {data: needPass} = await useFetch('/api/pass')
 const access_pass = ref('')
-const md = markdownit({
+const md: MarkdownIt = markdownit({
   linkify: true,
+  highlight: (str, lang) => {
+    if (lang && hljs.getLanguage(lang)) {
+      return `<pre class="hljs"><code>${hljs.highlight(lang, str, true).value}</code></pre>`;
+    }
+    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+  },
 })
 
-const history = ref<HistoryItem[]>([
-  {
-    role: 'user',
-    content: '你好',
-  }, {
-    role: 'assistant',
-    content: '你好, 请问有什么可以帮助您的吗?',
-  }
-])
+const history = ref<HistoryItem[]>([])
 
 const models = [{
   id: '@cf/meta/llama-2-7b-chat-fp16',
@@ -45,16 +46,16 @@ const models = [{
   name: 'mistral-7b-instruct-v0.1'
 }, {
   id: '@hf/thebloke/codellama-7b-instruct-awq',
-  name: 'codellama-7b-instruct-awq'
+  name: '编程-codellama-7b-instruct-awq'
 }, {
   id: '@cf/meta/m2m100-1.2b',
   name: '翻译-m2m100-1.2b'
 }, {
   id: '@cf/stabilityai/stable-diffusion-xl-base-1.0',
-  name: 'stable-diffusion-xl-base-1.0'
+  name: '绘画-stable-diffusion-xl-base-1.0'
 }, {
   id: 'gpt-3.5-turbo',
-  name: 'gpt-3.5-turbo'
+  name: 'ChatGPT-3.5-turbo'
 }]
 
 const selectedModel = ref(models[2].id)
@@ -81,13 +82,28 @@ const onclose = () => {
   loading.value = false
 }
 
-const upMessages = () => addHistory.value ? toRaw(history.value).slice(2, history.value.length - 1).filter(i => !i.is_img) :
+const upMessages = () => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
     toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
 
 const onerror = () => {
   history.value.pop()
   history.value.pop()
   isOpen.value = true
+}
+
+const addContent = async () => {
+  history.value.push({
+    role: 'assistant',
+    content: '',
+  })
+  await nextTick(() => {
+    if (el.value) {
+      el.value.scrollTo({
+        top: el.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  })
 }
 
 const handleReq = async () => {
@@ -103,24 +119,14 @@ const handleReq = async () => {
   }
   history.value.push(send)
   loading.value = true
-  history.value.push({
-    role: 'assistant',
-    content: '',
-  })
-  await nextTick(() => {
-    if (el.value) {
-      el.value.scrollTo({
-        top: el.value.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-  })
+
   if (selectedModel.value === '@cf/meta/m2m100-1.2b') {
     req('trans', selectedModel.value, {
       text,
       source_lang: s_lang_selected.value,
       target_lang: t_lang_selected.value
-    }).then((res) => {
+    }).then(async (res) => {
+      await addContent()
       history.value[history.value.length - 1].content = (res as unknown as TransRes).result.translated_text
     }).finally(() => {
       scrollOnce(el, 512)
@@ -131,7 +137,8 @@ const handleReq = async () => {
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
     let t = 0
-    await reqStream('img', [send], selectedModel.value, (data: workersAiData) => {
+    await reqStream('img', [send], selectedModel.value, async (data: workersAiData) => {
+      if (!t) await addContent()
       if (data.response === 'pending') {
         history.value[history.value.length - 1].content = `已等待${t += 5}s`
         return
@@ -149,7 +156,12 @@ const handleReq = async () => {
   }
 
   if (selectedModel.value === 'gpt-3.5-turbo') {
-    await reqStream('openai', upMessages(), selectedModel.value, (data: openaiData) => {
+    let t = 0
+    await reqStream('openai', upMessages(), selectedModel.value, async (data: openaiData) => {
+      if (!t) {
+        await addContent()
+        t = 1
+      }
       if (data.choices[0].finish_reason === 'stop') {
         return
       }
@@ -160,9 +172,13 @@ const handleReq = async () => {
     return
   }
 
-  await reqStream('chat', upMessages(), selectedModel.value, (data: workersAiData) => {
+  let t = 0
+  await reqStream('chat', upMessages(), selectedModel.value, async (data: workersAiData) => {
+    if (!t) {
+      await addContent()
+      t = 1
+    }
     history.value[history.value.length - 1].content += data.response
-
     scrollStream(el)
   }, onclose, onerror)
 }
@@ -174,6 +190,8 @@ const handlePass = async () => {
   localStorage.setItem('access_pass', pass)
   isOpen.value = false
 }
+
+const isLoading = computed(() => loading.value ? 'loading' : '')
 </script>
 
 <template>
@@ -204,22 +222,25 @@ const handlePass = async () => {
           </USelectMenu>
         </div>
       </div>
-      <ul>
-        <li v-for="(i,index) in history" :key="index" class="flex flex-col">
-          <div v-if="i.role === 'assistant'" id="reply" class="slide-top">
-            <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
-            <div v-else-if="i<2">
-              {{ i.content }}
-            </div>
-            <div v-else>
-              <div v-html="md.render(i.content)" class="prose text-black max-w-none"></div>
-              {{ loading && index + 1 === history.length ? '...' : '' }}
-            </div>
-          </div>
-          <div v-else id="send" class="slide-top">
-            {{ i.content }}
-          </div>
+      <ul class="flex flex-col">
+        <li id="send" class="slide-top">
+          你好
         </li>
+        <li id="reply" class="slide-top">
+          你好, 请问有什么可以帮助您的吗?
+        </li>
+        <template v-for="(i,index) in history" :key="index">
+          <li v-if="i.role === 'assistant'" id="reply" class="slide-top">
+            <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
+            <template v-else>
+              <div v-html="md.render(i.content)" class="prose text-black max-w-none"
+                   :class="index+1===history.length && isLoading"></div>
+            </template>
+          </li>
+          <li v-else id="send" class="slide-top">
+            {{ i.content }}
+          </li>
+        </template>
       </ul>
     </UContainer>
   </div>
@@ -250,12 +271,12 @@ const handlePass = async () => {
 <style scoped>
 #send {
   max-width: 80%;
-  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 mb-2;
+  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 mb-2 transition-all hover:bg-green-600;
 }
 
 #reply {
   max-width: 80%;
-  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 mb-2 transition-all;
+  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 transition-all hover:bg-gray-300;
 }
 
 #send::selection {

@@ -6,18 +6,31 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web&env=CF_TOKEN,CF_GATEWAY&envDescription=%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%BF%A1%E6%81%AF%E8%AF%B7%E6%9F%A5%E7%9C%8B&envLink=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web)
 
-利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
+示例：https://ai.jaze.top
 
-环境变量：
+### 特性
+
+- 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
+- Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间
+- 支持 OpenAI API，支持开启访问密码，支持自定义域名
+
+### 模型支持
+
+- 文生图 `stable-diffusion-xl-base-1.0`
+- 文本生成 `llama-2-7b-chat-fp16` `llama-2-7b-chat-int8` `mistral-7b-instruct-v0.1` `gpt-3.5-turbo`
+- 代码生成 `codellama-7b-instruct-awq`
+- 翻译 `m2m100-1.2b`
+
+## 部署说明
+
+### 环境变量
 
 - `CF_TOKEN` - Cloudflare Workers AI Token
 - `CF_GATEWAY` - Cloudflare AI Gateway URL
 - `OPENAI_API_KEY` - OpenAI API Key (可选)
 - `PASSWORD` - 访问密码 (可选)
 
-## 部署说明
-
-### CF_TOKEN
+#### CF_TOKEN
 
 https://dash.cloudflare.com/profile/api-tokens
 
@@ -27,7 +40,7 @@ https://dash.cloudflare.com/profile/api-tokens
 - 单击创建令牌
 - 复制您的令牌，在vercel中设置环境变量
 
-### CF_GATEWAY
+#### CF_GATEWAY
 
 https://dash.cloudflare.com/
 
@@ -41,7 +54,8 @@ https://dash.cloudflare.com/
 
 ## Tips
 
-由于Workers AI 目前为开放 Beta 版，不建议用于生产数据和流量，限制 + 访问可能会发生变化
+- 由于Workers AI 目前为开放 Beta 版，不建议用于生产数据和流量，限制 + 访问可能会发生变化
+- 请保持与Main分支同步，以便获取最新的功能和修复
 
 ## TODO
 
