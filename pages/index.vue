@@ -91,21 +91,6 @@ const onerror = () => {
   isOpen.value = true
 }
 
-const addContent = async () => {
-  history.value.push({
-    role: 'assistant',
-    content: '',
-  })
-  await nextTick(() => {
-    if (el.value) {
-      el.value.scrollTo({
-        top: el.value.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-  })
-}
-
 const handleReq = async () => {
   const text = input.value.trim()
   if (!text || loading.value) return
@@ -119,14 +104,24 @@ const handleReq = async () => {
   }
   history.value.push(send)
   loading.value = true
-
+  history.value.push({
+    role: 'assistant',
+    content: '',
+  })
+  await nextTick(() => {
+    if (el.value) {
+      el.value.scrollTo({
+        top: el.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  })
   if (selectedModel.value === '@cf/meta/m2m100-1.2b') {
     req('trans', selectedModel.value, {
       text,
       source_lang: s_lang_selected.value,
       target_lang: t_lang_selected.value
-    }).then(async (res) => {
-      await addContent()
+    }).then((res) => {
       history.value[history.value.length - 1].content = (res as unknown as TransRes).result.translated_text
     }).finally(() => {
       scrollOnce(el, 512)
@@ -137,8 +132,7 @@ const handleReq = async () => {
 
   if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
     let t = 0
-    await reqStream('img', [send], selectedModel.value, async (data: workersAiData) => {
-      if (!t) await addContent()
+    await reqStream('img', [send], selectedModel.value, (data: workersAiData) => {
       if (data.response === 'pending') {
         history.value[history.value.length - 1].content = `已等待${t += 5}s`
         return
@@ -156,12 +150,7 @@ const handleReq = async () => {
   }
 
   if (selectedModel.value === 'gpt-3.5-turbo') {
-    let t = 0
-    await reqStream('openai', upMessages(), selectedModel.value, async (data: openaiData) => {
-      if (!t) {
-        await addContent()
-        t = 1
-      }
+    await reqStream('openai', upMessages(), selectedModel.value, (data: openaiData) => {
       if (data.choices[0].finish_reason === 'stop') {
         return
       }
@@ -172,13 +161,9 @@ const handleReq = async () => {
     return
   }
 
-  let t = 0
-  await reqStream('chat', upMessages(), selectedModel.value, async (data: workersAiData) => {
-    if (!t) {
-      await addContent()
-      t = 1
-    }
+  await reqStream('chat', upMessages(), selectedModel.value, (data: workersAiData) => {
     history.value[history.value.length - 1].content += data.response
+
     scrollStream(el)
   }, onclose, onerror)
 }
