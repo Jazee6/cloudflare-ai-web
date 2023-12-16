@@ -1,0 +1,21 @@
+{
+  "name": "Cloudflare AI Web",
+  "short_name": "Cloudflare AI Web",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fff",
+  "description": "An AI web App",
+  "icons": [
+    {
+      "src": "/pwa.webp",
+      "sizes": "256x256",
+      "type": "image/webp"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "web",
+      "url": "https://jaze.top"
+    }
+  ]
+}

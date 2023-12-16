@@ -1,5 +1,7 @@
+import {imgReq} from "~/utils/type";
+
 export default defineEventHandler(async (event) => {
-    const body = await readBody(event)
+    const body: imgReq = await readBody(event)
     const {messages, model} = body
 
     const encoder = new TextEncoder()
@@ -16,7 +18,7 @@ export default defineEventHandler(async (event) => {
                     Authorization: `Bearer ${process.env.CF_TOKEN}`,
                 },
                 body: JSON.stringify({
-                    prompt: messages[0].content,
+                    prompt: messages,
                 }),
             })
 

@@ -4,21 +4,22 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  '@microsoft/fetch-event-source@2.0.1':
-    hash: f4mxwri52lgha5hr6mluarwvf4
-    path: patches/@microsoft__fetch-event-source@2.0.1.patch
-
 dependencies:
-  '@microsoft/fetch-event-source':
-    specifier: ^2.0.1
-    version: 2.0.1(patch_hash=f4mxwri52lgha5hr6mluarwvf4)
   '@nuxt/ui':
     specifier: ^2.11.0
     version: 2.11.0(nuxt@3.8.2)(vite@4.5.0)(vue@3.3.9)
+  '@streamparser/json':
+    specifier: ^0.0.18
+    version: 0.0.18
   '@types/markdown-it':
     specifier: ^13.0.7
     version: 13.0.7
+  dexie:
+    specifier: ^3.2.4
+    version: 3.2.4
+  eventsource-parser:
+    specifier: ^1.1.1
+    version: 1.1.1
   highlight.js:
     specifier: ^11.9.0
     version: 11.9.0
@@ -912,11 +913,6 @@ packages:
       - encoding
       - supports-color
 
-  /@microsoft/fetch-event-source@2.0.1(patch_hash=f4mxwri52lgha5hr6mluarwvf4):
-    resolution: {integrity: sha512-W6CLUJ2eBMw3Rec70qrsEW0jOm/3twwJv21mrmj2yORiaVmVYGS4sSS5yUwvQc1ZlDLYGPnClVWmUUMagKNsfA==}
-    dev: false
-    patched: true
-
   /@netlify/functions@2.4.0:
     resolution: {integrity: sha512-dIqhdj5u4Lu/8qbYwtYpn8NfvIyPHbSTV2lAP4ocL+iwC9As06AXT0wa/xOpO2vRWJa0IMxdZaqCPnkyHlHiyg==}
     engines: {node: '>=14.0.0'}
@@ -1734,6 +1730,10 @@ packages:
   /@sindresorhus/merge-streams@1.0.0:
     resolution: {integrity: sha512-rUV5WyJrJLoloD4NDN1V1+LDMDWOa4OTsT4yYJwQNpTU6FWxkxHpL7eu4w+DmiH8x/EAM1otkPE1+LaspIbplw==}
     engines: {node: '>=18'}
+
+  /@streamparser/json@0.0.18:
+    resolution: {integrity: sha512-El/ocRiqntVr8mbQPuRK8NvBbMe+r4e5S8AzbR58rl5nimBeKzPBj2P4ykNlwbaMV+dqGPhzyGEaNm9pAPkTxQ==}
+    dev: false
 
   /@tailwindcss/aspect-ratio@0.4.2(tailwindcss@3.3.5):
     resolution: {integrity: sha512-8QPrypskfBa7QIMuKHg2TA7BqES6vhBrDLOv8Unb6FcFyd3TjKbc6lcmb9UPQHxfl24sXoJ41ux/H7qQQvfaSQ==}
@@ -2853,6 +2853,11 @@ packages:
   /devalue@4.3.2:
     resolution: {integrity: sha512-KqFl6pOgOW+Y6wJgu80rHpo2/3H07vr8ntR9rkkFIRETewbf5GaYYcakYfiKz89K+sLsuPkQIZaXDMjUObZwWg==}
 
+  /dexie@3.2.4:
+    resolution: {integrity: sha512-VKoTQRSv7+RnffpOJ3Dh6ozknBqzWw/F3iqMdsZg958R0AS8AnY9x9d1lbwENr0gzeGJHXKcGhAMRaqys6SxqA==}
+    engines: {node: '>=6.0'}
+    dev: false
+
   /didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
 
@@ -3030,6 +3035,11 @@ packages:
   /etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
+
+  /eventsource-parser@1.1.1:
+    resolution: {integrity: sha512-3Ej2iLj6ZnX+5CMxqyUb8syl9yVZwcwm8IIMrOJlF7I51zxOOrRlU3zxSb/6hFbl03ts1ZxHAGJdWLZOLyKG7w==}
+    engines: {node: '>=14.18'}
+    dev: false
 
   /execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}

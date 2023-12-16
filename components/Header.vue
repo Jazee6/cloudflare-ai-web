@@ -1,14 +1,20 @@
 <script setup lang="ts">
-const isOpen = ref(false)
 const isOpenN = ref(false)
 
+let handleClick
+
+onMounted(() => {
+  handleClick = () => {
+    location.reload()
+  }
+})
 </script>
 
 <template>
   <div id="navbar" class="blur-global">
     <UContainer class="h-full flex items-center">
       <img src="/MenuRound.svg" class="w-8 h-8 cursor-pointer" alt="Menu" @click="isOpenN=!isOpenN"/>
-      <h1 class="text-2xl font-bold ml-2">cloudflare-ai-web</h1>
+      <h1 @click="handleClick" class="text-xl font-bold ml-2 hover:cursor-pointer">cloudflare-ai-web</h1>
 
       <USlideover v-model="isOpenN" side="left" class="w-64">
         <UVerticalNavigation>

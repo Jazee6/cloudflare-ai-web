@@ -1,84 +1,17 @@
-import {fetchEventSource} from "@microsoft/fetch-event-source";
+import {createParser, type ParsedEvent, type ReconnectInterval} from "eventsource-parser";
 
-const controller = new AbortController()
-const {signal} = controller
-
-export interface openaiData {
-    id: string;
-    object: string;
-    created: number;
-    model: string;
-    system_fingerprint?: any;
-    choices: {
-        index: number;
-        delta: {
-            content: string;
-        }
-        finish_reason?: any;
-    }[];
-}
-
-export interface workersAiData {
-    response: string;
-}
-
-export interface TransRes {
-    result: {
-        translated_text: string
-    }
-}
-
-export interface HistoryItem {
-    role: 'user' | 'assistant'
-    content: string
-    is_img?: boolean
-}
-
-export const reqStream = async (path: string, messages: Array<HistoryItem>, model: string,
-                                onmessage: Function, onclose: Function, onerror: Function) => {
-    await fetchEventSource(`/api/auth/${path}`, {
+export const req = (path: string, body: Object) => {
+    return $fetch(`/api/auth/${path}`, {
         method: 'POST',
-        body: JSON.stringify({
-            model,
-            messages,
-        }),
+        body,
         headers: {
             Authorization: `${localStorage.getItem('access_pass')}`,
-            'Content-Type': 'application/json'
-        },
-        onmessage: (e) => {
-            if (e.data === '[DONE]') return
-            const data = JSON.parse(e.data);
-            onmessage(data)
-        },
-        onclose: () => {
-            onclose()
-        },
-        signal,
-        onerror: (e) => {
-            controller.abort()
-            onclose()
-            onerror(e)
-        }
-    })
-}
-
-export const req = async (path: string, model: string, body: Object) => {
-    return await $fetch(`/api/auth/${path}`, {
-        method: 'POST',
-        body: JSON.stringify({
-            model,
-            ...body
-        }),
-        headers: {
-            Authorization: `${localStorage.getItem('access_pass')}`,
-            'Content-Type': 'application/json'
         },
         retry: false
     })
 }
 
-export const stream = (res: Response) => {
+export const stream = (res: Response, transform?: boolean) => {
     // https://web.dev/articles/streams
     const readableStream = new ReadableStream({
         async start(controller) {
@@ -102,11 +35,71 @@ export const stream = (res: Response) => {
         },
     });
 
+    const headers = {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    }
+
+    if (transform) return new Response(transformStream(readableStream), {headers})
+
     return new Response(readableStream, {
+        headers
+    })
+}
+
+export const reqStream = async (path: string, onStream: Function, body: Object,
+                                onDone?: Function, onError?: Function
+) => {
+    const response = await fetch(`/api/auth/${path}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
         headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
+            Authorization: `${localStorage.getItem('access_pass')}`,
+            'Content-Type': 'application/json'
         },
     })
+
+    if (!response.ok) {
+        onError && onError(response.status)
+        console.error(response.statusText)
+    }
+
+    const data = response.body;
+    if (!data) {
+        return;
+    }
+
+    const onParse = (event: ParsedEvent | ReconnectInterval) => {
+        if (event.type === "event") {
+            if (event.data === '[DONE]') return
+            const text = JSON.parse(event.data) ?? ""
+            onStream(text)
+        }
+    }
+
+    const reader = data.getReader();
+    const decoder = new TextDecoder();
+    const parser = createParser(onParse);
+    while (true) {
+        const {value, done} = await reader.read();
+        if (done) break
+        const chunkValue = decoder.decode(value);
+        parser.feed(chunkValue);
+    }
+    onDone && onDone()
+}
+
+const transformStream = (stream: ReadableStream) => {
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    const transformStream = new TransformStream({
+        async transform(chunk, controller) {
+            const data = decoder.decode(chunk);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        },
+    });
+
+    return stream.pipeThrough(transformStream);
 }

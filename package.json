@@ -1,6 +1,6 @@
 {
   "name": "cf-ai-web",
-  "version": "0.8.1",
+  "version": "0.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,15 +19,12 @@
     "vue-router": "^4.2.5"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "^2.0.1",
     "@nuxt/ui": "^2.11.0",
+    "@streamparser/json": "^0.0.18",
     "@types/markdown-it": "^13.0.7",
+    "dexie": "^3.2.4",
+    "eventsource-parser": "^1.1.1",
     "highlight.js": "^11.9.0",
     "markdown-it": "^14.0.0"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "@microsoft/fetch-event-source@2.0.1": "patches/@microsoft__fetch-event-source@2.0.1.patch"
-    }
   }
 }

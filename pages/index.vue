@@ -3,6 +3,24 @@ import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
+import type {
+  geminiData,
+  imgData,
+  imgReq,
+  openaiData,
+  openaiReq,
+  TransReq,
+  workersAiData,
+  workersAiReq
+} from "~/utils/type";
+import {JSONParser} from "@streamparser/json"
+
+useHead({
+  title: 'Cloudflare AI Web',
+  link: [
+    {rel: 'manifest', href: '/manifest.json'},
+  ]
+})
 
 const input = ref('')
 const loading = ref(false)
@@ -25,15 +43,15 @@ const {data: needPass} = await useFetch('/api/pass')
 const access_pass = ref('')
 const md: MarkdownIt = markdownit({
   linkify: true,
-  highlight: (str, lang) => {
-    if (lang && hljs.getLanguage(lang)) {
-      return `<pre class="hljs"><code>${hljs.highlight(lang, str, true).value}</code></pre>`;
+  highlight: (code, language) => {
+    if (language && hljs.getLanguage(language)) {
+      return `<pre class="hljs"><code>${hljs.highlight(code, {language, ignoreIllegals: true}).value}</code></pre>`;
     }
-    return `<pre class="hljs"><code>${hljs.highlightAuto(str)}</code></pre>`;
+    return `<pre class="hljs"><code>${hljs.highlightAuto(code)}</code></pre>`;
   },
 })
-
 const history = ref<HistoryItem[]>([])
+let db
 
 const models = [{
   id: '@cf/meta/llama-2-7b-chat-fp16',
@@ -55,7 +73,11 @@ const models = [{
   name: '绘画-stable-diffusion-xl-base-1.0'
 }, {
   id: 'gpt-3.5-turbo',
-  name: 'ChatGPT-3.5-turbo'
+  name: 'ChatGPT-3.5-turbo',
+  endpoint: 'chat/completions'
+}, {
+  id: 'Gemini Pro',
+  name: 'Gemini Pro(Beta)',
 }]
 
 const selectedModel = ref(models[2].id)
@@ -70,11 +92,23 @@ watch(addHistory, v => {
   localStorage.setItem('addHistory', v.toString())
 })
 
-onMounted(() => {
-  selectedModel.value = localStorage.getItem('selectedModel') || models[2].id
+onMounted(async () => {
+  const model = localStorage.getItem('selectedModel')
+  selectedModel.value = models.find(i => i.id === model)?.id ?? models[2].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
   if ((<any>needPass.value) === 'true' && !localStorage.getItem('access_pass')) {
     isOpen.value = true
+  }
+  // db = historyDB1
+  // const id = await db.history.add({
+  //   role: 'user',
+  //   content: 'test'
+  // })
+  // console.log(id)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => {
+
+    })
   }
 })
 
@@ -82,13 +116,16 @@ const onclose = () => {
   loading.value = false
 }
 
-const upMessages = () => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
-    toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
+const upMessages = (send: string) => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
+    send
 
-const onerror = () => {
-  history.value.pop()
-  history.value.pop()
-  isOpen.value = true
+const onerror = (status: number) => {
+  if (status === 401) {
+    history.value.pop()
+    history.value.pop()
+    isOpen.value = true
+    loading.value = false
+  }
 }
 
 const handleReq = async () => {
@@ -116,56 +153,81 @@ const handleReq = async () => {
       })
     }
   })
-  if (selectedModel.value === '@cf/meta/m2m100-1.2b') {
-    req('trans', selectedModel.value, {
-      text,
-      source_lang: s_lang_selected.value,
-      target_lang: t_lang_selected.value
-    }).then((res) => {
-      history.value[history.value.length - 1].content = (res as unknown as TransRes).result.translated_text
-    }).finally(() => {
-      scrollOnce(el, 512)
-      onclose()
-    }).catch(onerror)
-    return
-  }
 
-  if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
-    let t = 0
-    await reqStream('img', [send], selectedModel.value, (data: workersAiData) => {
-      if (data.response === 'pending') {
-        history.value[history.value.length - 1].content = `已等待${t += 5}s`
-        return
-      }
-      history.value[history.value.length - 1].is_img = true
-      history.value[history.value.length - 1].content = 'data:image/png;base64,' + data.response
-    }, () => {
-      setTimeout(() => {
+  switch (selectedModel.value) {
+    case '@cf/meta/m2m100-1.2b':
+      req('trans', {
+        model: selectedModel.value,
+        text,
+        source_lang: s_lang_selected.value,
+        target_lang: t_lang_selected.value
+      } as TransReq).then((res) => {
+        history.value[history.value.length - 1].content = (res as unknown as TransRes).result.translated_text
+      }).finally(() => {
         scrollOnce(el, 512)
-      }, 20)
-      onclose()
-    }, onerror)
+        onclose()
+      }).catch(e => {
+        if (e.data === 'Unauthorized') {
+          onerror(401)
+        }
+      })
+      break
 
-    return
+    case '@cf/stabilityai/stable-diffusion-xl-base-1.0':
+      let t = 0
+      await reqStream('img', (data: imgData) => {
+            if (data.response === 'pending') {
+              history.value[history.value.length - 1].content = `已等待${t += 5}s`
+              return
+            }
+            history.value[history.value.length - 1].is_img = true
+            history.value[history.value.length - 1].content = 'data:image/png;base64,' + data.response
+          }, {
+            messages: send.content,
+            model: selectedModel.value,
+          } as imgReq,
+          () => {
+            setTimeout(() => {
+              scrollOnce(el, 512)
+            }, 20)
+            onclose()
+          }
+          , onerror)
+      break
+
+    case 'gpt-3.5-turbo':
+      await reqStream('openai', (data: openaiData) => {
+        if (data.choices[0].finish_reason !== null) return
+        history.value[history.value.length - 1].content += data.choices[0].delta.content
+        scrollStream(el)
+      }, {
+        messages: upMessages(send.content),
+        model: selectedModel.value,
+      } as openaiReq, onclose, onerror)
+      break
+
+    case 'Gemini Pro':
+      const parser = new JSONParser({stringBufferSize: undefined, paths: ['$.*']});
+      parser.onValue = ({value}) => {
+        history.value[history.value.length - 1].content += (value as unknown as geminiData).candidates[0].content.parts[0].text
+        scrollStream(el)
+      };
+      await reqStream('gemini', (data: any) => {
+        parser.write(data)
+      }, {
+        messages: send.content,
+      } as any, onclose, onerror)
+      break
+
+    default:
+      await reqStream('chat', (data: workersAiData) => {
+        history.value[history.value.length - 1].content += data.response
+        scrollStream(el)
+      }, {
+        messages: upMessages(send.content),
+        model: selectedModel.value,
+      } as workersAiReq, onclose, onerror)
   }
-
-  if (selectedModel.value === 'gpt-3.5-turbo') {
-    await reqStream('openai', upMessages(), selectedModel.value, (data: openaiData) => {
-      if (data.choices[0].finish_reason === 'stop') {
-        return
-      }
-      history.value[history.value.length - 1].content += data.choices[0].delta.content
-
-      scrollStream(el)
-    }, onclose, onerror)
-    return
-  }
-
-  await reqStream('chat', upMessages(), selectedModel.value, (data: workersAiData) => {
-    history.value[history.value.length - 1].content += data.response
-
-    scrollStream(el)
-  }, onclose, onerror)
 }
 
 const handlePass = async () => {
@@ -207,7 +269,7 @@ const isLoading = computed(() => loading.value ? 'loading' : '')
           </USelectMenu>
         </div>
       </div>
-      <ul class="flex flex-col">
+      <ul class="flex flex-col space-y-2">
         <li id="send" class="slide-top">
           你好
         </li>
@@ -256,7 +318,7 @@ const isLoading = computed(() => loading.value ? 'loading' : '')
 <style scoped>
 #send {
   max-width: 80%;
-  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 mb-2 transition-all hover:bg-green-600;
+  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 transition-all hover:bg-green-600;
 }
 
 #reply {
