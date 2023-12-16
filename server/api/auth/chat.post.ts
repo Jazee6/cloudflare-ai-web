@@ -12,18 +12,16 @@ export default defineEventHandler(async (event) => {
         }
     } else system = {role: 'system', content: 'You are a friendly assistant. Respond using markdown.'}
 
-    messages = [
-        system,
-        ...messages
-    ]
-
     const res = await fetch(`${process.env.CF_GATEWAY}/workers-ai/${model}`, {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${process.env.CF_TOKEN}`,
         },
         body: JSON.stringify({
-            messages,
+            messages: [
+                system,
+                ...messages
+            ],
             stream: true,
         }),
     })

@@ -118,8 +118,8 @@ const onclose = () => {
   loading.value = false
 }
 
-const upMessages = () => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
-    toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
+const upMessages = () => addHistory.value ? toRaw(history.value).slice(0, -1).filter(i => !i.is_img) :
+    toRaw(history.value).slice(history.value.length - 2, -1)
 
 const onerror = (status: number) => {
   if (status === 401) {

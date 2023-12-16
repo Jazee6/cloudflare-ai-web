@@ -8,11 +8,6 @@ export default defineEventHandler(async (event) => {
         content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully. Respond using markdown.'
     }
 
-    messages = [
-        system,
-        ...messages
-    ]
-
     const res = await fetch(`${process.env.CF_GATEWAY}/openai/${endpoint}`, {
         method: 'POST',
         headers: {
@@ -20,7 +15,10 @@ export default defineEventHandler(async (event) => {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            messages,
+            messages: [
+                system,
+                ...messages
+            ],
             model,
             stream: true,
             temperature: 0.8,
