@@ -39,7 +39,6 @@ const current = computed(() =>
 )
 const isOpen = ref(false)
 const config = useRuntimeConfig()
-const {data: needPass} = await useFetch('/api/pass')
 const access_pass = ref('')
 const md: MarkdownIt = markdownit({
   linkify: true,
@@ -96,7 +95,8 @@ onMounted(async () => {
   const model = localStorage.getItem('selectedModel')
   selectedModel.value = models.find(i => i.id === model)?.id ?? models[2].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
-  if ((<any>needPass.value) === 'true' && !localStorage.getItem('access_pass')) {
+  const needPass: any = await $fetch('/api/pass')
+  if (needPass === 'true' && !localStorage.getItem('access_pass')) {
     isOpen.value = true
   }
   // db = historyDB1
@@ -107,7 +107,9 @@ onMounted(async () => {
   // console.log(id)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(() => {
-
+      // window.addEventListener('beforeinstallprompt', (e) => {
+      //   e.preventDefault()
+      // })
     })
   }
 })
@@ -116,8 +118,8 @@ const onclose = () => {
   loading.value = false
 }
 
-const upMessages = (send: string) => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
-    send
+const upMessages = () => addHistory.value ? toRaw(history.value).filter(i => !i.is_img) :
+    toRaw(history.value).slice(history.value.length - 2, history.value.length - 1)
 
 const onerror = (status: number) => {
   if (status === 401) {
@@ -158,7 +160,7 @@ const handleReq = async () => {
     case '@cf/meta/m2m100-1.2b':
       req('trans', {
         model: selectedModel.value,
-        text,
+        text: send.content,
         source_lang: s_lang_selected.value,
         target_lang: t_lang_selected.value
       } as TransReq).then((res) => {
@@ -201,7 +203,7 @@ const handleReq = async () => {
         history.value[history.value.length - 1].content += data.choices[0].delta.content
         scrollStream(el)
       }, {
-        messages: upMessages(send.content),
+        messages: upMessages(),
         model: selectedModel.value,
       } as openaiReq, onclose, onerror)
       break
@@ -224,7 +226,7 @@ const handleReq = async () => {
         history.value[history.value.length - 1].content += data.response
         scrollStream(el)
       }, {
-        messages: upMessages(send.content),
+        messages: upMessages(),
         model: selectedModel.value,
       } as workersAiReq, onclose, onerror)
   }

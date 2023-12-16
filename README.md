@@ -28,6 +28,7 @@
 - `CF_TOKEN` - Cloudflare Workers AI Token
 - `CF_GATEWAY` - Cloudflare AI Gateway URL
 - `OPENAI_API_KEY` - OpenAI API Key (可选)
+- `G_API_KEY` - Google AI API Key (可选)
 - `PASSWORD` - 访问密码 (可选)
 
 #### CF_TOKEN
@@ -49,6 +50,12 @@ https://dash.cloudflare.com/
 - 填写名称和URL slug创建
 - 单击右上角API Endpoints
 - 复制您的Universal Endpoint，在vercel中设置环境变量
+
+#### G_API_KEY
+
+https://ai.google.dev/tutorials/rest_quickstart#set_up_your_api_key
+
+---
 
 > 请不要启用AI Gateway的缓存，否则可能会导致重复的回复
 
