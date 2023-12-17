@@ -105,13 +105,6 @@ onMounted(async () => {
   //   content: 'test'
   // })
   // console.log(id)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(() => {
-      // window.addEventListener('beforeinstallprompt', (e) => {
-      //   e.preventDefault()
-      // })
-    })
-  }
 })
 
 const onclose = () => {
