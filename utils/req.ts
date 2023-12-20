@@ -48,7 +48,7 @@ export const stream = (res: Response, transform?: boolean) => {
     })
 }
 
-export const reqStream = async (path: string, onStream: Function, body: Object,
+export const reqStream = async (path: string, onStream: Function, body: object,
                                 onDone?: Function, onError?: Function
 ) => {
     const response = await fetch(`/api/auth/${path}`, {

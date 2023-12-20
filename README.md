@@ -66,7 +66,8 @@ https://ai.google.dev/tutorials/rest_quickstart#set_up_your_api_key
 
 ## TODO
 
-- [ ] 对话历史
+- [x] 对话历史
+- [ ] GeminiPro
 
 ## Star History
 

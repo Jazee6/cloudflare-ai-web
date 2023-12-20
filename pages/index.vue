@@ -8,19 +8,13 @@ import type {
   imgData,
   imgReq,
   openaiData,
-  openaiReq,
+  openaiReq, Tab,
   TransReq,
   workersAiData,
   workersAiReq
 } from "~/utils/type";
 import {JSONParser} from "@streamparser/json"
-
-useHead({
-  title: 'Cloudflare AI Web',
-  link: [
-    {rel: 'manifest', href: '/manifest.json'},
-  ]
-})
+import {DB, getHistory, getLatestTab} from "~/utils/db";
 
 const input = ref('')
 const loading = ref(false)
@@ -50,7 +44,12 @@ const md: MarkdownIt = markdownit({
   },
 })
 const history = ref<HistoryItem[]>([])
-let db
+const tab = ref<Tab[]>([])
+const router = useRouter()
+const selectedTab = ref(0)
+const initializing = ref(true)
+const hideTabBar = useState('hideTabBar')
+let session: number
 
 const models = [{
   id: '@cf/meta/llama-2-7b-chat-fp16',
@@ -80,16 +79,32 @@ const models = [{
 }]
 
 const selectedModel = ref(models[2].id)
-
 watch(selectedModel, v => {
   localStorage.setItem('selectedModel', v)
 })
 
 const addHistory = ref(true)
-
 watch(addHistory, v => {
   localStorage.setItem('addHistory', v.toString())
 })
+
+async function loadData(session: number) {
+  tab.value = await DB.tab.limit(100).reverse().toArray()
+  history.value = await getHistory(session)
+  selectedTab.value = session
+}
+
+async function initDB() {
+  session = await DB.tab.add({
+    content: '新建对话'
+  }) as number
+  tab.value.unshift({
+    id: session,
+    content: '新建对话'
+  })
+  selectedTab.value = session
+  await router.push({query: {session}})
+}
 
 onMounted(async () => {
   const model = localStorage.getItem('selectedModel')
@@ -99,25 +114,56 @@ onMounted(async () => {
   if (needPass === 'true' && !localStorage.getItem('access_pass')) {
     isOpen.value = true
   }
-  // db = historyDB1
-  // const id = await db.history.add({
-  //   role: 'user',
-  //   content: 'test'
-  // })
-  // console.log(id)
+
+  // indexedDB
+  const s = router.currentRoute.value.query.session as any
+  if (s === undefined) {
+    const tab = await getLatestTab()
+    if (tab === undefined) {
+      await initDB()
+    } else {
+      session = tab.id
+      await loadData(session)
+      await router.push({query: {session}})
+    }
+  } else {
+    const res = await DB.tab.get(parseInt(s))
+    if (res === undefined) {
+      session = (await getLatestTab()).id
+      await loadData(session)
+      await router.push({query: {session}})
+    } else {
+      session = parseInt(s)
+      await loadData(session)
+    }
+  }
+
+  initializing.value = false
 })
 
 const onclose = () => {
+  DB.history.add({
+    session,
+    ...history.value[history.value.length - 1]
+  })
   loading.value = false
 }
 
-const upMessages = () => addHistory.value ? toRaw(history.value).slice(0, -1).filter(i => !i.is_img) :
-    toRaw(history.value).slice(history.value.length - 2, -1)
+const upMessages = () => addHistory.value ? toRaw(history.value).slice(0, -1).filter(i => !i.is_img).map(i => {
+      return {
+        content: i.content,
+        role: i.role
+      }
+    }) :
+    toRaw(history.value).slice(history.value.length - 2, -1).map(i => {
+      return {
+        content: i.content,
+        role: i.role
+      }
+    })
 
 const onerror = (status: number) => {
   if (status === 401) {
-    history.value.pop()
-    history.value.pop()
     isOpen.value = true
     loading.value = false
   }
@@ -135,6 +181,16 @@ const handleReq = async () => {
     send.is_img = true
   }
   history.value.push(send)
+  DB.history.add({
+    session,
+    ...send
+  })
+  if (history.value.length === 1) {
+    await DB.tab.update(session, {
+      content: text
+    })
+    tab.value.find(i => i.id === session)!.content = text
+  }
   loading.value = true
   history.value.push({
     role: 'assistant',
@@ -234,91 +290,144 @@ const handlePass = async () => {
 }
 
 const isLoading = computed(() => loading.value ? 'loading' : '')
+
+const handleTab = async (e: any) => {
+  const id = e.target.dataset.id
+  if (id === undefined) return
+  const sid = parseInt(id)
+  selectedTab.value = sid
+  session = sid
+  await router.push({query: {session}})
+  history.value = await getHistory(sid)
+}
+
+async function handleNew() {
+  await initDB()
+  history.value = []
+
+  await nextTick(() => {
+    const tabEl = document.getElementById('tabEl')
+    tabEl?.scrollTo({
+      behavior: 'smooth',
+      top: 0
+    })
+  })
+}
+
+function handleHideBar() {
+  if (window.innerWidth < 640) {
+    hideTabBar.value = true
+  }
+}
+
+function handleDelete(id: number) {
+  DB.tab.delete(id)
+  tab.value = tab.value.filter(i => i.id !== id)
+  DB.history.where('session').equals(id).delete()
+  if (tab.value.length === 0) {
+    handleNew()
+  }
+}
 </script>
 
 <template>
-  <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
-    <UContainer>
-      <UModal v-model="isOpen">
-        <div class="p-4 flex flex-col space-y-2">
-          <div>
-            请输入访问密码
-          </div>
-          <div class="flex space-x-2">
-            <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
-            <UButton @click="handlePass">确定</UButton>
-          </div>
-        </div>
-      </UModal>
-
-      <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
-        <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
-          <USelectMenu :options="s_lang" v-model="s_lang_selected">
-
-          </USelectMenu>
-          <div class="px-4">
-            ->
-          </div>
-          <USelectMenu :options="t_lang" v-model="t_lang_selected">
-
-          </USelectMenu>
-        </div>
-      </div>
-      <ul class="flex flex-col space-y-2">
-        <li id="send" class="slide-top">
-          你好
-        </li>
-        <li id="reply" class="slide-top">
-          你好, 请问有什么可以帮助您的吗?
-        </li>
-        <template v-for="(i,index) in history" :key="index">
-          <li v-if="i.role === 'assistant'" id="reply" class="slide-top">
-            <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content" class="sm:max-w-lg rounded-xl"/>
-            <template v-else>
-              <div v-html="md.render(i.content)" class="prose text-black max-w-none"
-                   :class="index+1===history.length && isLoading"></div>
-            </template>
-          </li>
-          <li v-else id="send" class="slide-top">
+  <div :class="{mask:!hideTabBar}" @click="handleHideBar"></div>
+  <UContainer class="flex h-full w-full overflow-y-auto">
+    <div class="w-48 flex flex-col transition-all z-10 mr-2 mobileBar" :class="{hide:hideTabBar}">
+      <ul id="tabEl" class="flex flex-col space-y-1 my-4 pt-16 overflow-y-auto h-full scrollbar-hide"
+          @click.passive.stop="handleTab">
+        <li v-for="i in tab" :key="i.id" class="rounded p-1.5 mx-2 cursor-pointer bg-white
+              hover:bg-gray-300 transition-all flex items-center"
+            :class="{'card-focus':i.id === selectedTab }" :data-id="i.id">
+          <div class="line-clamp-1 font-light text-sm w-full" :data-id="i.id">
             {{ i.content }}
-          </li>
-        </template>
+          </div>
+          <UIcon name="i-heroicons-trash" v-if="i.id === selectedTab" @click="handleDelete(i.id)"
+                 class="w-6 hover:bg-red-500 transition-all"/>
+        </li>
       </ul>
-    </UContainer>
-  </div>
-  <div>
-    <UContainer class="space-y-1 flex flex-col">
-      <USelectMenu class="w-fit self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
-                   option-attribute="name">
-        <template #label>
-          {{ current.name }}
-        </template>
-      </USelectMenu>
-      <div class="flex items-center">
-        <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
-          <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
-                   icon="i-heroicons-clock-solid"/>
-        </UTooltip>
-        <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
-                   :rows="1" autoresize
-                   class="flex-1 max-h-48 overflow-y-auto p-1"/>
-        <UButton @click="handleReq" :disabled="loading" class="m-1">
-          发送
-        </UButton>
+      <UButton class="m-1 max-sm:mb-10" @click.passive.stop="handleNew">
+        新建对话
+      </UButton>
+    </div>
+    <div class="flex flex-col w-full">
+      <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
+        <UModal v-model="isOpen">
+          <div class="p-4 flex flex-col space-y-2">
+            <div>
+              请输入访问密码
+            </div>
+            <div class="flex space-x-2">
+              <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
+              <UButton @click="handlePass">确定</UButton>
+            </div>
+          </div>
+        </UModal>
+
+        <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
+          <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
+            <USelectMenu :options="s_lang" v-model="s_lang_selected">
+
+            </USelectMenu>
+            <div class="px-4">
+              ->
+            </div>
+            <USelectMenu :options="t_lang" v-model="t_lang_selected">
+
+            </USelectMenu>
+          </div>
+        </div>
+        <ul class="flex flex-col space-y-2">
+          <USkeleton v-if="initializing" class="h-16 w-3/5 self-end rounded-xl"/>
+          <USkeleton v-if="initializing" class="h-16 w-3/5 rounded-xl"/>
+          <template v-for="(i,index) in history" :key="index">
+            <li v-if="i.role === 'assistant'" id="reply" class="slide-top">
+              <img v-if="i.is_img" :src="i.content" :alt="history[index-1].content"
+                   class="sm:max-w-lg rounded-xl cursor-pointer"/>
+              <template v-else>
+                <div v-html="md.render(i.content)" class="prose text-black max-w-none"
+                     :class="index+1===history.length && isLoading"></div>
+              </template>
+            </li>
+            <li v-else id="send" class="slide-top">
+              {{ i.content }}
+            </li>
+          </template>
+        </ul>
       </div>
-    </UContainer>
-  </div>
+      <div class="space-y-1 flex flex-col">
+        <USelectMenu class="w-fit self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
+                     option-attribute="name">
+          <template #label>
+            {{ current.name }}
+          </template>
+        </USelectMenu>
+        <div class="flex items-center">
+          <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
+            <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
+                     icon="i-heroicons-clock-solid"/>
+          </UTooltip>
+          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
+                     :rows="1" autoresize
+                     class="flex-1 max-h-48 overflow-y-auto p-1"/>
+          <UButton @click="handleReq" :disabled="loading" class="m-1">
+            发送
+          </UButton>
+        </div>
+      </div>
+    </div>
+  </UContainer>
 </template>
 
 <style scoped>
 #send {
   max-width: 80%;
-  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 transition-all hover:bg-green-600;
+  @apply self-end break-words bg-green-500 text-white rounded-xl p-2
 }
 
 #reply {
   max-width: 80%;
-  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 transition-all hover:bg-gray-300;
+  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2
 }
 
 #send::selection {
@@ -337,6 +446,28 @@ const isLoading = computed(() => loading.value ? 'loading' : '')
   100% {
     transform: translateY(-16px);
     opacity: 1
+  }
+}
+
+.card-focus {
+  @apply ring-2 ring-primary-500 dark:ring-primary-400
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  @apply hidden
+}
+
+.hide {
+  @apply w-0 invisible
+}
+
+@media not all and (min-width: 640px) {
+  .mobileBar {
+    @apply fixed shadow-2xl -translate-x-4 h-full bg-white
+  }
+
+  .mask {
+    @apply fixed inset-0 bg-black bg-opacity-30 z-10 transition-all
   }
 }
 </style>

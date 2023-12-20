@@ -7,5 +7,10 @@ export default defineNuxtConfig({
         '/': {
             prerender: true,
         }
+    },
+    app: {
+        head: {
+            title: 'Cloudflare AI Web',
+        }
     }
 })
