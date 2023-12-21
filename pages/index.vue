@@ -48,7 +48,6 @@ const tab = ref<Tab[]>([])
 const router = useRouter()
 const selectedTab = ref(0)
 const initializing = ref(true)
-const hideTabBar = useState('hideTabBar')
 let session: number
 
 const models = [{
@@ -88,6 +87,11 @@ watch(addHistory, v => {
   localStorage.setItem('addHistory', v.toString())
 })
 
+const hideTabBar = useState('hideTabBar')
+watch(hideTabBar, v => {
+  localStorage.setItem('hideTabBar', v!.toString())
+})
+
 async function loadData(session: number) {
   tab.value = await DB.tab.limit(100).reverse().toArray()
   history.value = await getHistory(session)
@@ -110,6 +114,7 @@ onMounted(async () => {
   const model = localStorage.getItem('selectedModel')
   selectedModel.value = models.find(i => i.id === model)?.id ?? models[2].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
+  hideTabBar.value = localStorage.getItem('hideTabBar') === 'true'
   const needPass: any = await $fetch('/api/pass')
   if (needPass === 'true' && !localStorage.getItem('access_pass')) {
     isOpen.value = true
@@ -347,7 +352,9 @@ function handleDelete(id: number) {
         </li>
       </ul>
       <UButton class="m-1 max-sm:mb-10" @click.passive.stop="handleNew">
-        新建对话
+        <div class="line-clamp-1">
+          新建对话
+        </div>
       </UButton>
     </div>
     <div class="flex flex-col w-full">
@@ -458,7 +465,7 @@ function handleDelete(id: number) {
 }
 
 .hide {
-  @apply w-0 invisible
+  @apply w-0 opacity-0
 }
 
 @media not all and (min-width: 640px) {

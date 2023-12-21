@@ -14,7 +14,7 @@ onMounted(() => {
   <div id="navbar" class="blur-global">
     <UContainer class="h-full flex items-center">
       <img src="/MenuRound.svg" class="w-8 h-8 cursor-pointer" alt="Menu" @click="hideTabBar = !hideTabBar"/>
-      <h1 @click="handleClick" class="text-xl font-bold ml-2 hover:cursor-pointer">cloudflare-ai-web</h1>
+      <h1 @click="handleClick" class="text-lg font-bold ml-2 hover:cursor-pointer">Uni Ai Web</h1>
     </UContainer>
   </div>
 </template>

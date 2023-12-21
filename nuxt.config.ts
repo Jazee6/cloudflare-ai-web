@@ -10,7 +10,7 @@ export default defineNuxtConfig({
     },
     app: {
         head: {
-            title: 'Cloudflare AI Web',
+            title: 'Uni AI Web',
         }
     }
 })
