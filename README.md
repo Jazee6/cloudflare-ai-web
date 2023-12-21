@@ -4,11 +4,24 @@
 
 ## AI 启动！
 
+### 一键部署（推荐）
+
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web&env=CF_TOKEN,CF_GATEWAY&envDescription=%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%BF%A1%E6%81%AF%E8%AF%B7%E6%9F%A5%E7%9C%8B&envLink=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web)
 
 示例：https://ai.jaze.top
 
-### 特性
+### Docker
+
+```bash
+    docker run -d --name uni-ai-web \
+      -e CF_TOKEN=YOUR_CF_TOKEN \
+      -e CF_GATEWAY=YOUR_CF_GATEWAY \
+      -p 3000:3000 \
+      --restart=always \
+      jazee6/uni-ai-web:v0.1
+```
+
+## 特性
 
 - 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
 - Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间

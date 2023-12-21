@@ -32,15 +32,14 @@ const current = computed(() =>
     models.find(i => i.id === selectedModel.value)
 )
 const isOpen = ref(false)
-const config = useRuntimeConfig()
 const access_pass = ref('')
 const md: MarkdownIt = markdownit({
   linkify: true,
   highlight: (code, language) => {
     if (language && hljs.getLanguage(language)) {
-      return `<pre class="hljs"><code>${hljs.highlight(code, {language, ignoreIllegals: true}).value}</code></pre>`;
+      return `<pre class="hljs"><code>${hljs.highlight(code, {language}).value}</code></pre>`;
     }
-    return `<pre class="hljs"><code>${hljs.highlightAuto(code)}</code></pre>`;
+    return `<pre class="hljs"><code>${hljs.highlightAuto(code).value}</code></pre>`;
   },
 })
 const history = ref<HistoryItem[]>([])
