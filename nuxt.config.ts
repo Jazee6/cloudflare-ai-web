@@ -11,6 +11,16 @@ export default defineNuxtConfig({
     app: {
         head: {
             title: 'Uni AI Web',
+            meta: [
+                {
+                    name: 'keywords',
+                    content: 'Uni AI Web, AI, Cloudflare Workers, ChatGPT, GeminiPro, Google Generative AI'
+                },
+                {
+                    name: 'description',
+                    content: 'Integrated web platform supporting GeminiPro/Cloudflare Workers AI/ChatGPT by Jazee6'
+                }
+            ]
         }
     }
 })
