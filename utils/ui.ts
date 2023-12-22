@@ -1,6 +1,6 @@
-export const scrollStream = (el: globalThis.Ref<HTMLElement | undefined>) => {
+export const scrollStream = (el: globalThis.Ref<HTMLElement | undefined>, distance: number = 100) => {
     if (el.value) {
-        (el.value.scrollTop + el.value.clientHeight >= el.value.scrollHeight - 100) && !(el.value.clientHeight + el.value.scrollTop === el.value.scrollHeight) && el.value.scrollTo({
+        (el.value.scrollTop + el.value.clientHeight >= el.value.scrollHeight - distance) && !(el.value.clientHeight + el.value.scrollTop === el.value.scrollHeight) && el.value.scrollTo({
             top: el.value.scrollHeight,
             behavior: 'smooth'
         })

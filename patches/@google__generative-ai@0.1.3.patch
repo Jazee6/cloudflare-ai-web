@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index 8a23c2a4ea992829ab84d9bd30fda728df205e5c..d0b487a35768570dda87bb3fcb94c9250051d334 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -152,7 +152,7 @@ class GoogleGenerativeAIResponseError extends GoogleGenerativeAIError {
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-const BASE_URL = "https://generativelanguage.googleapis.com";
++const BASE_URL = process.env.G_API_URL || "https://generativelanguage.googleapis.com";
+ const API_VERSION = "v1";
+ /**
+  * We can't `require` package.json if this runs on web. We will use rollup to
+diff --git a/dist/index.mjs b/dist/index.mjs
+index bb688ac8bb3404c0edb56394f91aa8d96f7ca7d9..d4cd3da832253efe6496b9409b1f22031bc0878f 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -150,7 +150,7 @@ class GoogleGenerativeAIResponseError extends GoogleGenerativeAIError {
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-const BASE_URL = "https://generativelanguage.googleapis.com";
++const BASE_URL = process.env.G_API_URL || "https://generativelanguage.googleapis.com";
+ const API_VERSION = "v1";
+ /**
+  * We can't `require` package.json if this runs on web. We will use rollup to

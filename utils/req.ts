@@ -11,6 +11,12 @@ export const req = (path: string, body: Object) => {
     })
 }
 
+const headers = {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+}
+
 export const stream = (res: Response, transform?: boolean) => {
     // https://web.dev/articles/streams
     const readableStream = new ReadableStream({
@@ -34,12 +40,6 @@ export const stream = (res: Response, transform?: boolean) => {
             controller.close();
         },
     });
-
-    const headers = {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-    }
 
     if (transform) return new Response(transformStream(readableStream), {headers})
 

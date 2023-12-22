@@ -73,7 +73,7 @@ const models = [{
   endpoint: 'chat/completions'
 }, {
   id: 'Gemini Pro',
-  name: 'Gemini Pro(Beta)',
+  name: 'Gemini Pro(非连续)',
 }]
 
 const selectedModel = ref(models[2].id)
@@ -262,13 +262,9 @@ const handleReq = async () => {
       break
 
     case 'Gemini Pro':
-      const parser = new JSONParser({stringBufferSize: undefined, paths: ['$.*']});
-      parser.onValue = ({value}) => {
-        history.value[history.value.length - 1].content += (value as unknown as geminiData).candidates[0].content.parts[0].text
-        scrollStream(el)
-      };
-      await reqStream('gemini', (data: any) => {
-        parser.write(data)
+      await reqStream('gemini', (data: string) => {
+        history.value[history.value.length - 1].content += data
+        scrollStream(el, 512)
       }, {
         messages: send.content,
       } as any, onclose, onerror)
@@ -402,7 +398,7 @@ function handleDelete(id: number) {
         </ul>
       </div>
       <div class="space-y-1 flex flex-col">
-        <USelectMenu class="w-fit self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
+        <USelectMenu class="self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
                      option-attribute="name">
           <template #label>
             {{ current.name }}

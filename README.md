@@ -25,12 +25,12 @@
 
 - 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
 - Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间
-- 支持 OpenAI API，支持开启访问密码，支持自定义域名
+- 支持 ChatGPT GeminiPro，支持开启访问密码，支持自定义域名
 
 ### 模型支持
 
 - 文生图 `stable-diffusion-xl-base-1.0`
-- 文本生成 `llama-2-7b-chat-fp16` `llama-2-7b-chat-int8` `mistral-7b-instruct-v0.1` `gpt-3.5-turbo`
+- 文本生成 `GeminiPro` `llama-2-7b-chat-fp16` `llama-2-7b-chat-int8` `mistral-7b-instruct-v0.1` `gpt-3.5-turbo`
 - 代码生成 `codellama-7b-instruct-awq`
 - 翻译 `m2m100-1.2b`
 
@@ -42,6 +42,7 @@
 - `CF_GATEWAY` - Cloudflare AI Gateway URL
 - `OPENAI_API_KEY` - OpenAI API Key (可选)
 - `G_API_KEY` - Google AI API Key (可选)
+- `G_API_URL` - Google AI 反代 (可选)
 - `PASSWORD` - 访问密码 (可选)
 
 #### CF_TOKEN
@@ -67,6 +68,12 @@ https://dash.cloudflare.com/
 #### G_API_KEY
 
 https://ai.google.dev/tutorials/rest_quickstart#set_up_your_api_key
+
+#### G_API_URL
+
+https://github.com/antergone/palm-proxy
+
+或者 Vercel Edge Function设置地区为美国
 
 ---
 
