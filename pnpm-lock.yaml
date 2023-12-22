@@ -6,19 +6,16 @@ settings:
 
 patchedDependencies:
   '@google/generative-ai@0.1.3':
-    hash: jmatuvywiv5lgkfxlklqmurfmq
+    hash: bsdmbnmhupnpgvg5jxljetjb3m
     path: patches/@google__generative-ai@0.1.3.patch
 
 dependencies:
   '@google/generative-ai':
     specifier: ^0.1.3
-    version: 0.1.3(patch_hash=jmatuvywiv5lgkfxlklqmurfmq)
+    version: 0.1.3(patch_hash=bsdmbnmhupnpgvg5jxljetjb3m)
   '@nuxt/ui':
     specifier: ^2.11.0
     version: 2.11.0(nuxt@3.8.2)(vite@4.5.0)(vue@3.3.9)
-  '@streamparser/json':
-    specifier: ^0.0.18
-    version: 0.0.18
   '@types/markdown-it':
     specifier: ^13.0.7
     version: 13.0.7
@@ -780,7 +777,7 @@ packages:
     resolution: {integrity: sha512-+KpH+QxZU7O4675t3mnkQKcZZg56u+K/Ct2K+N2AZYNVK8kyeo/bI18tI8aPm3tvNNRyTWfj6s5tnGNlcbQRsA==}
     engines: {node: '>=14'}
 
-  /@google/generative-ai@0.1.3(patch_hash=jmatuvywiv5lgkfxlklqmurfmq):
+  /@google/generative-ai@0.1.3(patch_hash=bsdmbnmhupnpgvg5jxljetjb3m):
     resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
     engines: {node: '>=18.0.0'}
     dev: false
@@ -1744,10 +1741,6 @@ packages:
   /@sindresorhus/merge-streams@1.0.0:
     resolution: {integrity: sha512-rUV5WyJrJLoloD4NDN1V1+LDMDWOa4OTsT4yYJwQNpTU6FWxkxHpL7eu4w+DmiH8x/EAM1otkPE1+LaspIbplw==}
     engines: {node: '>=18'}
-
-  /@streamparser/json@0.0.18:
-    resolution: {integrity: sha512-El/ocRiqntVr8mbQPuRK8NvBbMe+r4e5S8AzbR58rl5nimBeKzPBj2P4ykNlwbaMV+dqGPhzyGEaNm9pAPkTxQ==}
-    dev: false
 
   /@tailwindcss/aspect-ratio@0.4.2(tailwindcss@3.3.5):
     resolution: {integrity: sha512-8QPrypskfBa7QIMuKHg2TA7BqES6vhBrDLOv8Unb6FcFyd3TjKbc6lcmb9UPQHxfl24sXoJ41ux/H7qQQvfaSQ==}

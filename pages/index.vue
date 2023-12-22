@@ -4,7 +4,6 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
 import type {
-  geminiData,
   imgData,
   imgReq,
   openaiData,
@@ -13,7 +12,6 @@ import type {
   workersAiData,
   workersAiReq
 } from "~/utils/type";
-import {JSONParser} from "@streamparser/json"
 import {DB, getHistory, getLatestTab} from "~/utils/db";
 
 const input = ref('')
