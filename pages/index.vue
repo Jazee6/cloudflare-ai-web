@@ -4,6 +4,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
 import type {
+  GeminiReq,
   imgData,
   imgReq,
   openaiData,
@@ -71,7 +72,7 @@ const models = [{
   endpoint: 'chat/completions'
 }, {
   id: 'Gemini Pro',
-  name: 'Gemini Pro(非连续)',
+  name: 'Gemini Pro',
 }]
 
 const selectedModel = ref(models[2].id)
@@ -260,12 +261,20 @@ const handleReq = async () => {
       break
 
     case 'Gemini Pro':
+      console.log(send.content)
+
       await reqStream('gemini', (data: string) => {
         history.value[history.value.length - 1].content += data
-        scrollStream(el, 512)
+        scrollStream(el, 1024)
       }, {
-        messages: send.content,
-      } as any, onclose, onerror)
+        history: addHistory.value ? toRaw(history.value).slice(0, -2).filter(i => !i.is_img).map(i => {
+          return {
+            parts: i.content,
+            role: i.role === 'assistant' ? 'model' : 'user'
+          }
+        }) : [],
+        msg: send.content,
+      } as GeminiReq, onclose, onerror)
       break
 
     default:

@@ -117,3 +117,11 @@ export interface HistoryDB {
     content: string
     is_img?: boolean
 }
+
+export interface GeminiReq {
+    history: {
+        role: 'user' | 'model'
+        parts: string
+    }[]
+    msg: string
+}

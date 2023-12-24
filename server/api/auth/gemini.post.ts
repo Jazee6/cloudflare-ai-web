@@ -1,4 +1,5 @@
 import {GoogleGenerativeAI} from '@google/generative-ai'
+import type {GeminiReq} from "~/utils/type";
 
 const genAI = new GoogleGenerativeAI(process.env.G_API_KEY!);
 
@@ -9,11 +10,16 @@ const headers = {
 }
 
 export default defineEventHandler(async (event) => {
-    const body = await readBody(event)
-    const {messages} = body
+    const body: GeminiReq = await readBody(event)
+    const {history, msg} = body
 
     const model = genAI.getGenerativeModel({model: "gemini-pro"});
-    const result = await model.generateContentStream(messages);
+
+    const chat = model.startChat({
+        history,
+    })
+
+    const result = await chat.sendMessageStream(msg)
 
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
