@@ -3,6 +3,9 @@ export default defineNuxtConfig({
     devtools: {enabled: true},
     modules: ['@nuxt/ui'],
     css: ['~/assets/css/style.css'],
+    devServer: {
+        port: 3001,
+    },
     routeRules: {
         '/': {
             prerender: true,

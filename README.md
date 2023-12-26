@@ -84,11 +84,6 @@ https://github.com/antergone/palm-proxy
 - 由于Workers AI 目前为开放 Beta 版，不建议用于生产数据和流量，限制 + 访问可能会发生变化
 - 请保持与Main分支同步，以便获取最新的功能和修复
 
-## TODO
-
-- [x] 对话历史
-- [ ] GeminiPro
-
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Jazee6/cloudflare-ai-web&type=Date)](https://star-history.com/#Jazee6/cloudflare-ai-web&Date)

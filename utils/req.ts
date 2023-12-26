@@ -48,10 +48,8 @@ export const stream = (res: Response, transform?: boolean) => {
     })
 }
 
-export const reqStream = async (path: string, onStream: Function, body: object,
-                                onDone?: Function, onError?: Function
-) => {
-    const response = await fetch(`/api/auth/${path}`, {
+function jsonFetch(path: string, body: object) {
+    return fetch(`/api/auth/${path}`, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: {
@@ -59,6 +57,22 @@ export const reqStream = async (path: string, onStream: Function, body: object,
             'Content-Type': 'application/json'
         },
     })
+}
+
+function formFetch(path: string, formData: FormData) {
+    return fetch(`/api/auth/${path}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            Authorization: `${localStorage.getItem('access_pass')}`,
+        },
+    })
+}
+
+export const reqStream = async (path: string, onStream: Function, body: any,
+                                onDone?: Function, onError?: Function, options?: { form?: boolean }
+) => {
+    const response = options?.form ? await formFetch(path, body) : await jsonFetch(path, body)
 
     if (!response.ok) {
         onError && onError(response.status)
@@ -70,11 +84,11 @@ export const reqStream = async (path: string, onStream: Function, body: object,
         return;
     }
 
-    const onParse = (event: ParsedEvent | ReconnectInterval) => {
+    const onParse = async (event: ParsedEvent | ReconnectInterval) => {
         if (event.type === "event") {
             if (event.data === '[DONE]') return
             const text = JSON.parse(event.data) ?? ""
-            onStream(text)
+            await onStream(text)
         }
     }
 

@@ -110,18 +110,17 @@ export interface Tab {
     content: string
 }
 
-export interface HistoryDB {
-    id: number,
-    session: number,
-    role: 'user' | 'assistant'
-    content: string
-    is_img?: boolean
-}
-
 export interface GeminiReq {
     history: {
         role: 'user' | 'model'
         parts: string
     }[]
     msg: string
+}
+
+export interface VisionReq {
+    inlineData: {
+        data: string,
+        mimeType: string
+    }
 }

@@ -1,5 +1,5 @@
-import {GoogleGenerativeAI} from '@google/generative-ai'
-import type {GeminiReq} from "~/utils/type";
+import {GenerateContentStreamResult, GoogleGenerativeAI} from '@google/generative-ai'
+import type {GeminiReq, VisionReq} from "~/utils/type";
 
 const genAI = new GoogleGenerativeAI(process.env.G_API_KEY!);
 
@@ -10,16 +10,35 @@ const headers = {
 }
 
 export default defineEventHandler(async (event) => {
-    const body: GeminiReq = await readBody(event)
-    const {history, msg} = body
+    const model = getQuery(event).model as string
+    let result: GenerateContentStreamResult
 
-    const model = genAI.getGenerativeModel({model: "gemini-pro"});
+    if (model === 'gemini-pro') {
+        const body: GeminiReq = await readBody(event)
+        const {history, msg} = body
+        const m = genAI.getGenerativeModel({model});
+        const chat = m.startChat({
+            history,
+        })
+        result = await chat.sendMessageStream(msg)
+    } else if (model === 'gemini-pro-vision') {
+        const formData = await readFormData(event)
+        const prompt = formData.get('prompt') as string
+        const images = formData.getAll('images') as File[]
 
-    const chat = model.startChat({
-        history,
-    })
+        const imageParts: VisionReq[] = []
+        for (const image of images) {
+            imageParts.push({
+                inlineData: {
+                    data: Buffer.from(await image.arrayBuffer()).toString('base64'),
+                    mimeType: image.type
+                }
+            })
+        }
 
-    const result = await chat.sendMessageStream(msg)
+        const m = genAI.getGenerativeModel({model});
+        result = await m.generateContentStream([prompt, ...imageParts])
+    }
 
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({

@@ -3,21 +3,11 @@ import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
-import type {
-  GeminiReq,
-  imgData,
-  imgReq,
-  openaiData,
-  openaiReq, Tab,
-  TransReq,
-  workersAiData,
-  workersAiReq
-} from "~/utils/type";
-import {DB, getHistory, getLatestTab} from "~/utils/db";
 
 const input = ref('')
 const loading = ref(false)
-const el = ref<HTMLElement>()
+const el = ref<HTMLDivElement>()
+const image = ref<HTMLInputElement>()
 const s_lang = ref(['english', 'chinese', 'japanese', 'french', 'spanish', 'arabic', 'russian', 'german', 'portuguese', 'hindi'])
 const t_lang = computed(() => {
   const arr = [...s_lang.value]
@@ -46,60 +36,32 @@ const tab = ref<Tab[]>([])
 const router = useRouter()
 const selectedTab = ref(0)
 const initializing = ref(true)
+const upImages = ref<{
+  file: File,
+  url: string
+}[]>([])
 let session: number
 
-const models = [{
-  id: '@cf/meta/llama-2-7b-chat-fp16',
-  name: 'llama-2-7b-chat-fp16'
-}, {
-  id: '@cf/meta/llama-2-7b-chat-int8',
-  name: 'llama-2-7b-chat-int8'
-}, {
-  id: '@cf/mistral/mistral-7b-instruct-v0.1',
-  name: 'mistral-7b-instruct-v0.1'
-}, {
-  id: '@hf/thebloke/codellama-7b-instruct-awq',
-  name: '编程-codellama-7b-instruct-awq'
-}, {
-  id: '@cf/meta/m2m100-1.2b',
-  name: '翻译-m2m100-1.2b'
-}, {
-  id: '@cf/stabilityai/stable-diffusion-xl-base-1.0',
-  name: '绘画-stable-diffusion-xl-base-1.0'
-}, {
-  id: 'gpt-3.5-turbo',
-  name: 'ChatGPT-3.5-turbo',
-  endpoint: 'chat/completions'
-}, {
-  id: 'Gemini Pro',
-  name: 'Gemini Pro',
-}]
-
-const selectedModel = ref(models[2].id)
+const selectedModel = ref(models[1].id)
 watch(selectedModel, v => {
   localStorage.setItem('selectedModel', v)
 })
-
 const addHistory = ref(true)
 watch(addHistory, v => {
   localStorage.setItem('addHistory', v.toString())
 })
-
 const hideTabBar = useState('hideTabBar')
 watch(hideTabBar, v => {
   localStorage.setItem('hideTabBar', v!.toString())
 })
 
 async function loadData(session: number) {
-  tab.value = await DB.tab.limit(100).reverse().toArray()
-  history.value = await getHistory(session)
+  [tab.value, history.value] = await Promise.all([getTabs(), getHistory(session)]);
   selectedTab.value = session
 }
 
 async function initDB() {
-  session = await DB.tab.add({
-    content: '新建对话'
-  }) as number
+  session = await addTab('新建对话') as number
   tab.value.unshift({
     id: session,
     content: '新建对话'
@@ -109,14 +71,32 @@ async function initDB() {
 }
 
 onMounted(async () => {
+  $fetch('/api/pass').then(res => {
+    if ((res as unknown as string) === 'true' && !localStorage.getItem('access_pass')) {
+      isOpen.value = true
+    }
+  })
+
   const model = localStorage.getItem('selectedModel')
-  selectedModel.value = models.find(i => i.id === model)?.id ?? models[2].id
+  selectedModel.value = models.find(i => i.id === model)?.id ?? models[1].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
   hideTabBar.value = localStorage.getItem('hideTabBar') === 'true'
-  const needPass: any = await $fetch('/api/pass')
-  if (needPass === 'true' && !localStorage.getItem('access_pass')) {
-    isOpen.value = true
-  }
+
+  image.value?.addEventListener('change', () => {
+    if (image.value?.files) {
+      const files = image.value.files
+      for (let f of files) {
+        if (f.size > 1024 * 1024 * 5) {
+          alert('图片大小不能超过5MB')
+          return
+        }
+        upImages.value.push({
+          file: f,
+          url: URL.createObjectURL(f)
+        })
+      }
+    }
+  })
 
   // indexedDB
   const s = router.currentRoute.value.query.session as any
@@ -132,9 +112,14 @@ onMounted(async () => {
   } else {
     const res = await DB.tab.get(parseInt(s))
     if (res === undefined) {
-      session = (await getLatestTab()).id
-      await loadData(session)
-      await router.push({query: {session}})
+      const t = await getLatestTab()
+      if (t === undefined) {
+        await initDB()
+      } else {
+        session = t.id
+        await loadData(session)
+        await router.push({query: {session}})
+      }
     } else {
       session = parseInt(s)
       await loadData(session)
@@ -189,7 +174,7 @@ const handleReq = async () => {
     ...send
   })
   if (history.value.length === 1) {
-    await DB.tab.update(session, {
+    DB.tab.update(session, {
       content: text
     })
     tab.value.find(i => i.id === session)!.content = text
@@ -260,12 +245,13 @@ const handleReq = async () => {
       } as openaiReq, onclose, onerror)
       break
 
-    case 'Gemini Pro':
-      console.log(send.content)
-
-      await reqStream('gemini', (data: string) => {
+    case 'gemini-pro':
+      await reqStream('gemini/?model=gemini-pro', (data: string) => {
         history.value[history.value.length - 1].content += data
-        scrollStream(el, 1024)
+        el.value?.scrollTo({
+          top: el.value.scrollHeight,
+          behavior: 'smooth'
+        })
       }, {
         history: addHistory.value ? toRaw(history.value).slice(0, -2).filter(i => !i.is_img).map(i => {
           return {
@@ -274,7 +260,24 @@ const handleReq = async () => {
           }
         }) : [],
         msg: send.content,
+        model: selectedModel.value,
       } as GeminiReq, onclose, onerror)
+      break
+
+    case 'gemini-pro-vision':
+      const formData = new FormData()
+      formData.append('prompt', send.content)
+      for (let i of upImages.value) {
+        formData.append('images', i.file)
+      }
+      upImages.value = []
+      await reqStream('gemini/?model=gemini-pro-vision', (data: string) => {
+        history.value[history.value.length - 1].content += data
+        el.value?.scrollTo({
+          top: el.value.scrollHeight,
+          behavior: 'smooth'
+        })
+      }, formData, onclose, onerror, {form: true})
       break
 
     default:
@@ -335,10 +338,25 @@ function handleDelete(id: number) {
     handleNew()
   }
 }
+
+function handleImage() {
+  image.value?.click()
+}
 </script>
 
 <template>
   <div :class="{mask:!hideTabBar}" @click="handleHideBar"></div>
+  <UModal v-model="isOpen">
+    <div class="p-4 flex flex-col space-y-2">
+      <div>
+        请输入访问密码
+      </div>
+      <div class="flex space-x-2">
+        <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
+        <UButton @click="handlePass">确定</UButton>
+      </div>
+    </div>
+  </UModal>
   <UContainer class="flex h-full w-full overflow-y-auto">
     <div class="w-48 flex flex-col transition-all z-10 mr-2 mobileBar" :class="{hide:hideTabBar}">
       <ul id="tabEl" class="flex flex-col space-y-1 my-4 pt-16 overflow-y-auto h-full scrollbar-hide"
@@ -353,25 +371,14 @@ function handleDelete(id: number) {
                  class="w-6 hover:bg-red-500 transition-all"/>
         </li>
       </ul>
-      <UButton class="m-1 max-sm:mb-10" @click.passive.stop="handleNew">
+      <UButton variant="soft" class="m-1 max-sm:mb-10" @click.passive.stop="handleNew">
         <div class="line-clamp-1">
           新建对话
         </div>
       </UButton>
     </div>
     <div class="flex flex-col w-full">
-      <div ref="el" class="py-4 h-full overflow-y-auto pt-24">
-        <UModal v-model="isOpen">
-          <div class="p-4 flex flex-col space-y-2">
-            <div>
-              请输入访问密码
-            </div>
-            <div class="flex space-x-2">
-              <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
-              <UButton @click="handlePass">确定</UButton>
-            </div>
-          </div>
-        </UModal>
+      <div ref="el" class="py-4 h-full overflow-y-auto pt-24 scrollbar-hide">
 
         <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
           <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
@@ -411,7 +418,14 @@ function handleDelete(id: number) {
             {{ current.name }}
           </template>
         </USelectMenu>
-        <div class="flex items-center">
+        <div v-if="selectedModel === 'gemini-pro-vision'" class="flex flex-wrap ml-1.5 space-x-1.5">
+          <div v-for="i in upImages" :key="i.url" class="relative img-mask"
+               @click="upImages.splice(upImages.indexOf(i),1)">
+            <img :src="i.url" :alt="i.file.name"
+                 class="w-36 h-36 object-scale-down rounded-xl"/>
+          </div>
+        </div>
+        <div class="flex items-end">
           <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                      icon="i-heroicons-clock-solid"/>
@@ -419,6 +433,12 @@ function handleDelete(id: number) {
           <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
                      :rows="1" autoresize
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
+          <UTooltip text="添加图片" v-show="selectedModel === 'gemini-pro-vision'">
+            <input ref="image" type="file" class="hidden" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                   multiple/>
+            <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
+                     icon="i-heroicons-photo"/>
+          </UTooltip>
           <UButton @click="handleReq" :disabled="loading" class="m-1">
             发送
           </UButton>
@@ -467,7 +487,7 @@ function handleDelete(id: number) {
 }
 
 .hide {
-  @apply w-0 opacity-0
+  @apply w-0 opacity-0 m-0
 }
 
 @media not all and (min-width: 640px) {
@@ -478,5 +498,14 @@ function handleDelete(id: number) {
   .mask {
     @apply fixed inset-0 bg-black bg-opacity-30 z-10 transition-all
   }
+}
+
+.img-mask::before {
+  content: '';
+  @apply inset-0 absolute hidden bg-black opacity-10 rounded-xl cursor-pointer
+}
+
+.img-mask:hover::before {
+  @apply block
 }
 </style>
