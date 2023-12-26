@@ -3,7 +3,6 @@ import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
-import type {ChangeEvent} from "rollup";
 
 const input = ref('')
 const loading = ref(false)
