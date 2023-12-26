@@ -3,11 +3,11 @@ import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github.css';
+import type {ChangeEvent} from "rollup";
 
 const input = ref('')
 const loading = ref(false)
 const el = ref<HTMLDivElement>()
-const image = ref<HTMLInputElement>()
 const s_lang = ref(['english', 'chinese', 'japanese', 'french', 'spanish', 'arabic', 'russian', 'german', 'portuguese', 'hindi'])
 const t_lang = computed(() => {
   const arr = [...s_lang.value]
@@ -40,7 +40,7 @@ const upImages = ref<{
   file: File,
   url: string
 }[]>([])
-let session: number
+let session: number, image: HTMLInputElement
 
 const selectedModel = ref(models[1].id)
 watch(selectedModel, v => {
@@ -81,22 +81,7 @@ onMounted(async () => {
   selectedModel.value = models.find(i => i.id === model)?.id ?? models[1].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
   hideTabBar.value = localStorage.getItem('hideTabBar') === 'true'
-
-  image.value?.addEventListener('change', () => {
-    if (image.value?.files) {
-      const files = image.value.files
-      for (let f of files) {
-        if (f.size > 1024 * 1024 * 5) {
-          alert('图片大小不能超过5MB')
-          return
-        }
-        upImages.value.push({
-          file: f,
-          url: URL.createObjectURL(f)
-        })
-      }
-    }
-  })
+  image = document.getElementById('image') as HTMLInputElement
 
   // indexedDB
   const s = router.currentRoute.value.query.session as any
@@ -158,6 +143,10 @@ const onerror = (status: number) => {
 }
 
 const handleReq = async () => {
+  if (selectedModel.value === 'gemini-pro-vision' && upImages.value.length === 0) {
+    alert('需要图片')
+    return
+  }
   const text = input.value.trim()
   if (!text || loading.value) return
   input.value = ''
@@ -270,7 +259,6 @@ const handleReq = async () => {
       for (let i of upImages.value) {
         formData.append('images', i.file)
       }
-      upImages.value = []
       await reqStream('gemini/?model=gemini-pro-vision', (data: string) => {
         history.value[history.value.length - 1].content += data
         el.value?.scrollTo({
@@ -340,7 +328,47 @@ function handleDelete(id: number) {
 }
 
 function handleImage() {
-  image.value?.click()
+  image.click()
+}
+
+function handlePaste(e: ClipboardEvent) {
+  const clipboardData = e.clipboardData
+  if (clipboardData) {
+    const items = clipboardData.items
+    if (items) {
+      for (let i of items) {
+        if (i.kind === 'file') {
+          const f = i.getAsFile()
+          if (f) {
+            if (f.size > 1024 * 1024 * 5) {
+              alert('图片大小不能超过5MB')
+              return
+            }
+            upImages.value.push({
+              file: f,
+              url: URL.createObjectURL(f)
+            })
+          }
+        }
+      }
+    }
+  }
+}
+
+function handleImageAdd() {
+  if (image.files) {
+    const files = image.files
+    for (let f of files) {
+      if (f.size > 1024 * 1024 * 5) {
+        alert('图片大小不能超过5MB')
+        return
+      }
+      upImages.value.push({
+        file: f,
+        url: URL.createObjectURL(f)
+      })
+    }
+  }
 }
 </script>
 
@@ -428,14 +456,14 @@ function handleImage() {
         <div class="flex items-end">
           <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
-                     icon="i-heroicons-clock-solid"/>
+                     :disabled="selectedModel === 'gemini-pro-vision'" icon="i-heroicons-clock-solid"/>
           </UTooltip>
-          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq" autofocus
-                     :rows="1" autoresize
+          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq"
+                     autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
-          <UTooltip text="添加图片" v-show="selectedModel === 'gemini-pro-vision'">
-            <input ref="image" type="file" class="hidden" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
-                   multiple/>
+          <UTooltip text="添加图片/支持粘贴" v-show="selectedModel === 'gemini-pro-vision'">
+            <input id="image" type="file" class="hidden" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                   multiple @change="handleImageAdd"/>
             <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
                      icon="i-heroicons-photo"/>
           </UTooltip>

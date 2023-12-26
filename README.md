@@ -25,10 +25,11 @@
 
 - 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
 - Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间
-- 支持 ChatGPT GeminiPro，支持开启访问密码，支持自定义域名
+- 支持 ChatGPT GeminiPro(Vision)，支持开启访问密码，支持自定义域名
 
 ### 模型支持
 
+- 视觉 `GeminiPro Vision`
 - 文生图 `stable-diffusion-xl-base-1.0`
 - 文本生成 `GeminiPro` `llama-2-7b-chat-fp16` `llama-2-7b-chat-int8` `mistral-7b-instruct-v0.1` `gpt-3.5-turbo`
 - 代码生成 `codellama-7b-instruct-awq`
