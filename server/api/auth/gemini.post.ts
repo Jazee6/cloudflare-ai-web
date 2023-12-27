@@ -9,6 +9,10 @@ const headers = {
     'Connection': 'keep-alive',
 }
 
+export const config = {
+    runtime: "edge", regions: ["cle1", "iad1", "pdx1", "sfo1", "sin1", "syd1", "hnd1", "kix1"],
+}
+
 export default defineEventHandler(async (event) => {
     const model = getQuery(event).model as string
     let result: GenerateContentStreamResult

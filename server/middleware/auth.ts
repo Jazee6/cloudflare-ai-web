@@ -1,6 +1,6 @@
 const pass = process.env.PASSWORD
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler((event) => {
     if (pass) {
         if (event.path.startsWith('/api/auth')) {
             if (event.headers.get('Authorization') !== pass) {
