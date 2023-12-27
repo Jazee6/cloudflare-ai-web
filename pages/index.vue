@@ -141,11 +141,13 @@ const onerror = (status: number) => {
   }
 }
 
-const handleReq = async () => {
-  if (selectedModel.value === 'gemini-pro-vision' && upImages.value.length === 0) {
+const handleReq = async (model: string) => {
+  console.log(model)
+  if (model === 'gemini-pro-vision' && upImages.value.length === 0) {
     alert('需要图片')
     return
   }
+
   const text = input.value.trim()
   if (!text || loading.value) return
   input.value = ''
@@ -153,7 +155,7 @@ const handleReq = async () => {
     role: 'user',
     content: text,
   }
-  if (selectedModel.value === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
+  if (model === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
     send.is_img = true
   }
   history.value.push(send)
@@ -181,10 +183,10 @@ const handleReq = async () => {
     }
   })
 
-  switch (selectedModel.value) {
+  switch (model) {
     case '@cf/meta/m2m100-1.2b':
       req('trans', {
-        model: selectedModel.value,
+        model,
         text: send.content,
         source_lang: s_lang_selected.value,
         target_lang: t_lang_selected.value
@@ -211,7 +213,7 @@ const handleReq = async () => {
             history.value[history.value.length - 1].content = 'data:image/png;base64,' + data.response
           }, {
             messages: send.content,
-            model: selectedModel.value,
+            model,
           } as imgReq,
           () => {
             setTimeout(() => {
@@ -229,7 +231,7 @@ const handleReq = async () => {
         scrollStream(el)
       }, {
         messages: upMessages(),
-        model: selectedModel.value,
+        model,
       } as openaiReq, onclose, onerror)
       break
 
@@ -248,7 +250,7 @@ const handleReq = async () => {
           }
         }) : [],
         msg: send.content,
-        model: selectedModel.value,
+        model,
       } as GeminiReq, onclose, onerror)
       break
 
@@ -258,7 +260,9 @@ const handleReq = async () => {
       for (let i of upImages.value) {
         formData.append('images', i.file)
       }
-      await reqStream('gemini/?model=gemini-pro-vision', (data: string) => {
+      upImages.value = []
+      await reqStream('gemini/?model=gemini-pro-vision', (data: { response: string }) => {
+        if (data.response === 'pending') return
         history.value[history.value.length - 1].content += data
         el.value?.scrollTo({
           top: el.value.scrollHeight,
@@ -273,9 +277,11 @@ const handleReq = async () => {
         scrollStream(el)
       }, {
         messages: upMessages(),
-        model: selectedModel.value,
+        model,
       } as workersAiReq, onclose, onerror)
   }
+
+
 }
 
 const handlePass = async () => {
@@ -457,7 +463,7 @@ function handleImageAdd() {
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                      :disabled="selectedModel === 'gemini-pro-vision'" icon="i-heroicons-clock-solid"/>
           </UTooltip>
-          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq"
+          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq(selectedModel)"
                      autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
           <UTooltip text="添加图片/支持粘贴" v-show="selectedModel === 'gemini-pro-vision'">
@@ -466,7 +472,7 @@ function handleImageAdd() {
             <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
                      icon="i-heroicons-photo"/>
           </UTooltip>
-          <UButton @click="handleReq" :disabled="loading" class="m-1">
+          <UButton @click="handleReq(selectedModel)" :disabled="loading" class="m-1">
             发送
           </UButton>
         </div>

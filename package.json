@@ -1,6 +1,6 @@
 {
-  "name": "cf-ai-web",
-  "version": "1.0-beta.1",
+  "name": "cloudflare-ai-web",
+  "version": "1.0-beta.2",
   "private": true,
   "type": "module",
   "scripts": {

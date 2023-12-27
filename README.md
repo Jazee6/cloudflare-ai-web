@@ -18,7 +18,7 @@
       -e CF_GATEWAY=YOUR_CF_GATEWAY \
       -p 3000:3000 \
       --restart=always \
-      jazee6/uni-ai-web:v0.1
+      jazee6/cloudflare-ai-web
 ```
 
 ## 特性

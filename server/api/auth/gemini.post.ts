@@ -21,37 +21,40 @@ export default defineEventHandler(async (event) => {
             history,
         })
         result = await chat.sendMessageStream(msg)
-    } else if (model === 'gemini-pro-vision') {
-        const multipartFormData = await readMultipartFormData(event)
-
-        let prompt
-        const imageParts: VisionReq[] = []
-        multipartFormData?.map(d => {
-            switch (d.name) {
-                case 'prompt':
-                    prompt = d.data.toString()
-                    break;
-
-                case 'images':
-                    imageParts.push({
-                        inlineData: {
-                            data: d.data.toString('base64'),
-                            mimeType: d.type!
-                        }
-                    })
-                    break;
-            }
-        })
-
-        const m = genAI.getGenerativeModel({model});
-        if (prompt) {
-            result = await m.generateContentStream([prompt, ...imageParts])
-        }
     }
 
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
         async start(controller) {
+            if (model === 'gemini-pro-vision') {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({response: 'pending'})}\n\n`));
+
+                const multipartFormData = await readMultipartFormData(event)
+
+                let prompt
+                const imageParts: VisionReq[] = []
+                multipartFormData?.map(d => {
+                    switch (d.name) {
+                        case 'prompt':
+                            prompt = d.data.toString()
+                            break;
+
+                        case 'images':
+                            imageParts.push({
+                                inlineData: {
+                                    data: d.data.toString('base64'),
+                                    mimeType: d.type!
+                                }
+                            })
+                            break;
+                    }
+                })
+
+                const m = genAI.getGenerativeModel({model});
+                if (prompt) {
+                    result = await m.generateContentStream([prompt, ...imageParts])
+                }
+            }
 
             for await (const chunk of result.stream) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk.text())}\n\n`));
