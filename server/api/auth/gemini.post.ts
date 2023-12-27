@@ -22,9 +22,11 @@ export default defineEventHandler(async (event) => {
         })
         result = await chat.sendMessageStream(msg)
     } else if (model === 'gemini-pro-vision') {
+        console.log(event)
         const formData = await readFormData(event)
         const prompt = formData.get('prompt') as string
         const images = formData.getAll('images') as File[]
+        console.log(prompt, images)
 
         const imageParts: VisionReq[] = []
         for (const image of images) {
@@ -36,7 +38,6 @@ export default defineEventHandler(async (event) => {
             })
         }
 
-        console.log([prompt, ...imageParts])
         const m = genAI.getGenerativeModel({model});
         result = await m.generateContentStream([prompt, ...imageParts])
     }
