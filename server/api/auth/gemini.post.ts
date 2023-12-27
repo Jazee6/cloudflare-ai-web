@@ -1,6 +1,5 @@
 import {GenerateContentStreamResult, GoogleGenerativeAI} from '@google/generative-ai'
 import type {GeminiReq, VisionReq} from "~/utils/type";
-import {H3Event} from "h3";
 
 const genAI = new GoogleGenerativeAI(process.env.G_API_KEY!);
 
