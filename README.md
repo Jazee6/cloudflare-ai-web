@@ -13,7 +13,7 @@
 ### Docker
 
 ```bash
-    docker run -d --name uni-ai-web \
+    docker run -d --name cloudflare-ai-web \
       -e CF_TOKEN=YOUR_CF_TOKEN \
       -e CF_GATEWAY=YOUR_CF_GATEWAY \
       -p 3000:3000 \
@@ -41,9 +41,9 @@
 
 - `CF_TOKEN` - Cloudflare Workers AI Token
 - `CF_GATEWAY` - Cloudflare AI Gateway URL
-- `OPENAI_API_KEY` - OpenAI API Key (可选)
-- `G_API_KEY` - Google AI API Key (可选)
-- `G_API_URL` - Google AI 反代 (可选)
+- `OPENAI_API_KEY` - OpenAI API Key (需要ChatGPT时填写)
+- `G_API_KEY` - Google AI API Key (需要GeminiPro时填写)
+- `G_API_URL` - Google AI 反代 (非美国ip填写，或参考以下配置)
 - `PASSWORD` - 访问密码 (可选)
 
 #### CF_TOKEN
@@ -72,9 +72,17 @@ https://ai.google.dev/tutorials/rest_quickstart#set_up_your_api_key
 
 #### G_API_URL
 
-https://github.com/antergone/palm-proxy
+参考 https://github.com/Jazee6/gemini-proxy 搭建反代
 
-或者 Vercel Edge Function设置地区为美国
+或者在`nuxt.config.ts`中添加以下配置
+
+```
+nitro: {
+    vercel: {
+        regions: ["cle1", "iad1", "pdx1", "sfo1", "sin1", "syd1", "hnd1", "kix1"]
+    }
+}
+```
 
 ---
 

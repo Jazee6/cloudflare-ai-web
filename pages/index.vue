@@ -451,7 +451,7 @@ function handleImageAdd() {
             {{ current.name }}
           </template>
         </USelectMenu>
-        <div v-if="selectedModel === 'gemini-pro-vision'" class="flex flex-wrap ml-1.5 space-x-1.5">
+        <div v-show="selectedModel === 'gemini-pro-vision'" class="flex flex-wrap ml-1.5 space-x-1.5">
           <div v-for="i in upImages" :key="i.url" class="relative img-mask"
                @click="upImages.splice(upImages.indexOf(i),1)">
             <img :src="i.url" :alt="i.file.name"
