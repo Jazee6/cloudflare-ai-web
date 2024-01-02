@@ -2,7 +2,7 @@
 import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
-import 'highlight.js/styles/github.css';
+import 'highlight.js/styles/github-dark-dimmed.min.css';
 
 const input = ref('')
 const loading = ref(false)
@@ -395,7 +395,7 @@ function handleImageAdd() {
       <ul id="tabEl" class="flex flex-col space-y-1 my-4 pt-16 overflow-y-auto h-full scrollbar-hide"
           @click.passive.stop="handleTab">
         <li v-for="i in tab" :key="i.id" class="rounded p-1.5 mx-2 cursor-pointer bg-white
-              hover:bg-gray-300 transition-all flex items-center"
+              hover:bg-gray-300 transition-all flex items-center dark:bg-neutral-700 dark:hover:bg-neutral-600"
             :class="{'card-focus':i.id === selectedTab }" :data-id="i.id">
           <div class="line-clamp-1 font-light text-sm w-full" :data-id="i.id">
             {{ i.content }}
@@ -484,12 +484,12 @@ function handleImageAdd() {
 <style scoped>
 #send {
   max-width: 80%;
-  @apply self-end break-words bg-green-500 text-white rounded-xl p-2
+  @apply self-end break-words bg-green-500 text-white rounded-xl p-2 dark:bg-green-700 dark:text-gray-300
 }
 
 #reply {
   max-width: 80%;
-  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2
+  @apply self-start break-words bg-gray-200 text-black rounded-xl p-2 dark:bg-gray-400
 }
 
 #send::selection {
@@ -525,7 +525,7 @@ function handleImageAdd() {
 
 @media not all and (min-width: 640px) {
   .mobileBar {
-    @apply fixed shadow-2xl -translate-x-4 h-full bg-white
+    @apply fixed shadow-2xl -translate-x-4 h-full bg-white dark:bg-neutral-800
   }
 
   .mask {

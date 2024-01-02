@@ -1,7 +1,5 @@
 # cloudflare-ai-web
 
-> 开发中...
-
 ## AI 启动！
 
 ### 一键部署（推荐）
@@ -13,12 +11,12 @@
 ### Docker
 
 ```bash
-    docker run -d --name cloudflare-ai-web \
-      -e CF_TOKEN=YOUR_CF_TOKEN \
-      -e CF_GATEWAY=YOUR_CF_GATEWAY \
-      -p 3000:3000 \
-      --restart=always \
-      jazee6/cloudflare-ai-web
+docker run -d --name cloudflare-ai-web \
+  -e CF_TOKEN=YOUR_CF_TOKEN \
+  -e CF_GATEWAY=YOUR_CF_GATEWAY \
+  -p 3000:3000 \
+  --restart=always \
+  jazee6/cloudflare-ai-web
 ```
 
 ## 特性
@@ -84,13 +82,10 @@ nitro: {
 }
 ```
 
----
-
-> 请不要启用AI Gateway的缓存，否则可能会导致重复的回复
-
 ## Tips
 
 - 由于Workers AI 目前为开放 Beta 版，不建议用于生产数据和流量，限制 + 访问可能会发生变化
+- 请不要启用AI Gateway的缓存，否则可能会导致重复的回复
 - 请保持与Main分支同步，以便获取最新的功能和修复
 
 ## Star History
