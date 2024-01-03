@@ -3,6 +3,7 @@ import markdownit from "markdown-it";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github-dark-dimmed.min.css';
+import {useLocalStorage} from "@vueuse/core";
 
 const input = ref('')
 const loading = ref(false)
@@ -39,6 +40,8 @@ const upImages = ref<{
   file: File,
   url: string
 }[]>([])
+const openSetting = ref(false)
+const safeReply = useLocalStorage('safeReply', true)
 let session: number, image: HTMLInputElement
 
 const selectedModel = ref(models[1].id)
@@ -251,12 +254,14 @@ const handleReq = async (model: string) => {
         }) : [],
         msg: send.content,
         model,
+        safeReply: safeReply.value
       } as GeminiReq, onclose, onerror)
       break
 
     case 'gemini-pro-vision':
       const formData = new FormData()
       formData.append('prompt', send.content)
+      formData.append('safeReply', safeReply.value.toString())
       for (let i of upImages.value) {
         formData.append('images', i.file)
       }
@@ -390,12 +395,23 @@ function handleImageAdd() {
       </div>
     </div>
   </UModal>
+  <UModal v-model="openSetting">
+    <div class="p-4 flex flex-col space-y-2">
+      <div class="font-bold">
+        安全设置
+      </div>
+      <div class="flex">
+        屏蔽敏感回复(GeminiPro)
+        <UToggle v-model="safeReply" class="ml-auto"/>
+      </div>
+    </div>
+  </UModal>
   <UContainer class="flex h-full w-full overflow-y-auto">
     <div class="w-48 flex flex-col transition-all z-10 mr-2 mobileBar" :class="{hide:hideTabBar}">
       <ul id="tabEl" class="flex flex-col space-y-1 my-4 pt-16 overflow-y-auto h-full scrollbar-hide"
           @click.passive.stop="handleTab">
         <li v-for="i in tab" :key="i.id" class="rounded p-1.5 mx-2 cursor-pointer bg-white
-              hover:bg-gray-300 transition-all flex items-center dark:bg-neutral-700 dark:hover:bg-neutral-600"
+              hover:bg-gray-300 transition-all flex items-center dark:bg-neutral-800 dark:hover:bg-neutral-600"
             :class="{'card-focus':i.id === selectedTab }" :data-id="i.id">
           <div class="line-clamp-1 font-light text-sm w-full" :data-id="i.id">
             {{ i.content }}
@@ -404,11 +420,14 @@ function handleImageAdd() {
                  class="w-6 hover:bg-red-500 transition-all"/>
         </li>
       </ul>
-      <UButton variant="soft" class="m-1 max-sm:mb-10" @click.passive.stop="handleNew">
-        <div class="line-clamp-1">
-          新建对话
-        </div>
-      </UButton>
+      <div class="flex mb-1 max-sm:mb-10 max-sm:mx-2">
+        <IButton name="i-heroicons-cog-8-tooth" @click.passive.stop="openSetting=!openSetting"/>
+        <UButton class="ml-auto" variant="soft" @click.passive.stop="handleNew">
+          <div class="line-clamp-1">
+            新建对话 +
+          </div>
+        </UButton>
+      </div>
     </div>
     <div class="flex flex-col w-full">
       <div ref="el" class="py-4 h-full overflow-y-auto pt-24 scrollbar-hide">

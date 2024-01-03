@@ -21,14 +21,12 @@ onMounted(() => {
         <UIcon name="i-heroicons-bars-3-20-solid" class="h-7 w-7 m-1"/>
       </div>
       <h1 @click="handleClick" class="text-lg font-bold ml-2 hover:cursor-pointer">CF AI Web</h1>
-      <div
-          class="ml-auto h-8 w-8 cursor-pointer rounded-full transition-all hover:bg-neutral-300 dark:hover:bg-neutral-700"
-          @click.passive.stop="toggleDark()">
-        <UIcon class="h-6 w-6 m-1" :name="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"/>
-      </div>
+      <IButton class="ml-auto" :name="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"
+               @click.passive.stop="toggleDark()"/>
     </UContainer>
   </div>
 </template>
+
 
 <style scoped>
 #navbar {

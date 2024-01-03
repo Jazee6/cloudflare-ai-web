@@ -115,7 +115,8 @@ export interface GeminiReq {
         role: 'user' | 'model'
         parts: string
     }[]
-    msg: string
+    msg: string,
+    safeReply: boolean
 }
 
 export interface VisionReq {

@@ -38,8 +38,10 @@ export default defineEventHandler(async (event) => {
 
     if (model === 'gemini-pro') {
         const body: GeminiReq = await readBody(event)
-        const {history, msg} = body
-        const m = genAI.getGenerativeModel({model});
+        const {history, msg, safeReply} = body
+        let modelParams
+        safeReply ? modelParams = {model} : modelParams = {model, safetySettings}
+        const m = genAI.getGenerativeModel(modelParams);
         const chat = m.startChat({
             history,
         })
@@ -54,7 +56,7 @@ export default defineEventHandler(async (event) => {
 
                 const multipartFormData = await readMultipartFormData(event)
 
-                let prompt
+                let prompt, modelParams
                 const imageParts: VisionReq[] = []
                 multipartFormData?.map(d => {
                     switch (d.name) {
@@ -70,10 +72,14 @@ export default defineEventHandler(async (event) => {
                                 }
                             })
                             break;
+
+                        case 'safeReply':
+                            d.data.toString() === 'true' ? modelParams = {model} : modelParams = {model, safetySettings}
+                            break
                     }
                 })
 
-                const m = genAI.getGenerativeModel({model});
+                const m = genAI.getGenerativeModel(modelParams!);
                 if (prompt) {
                     result = await m.generateContentStream([prompt, ...imageParts])
                 }
