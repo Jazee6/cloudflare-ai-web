@@ -145,7 +145,6 @@ const onerror = (status: number) => {
 }
 
 const handleReq = async (model: string) => {
-  console.log(model)
   if (model === 'gemini-pro-vision' && upImages.value.length === 0) {
     alert('需要图片')
     return

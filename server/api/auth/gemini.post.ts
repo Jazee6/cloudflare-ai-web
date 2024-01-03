@@ -25,10 +25,6 @@ const safetySettings = [
     {
         category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
         threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-        category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
     }
 ]
 
@@ -78,7 +74,6 @@ export default defineEventHandler(async (event) => {
                             break
                     }
                 })
-
                 const m = genAI.getGenerativeModel(modelParams!);
                 if (prompt) {
                     result = await m.generateContentStream([prompt, ...imageParts])
