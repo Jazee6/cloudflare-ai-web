@@ -220,7 +220,7 @@ const handleReq = async (model: string) => {
           () => {
             setTimeout(() => {
               scrollOnce(el, 512)
-            }, 20)
+            }, 200)
             onclose()
           }
           , onerror)
