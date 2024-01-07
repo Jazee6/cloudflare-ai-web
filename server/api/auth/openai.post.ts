@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     const res = await fetch(`${process.env.CF_GATEWAY}/openai/${endpoint}`, {
         method: 'POST',
         headers: {
-            Authorization: key === '' ? `Bearer ${process.env.OPENAI_API_KEY}` : key,
+            Authorization: key === '' ? `Bearer ${process.env.OPENAI_API_KEY}` : `Bearer ${key}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
