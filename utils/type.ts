@@ -15,7 +15,9 @@ export interface openaiData {
 
 export interface openaiReq {
     messages: HistoryItem[]
-    model: string
+    model: string,
+    endpoint?: string
+    key: string
     temperature?: number
     presence_penalty?: number
     frequency_penalty?: number,

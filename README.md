@@ -21,7 +21,7 @@ docker run -d --name cloudflare-ai-web \
 
 ## 特性
 
-- 利用免费、免翻墙的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
+- 利用免费的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
 - Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间
 - 支持 ChatGPT GeminiPro(Vision)，支持开启访问密码，支持自定义域名
 

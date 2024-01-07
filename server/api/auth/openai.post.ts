@@ -1,8 +1,9 @@
 import {stream} from "~/utils/req"
+import type {openaiReq} from "~/utils/type";
 
 export default defineEventHandler(async (event) => {
-    const body = await readBody(event)
-    let {messages, model, endpoint = 'chat/completions'} = body
+    const body: openaiReq = await readBody(event)
+    let {messages, model, endpoint = 'chat/completions', key} = body
     let system = {
         role: 'system',
         content: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully. Respond using markdown.'
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event) => {
     const res = await fetch(`${process.env.CF_GATEWAY}/openai/${endpoint}`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            Authorization: key === '' ? `Bearer ${process.env.OPENAI_API_KEY}` : key,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -234,16 +234,14 @@ const handleReq = async (model: string) => {
       }, {
         messages: upMessages(),
         model,
+        key: localStorage.getItem('openaiKey') ?? '',
       } as openaiReq, onclose, onerror)
       break
 
     case 'gemini-pro':
       await reqStream('gemini/?model=gemini-pro', (data: string) => {
         history.value[history.value.length - 1].content += data
-        el.value?.scrollTo({
-          top: el.value.scrollHeight,
-          behavior: 'smooth'
-        })
+        scrollStream(el, 512)
       }, {
         history: addHistory.value ? toRaw(history.value).slice(0, -2).filter(i => !i.is_img).map(i => {
           return {
@@ -268,10 +266,7 @@ const handleReq = async (model: string) => {
       await reqStream('gemini/?model=gemini-pro-vision', (data: { response: string }) => {
         if (data.response === 'pending') return
         history.value[history.value.length - 1].content += data
-        el.value?.scrollTo({
-          top: el.value.scrollHeight,
-          behavior: 'smooth'
-        })
+        scrollStream(el, 512)
       }, formData, onclose, onerror, {form: true})
       break
 
@@ -395,15 +390,7 @@ function handleImageAdd() {
     </div>
   </UModal>
   <UModal v-model="openSetting">
-    <div class="p-4 flex flex-col space-y-2">
-      <div class="font-bold">
-        安全设置
-      </div>
-      <div class="flex">
-        屏蔽敏感回复(GeminiPro)
-        <UToggle v-model="safeReply" class="ml-auto"/>
-      </div>
-    </div>
+    <Setting/>
   </UModal>
   <UContainer class="flex h-full w-full overflow-y-auto">
     <div class="w-48 flex flex-col transition-all z-10 mr-2 mobileBar" :class="{hide:hideTabBar}">
