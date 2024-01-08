@@ -146,9 +146,17 @@ const onerror = (status: number) => {
   }
 }
 
-const handleReq = async (model: string) => {
+const handleReq = async (event: KeyboardEvent, model: string) => {
   if (model === 'gemini-pro-vision' && upImages.value.length === 0) {
     alert('需要图片')
+    return
+  }
+
+  if (event.shiftKey) {
+    input.value += '\n'
+  }
+
+  if (event.isComposing || event.shiftKey) {
     return
   }
 
@@ -470,7 +478,7 @@ function handleImageAdd() {
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                      :disabled="selectedModel === 'gemini-pro-vision'" icon="i-heroicons-clock-solid"/>
           </UTooltip>
-          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq(selectedModel)"
+          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq($event, selectedModel)"
                      autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
           <UTooltip text="添加图片/支持粘贴" v-show="selectedModel === 'gemini-pro-vision'">
@@ -479,8 +487,13 @@ function handleImageAdd() {
             <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
                      icon="i-heroicons-photo"/>
           </UTooltip>
-          <UButton @click="handleReq(selectedModel)" :disabled="loading" class="m-1">
+          <UButton @click="handleReq($event, selectedModel)" :disabled="loading" class="m-1">
             发送
+          </UButton>
+          <UButton color="gray" size="md" class="m-1" @click="() => input = ''">
+            <template #leading>
+              <svg xmlns="http://www.w3.org/2000/svg" width="1rem" height="1rem" viewBox="0 0 24 24"><path fill="currentColor" d="M8 20v-5h2v5h9v-7H5v7h3zm-4-9h16V8h-6V4h-4v4H4v3zM3 21v-8H2V7a1 1 0 0 1 1-1h5V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3h5a1 1 0 0 1 1 1v6h-1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /></svg>
+            </template>
           </UButton>
         </div>
       </div>
