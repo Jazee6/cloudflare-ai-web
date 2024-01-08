@@ -5,6 +5,8 @@ import hljs from "highlight.js";
 import 'highlight.js/styles/github-dark-dimmed.min.css';
 import {useLocalStorage} from "@vueuse/core";
 
+// todo 错误处理 加载动画
+
 const input = ref('')
 const loading = ref(false)
 const el = ref<HTMLDivElement>()
@@ -406,7 +408,7 @@ function handleImageAdd() {
                  class="w-6 hover:bg-red-500 transition-all"/>
         </li>
       </ul>
-      <div class="flex mb-1 max-sm:mb-10 max-sm:mx-2">
+      <div class="flex mb-1 max-sm:mb-10 max-sm:mx-2" v-show="!hideTabBar">
         <IButton name="i-heroicons-cog-8-tooth" @click.passive.stop="openSetting=!openSetting"/>
         <UButton class="ml-auto" variant="soft" @click.passive.stop="handleNew">
           <div class="line-clamp-1">
