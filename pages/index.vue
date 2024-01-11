@@ -478,7 +478,8 @@ function handleImageAdd() {
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                      :disabled="selectedModel === 'gemini-pro-vision'" icon="i-heroicons-clock-solid"/>
           </UTooltip>
-          <UTextarea v-model="input" placeholder="请输入文本..." @keydown.prevent.enter="handleReq($event, selectedModel)"
+          <UTextarea v-model="input" placeholder="请输入文本..."
+                     @keydown.prevent.enter="handleReq($event, selectedModel)"
                      autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
           <UTooltip text="添加图片/支持粘贴" v-show="selectedModel === 'gemini-pro-vision'">
