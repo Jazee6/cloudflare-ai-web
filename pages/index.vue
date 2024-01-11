@@ -5,8 +5,6 @@ import hljs from "highlight.js";
 import 'highlight.js/styles/github-dark-dimmed.min.css';
 import {useLocalStorage} from "@vueuse/core";
 
-// todo 错误处理 加载动画
-
 const input = ref('')
 const loading = ref(false)
 const el = ref<HTMLDivElement>()
@@ -139,11 +137,12 @@ const upMessages = () => addHistory.value ? toRaw(history.value).slice(0, -1).fi
       }
     })
 
-const onerror = (status: number) => {
-  if (status === 401) {
+const onerror = async (response: Response) => {
+  if (response.status === 401) {
     isOpen.value = true
     loading.value = false
   }
+  history.value[history.value.length - 1].content += response.status + ' ' + response.statusText
 }
 
 const handleReq = async (event: KeyboardEvent, model: string) => {
@@ -209,8 +208,9 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
         onclose()
       }).catch(e => {
         if (e.data === 'Unauthorized') {
-          onerror(401)
-        }
+          onerror(new Response('', {status: 401}))
+        } else onerror(new Response('', {status: 500, statusText: e.data}))
+        onclose()
       })
       break
 
@@ -450,7 +450,15 @@ function handleImageAdd() {
                    class="sm:max-w-lg rounded-xl cursor-pointer"/>
               <template v-else>
                 <div v-html="md.render(i.content)" class="prose text-black max-w-none"
-                     :class="index+1===history.length && isLoading"></div>
+                     :class="index+1===history.length && isLoading"/>
+                <template v-if="index+1===history.length">
+                  <svg v-show="!i.content && isLoading" class="animate-spin h-5 w-5 text-neutral-700"
+                       xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </template>
               </template>
             </li>
             <li v-else id="send" class="slide-top">
@@ -476,7 +484,7 @@ function handleImageAdd() {
         <div class="flex items-end">
           <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
-                     :disabled="selectedModel === 'gemini-pro-vision'" icon="i-heroicons-clock-solid"/>
+                     icon="i-heroicons-clock-solid"/>
           </UTooltip>
           <UTextarea v-model="input" placeholder="请输入文本..."
                      @keydown.prevent.enter="handleReq($event, selectedModel)"

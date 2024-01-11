@@ -1,4 +1,4 @@
-import {createParser, type ParsedEvent, type ReconnectInterval} from "eventsource-parser";
+import {createParser, type ParsedEvent, type ReconnectInterval} from "eventsource-parser"
 
 export const req = (path: string, body: Object) => {
     return $fetch(`/api/auth/${path}`, {
@@ -26,10 +26,10 @@ export const stream = (res: Response, transform?: boolean) => {
                 const data = {
                     status: res.status,
                     statusText: res.statusText,
-                    body: await res.text(),
+                    body: await res.json(),
                 }
-                console.error(`Error: recieved non-200 status code, ${JSON.stringify(data)}`);
-                controller.close();
+                console.error(JSON.stringify(data))
+                controller.close()
                 return;
             }
 
@@ -75,13 +75,15 @@ export const reqStream = async (path: string, onStream: Function, body: any,
     const response = options?.form ? await formFetch(path, body) : await jsonFetch(path, body)
 
     if (!response.ok) {
-        onError && onError(response.status)
-        console.error(response.statusText)
+        onError && onError(response)
+        console.error(response)
+        onDone && onDone()
+        return
     }
 
     const data = response.body;
     if (!data) {
-        return;
+        return
     }
 
     const onParse = async (event: ParsedEvent | ReconnectInterval) => {
