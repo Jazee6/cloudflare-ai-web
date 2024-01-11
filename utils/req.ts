@@ -29,6 +29,7 @@ export const stream = (res: Response, transform?: boolean) => {
                     body: await res.json(),
                 }
                 console.error(JSON.stringify(data))
+                controller.error(new TextEncoder().encode(JSON.stringify(data.body)))
                 controller.close()
                 return;
             }
