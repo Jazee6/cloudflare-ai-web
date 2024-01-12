@@ -29,7 +29,7 @@ export const stream = (res: Response, transform?: boolean) => {
                     body: await res.json(),
                 }
                 console.error(JSON.stringify(data))
-                controller.error(new TextEncoder().encode(JSON.stringify(data.body)))
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({error: data.body})}\n\n`))
                 controller.close()
                 return;
             }
@@ -91,6 +91,10 @@ export const reqStream = async (path: string, onStream: Function, body: any,
         if (event.type === "event") {
             if (event.data === '[DONE]') return
             const text = JSON.parse(event.data) ?? ""
+            if (text.error) {
+                onError && onError(new Response('', {status: 400, statusText: JSON.stringify(text.error)}))
+                return
+            }
             await onStream(text)
         }
     }

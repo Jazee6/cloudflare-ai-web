@@ -85,7 +85,14 @@ export default defineEventHandler(async (event) => {
             }
 
             for await (const chunk of result.stream) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk.text())}\n\n`));
+                let res
+                try {
+                    res = chunk.text()
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(res)}\n\n`));
+                } catch (e) {
+                    console.error(e)
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({error: e})}\n\n`))
+                }
             }
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close();

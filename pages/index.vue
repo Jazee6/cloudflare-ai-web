@@ -209,7 +209,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
       }).catch(e => {
         if (e.data === 'Unauthorized') {
           onerror(new Response('', {status: 401}))
-        } else onerror(new Response('', {status: 500, statusText: e.data}))
+        } else onerror(new Response('', {status: 500, statusText: 'Server Error'}))
         onclose()
       })
       break
