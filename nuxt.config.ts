@@ -22,6 +22,11 @@ export default defineNuxtConfig({
                 {
                     name: 'description',
                     content: 'Integrated web platform supporting GeminiPro/Cloudflare Workers AI/ChatGPT by Jazee6'
+                },
+                nitro: {
+                    vercel: {
+                        regions: ["cle1", "iad1", "pdx1", "sfo1", "sin1", "syd1", "hnd1", "kix1"]
+                    }
                 }
             ]
         }
