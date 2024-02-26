@@ -42,6 +42,7 @@ const upImages = ref<{
 }[]>([])
 const openSetting = ref(false)
 const safeReply = useLocalStorage('safeReply', true)
+const {setLocale, t} = useI18n()
 let session: number, image: HTMLInputElement
 
 const selectedModel = ref(models[1].id)
@@ -63,16 +64,18 @@ async function loadData(session: number) {
 }
 
 async function initDB() {
-  session = await addTab('新建对话') as number
+  session = await addTab(t('new_chat')) as number
   tab.value.unshift({
     id: session,
-    content: '新建对话'
+    content: t('new_chat')
   })
   selectedTab.value = session
   await router.push({query: {session}})
 }
 
 onMounted(async () => {
+  await setLocale(navigator.language.substring(0, 2))
+
   $fetch('/api/pass').then(res => {
     if ((res as unknown as string) === 'true' && !localStorage.getItem('access_pass')) {
       isOpen.value = true
@@ -147,7 +150,7 @@ const onerror = async (response: Response) => {
 
 const handleReq = async (event: KeyboardEvent, model: string) => {
   if (model === 'gemini-pro-vision' && upImages.value.length === 0) {
-    alert('需要图片')
+    alert(t('need_image'))
     return
   }
 
@@ -215,10 +218,10 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
       break
 
     case '@cf/stabilityai/stable-diffusion-xl-base-1.0':
-      let t = 0
+      let time = 0
       await reqStream('img', (data: imgData) => {
             if (data.response === 'pending') {
-              history.value[history.value.length - 1].content = `已等待${t += 5}s`
+              history.value[history.value.length - 1].content = t('waited') + `${time += 5}s`
               return
             }
             history.value[history.value.length - 1].is_img = true
@@ -355,7 +358,7 @@ function handlePaste(e: ClipboardEvent) {
           const f = i.getAsFile()
           if (f) {
             if (f.size > 1024 * 1024 * 5) {
-              alert('图片大小不能超过5MB')
+              alert(t('image_max_5MB'))
               return
             }
             upImages.value.push({
@@ -374,7 +377,7 @@ function handleImageAdd() {
     const files = image.files
     for (let f of files) {
       if (f.size > 1024 * 1024 * 5) {
-        alert('图片大小不能超过5MB')
+        alert(t('image_max_5MB'))
         return
       }
       upImages.value.push({
@@ -391,11 +394,11 @@ function handleImageAdd() {
   <UModal v-model="isOpen">
     <div class="p-4 flex flex-col space-y-2">
       <div>
-        请输入访问密码
+        {{ $t('input_password') }}
       </div>
       <div class="flex space-x-2">
         <UInput v-model="access_pass" type="password" @keydown.enter.passive="handlePass" class="flex-1"/>
-        <UButton @click="handlePass">确定</UButton>
+        <UButton @click="handlePass">{{ $t('confirm') }}</UButton>
       </div>
     </div>
   </UModal>
@@ -420,7 +423,7 @@ function handleImageAdd() {
         <IButton name="i-heroicons-cog-8-tooth" @click.passive.stop="openSetting=!openSetting"/>
         <UButton class="ml-auto" variant="soft" @click.passive.stop="handleNew">
           <div class="line-clamp-1">
-            新建对话 +
+            {{ $t('new_chat') }} +
           </div>
         </UButton>
       </div>
@@ -482,22 +485,22 @@ function handleImageAdd() {
           </div>
         </div>
         <div class="flex items-end">
-          <UTooltip :text="addHistory?'发送时携带历史记录':'发送时不携带历史记录'">
+          <UTooltip :text="addHistory?$t('with_history'):$t('without_history')">
             <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                      icon="i-heroicons-clock-solid"/>
           </UTooltip>
-          <UTextarea v-model="input" placeholder="请输入文本..."
+          <UTextarea v-model="input" :placeholder="$t('please_input_text') + '...'"
                      @keydown.prevent.enter="handleReq($event, selectedModel)"
                      autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
-          <UTooltip text="添加图片/支持粘贴" v-show="selectedModel === 'gemini-pro-vision'">
+          <UTooltip :text="$t('add_image') + '/' + $t('support_paste')" v-show="selectedModel === 'gemini-pro-vision'">
             <input id="image" type="file" class="hidden" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
                    multiple @change="handleImageAdd"/>
             <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
                      icon="i-heroicons-photo"/>
           </UTooltip>
           <UButton @click="handleReq($event, selectedModel)" :disabled="loading" class="m-1">
-            发送
+            {{ $t('send') }}
           </UButton>
         </div>
       </div>

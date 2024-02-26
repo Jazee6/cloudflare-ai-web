@@ -8,16 +8,16 @@ const openaiKey = useLocalStorage('openaiKey', '')
 <template>
   <div class="p-4 flex flex-col space-y-2">
     <div class="font-bold text-lg">
-      设置
+      {{ $t('setting') }}
     </div>
     <div class="flex items-baseline">
-      屏蔽敏感回复(GeminiPro)
+      {{ $t('block_sensitive_reply') }} (GeminiPro)
       <UToggle v-model="safeReply" class="ml-auto" disabled/>
     </div>
     <div class="flex items-end">
       <div class="flex flex-col">
         OPENAI_API_KEY
-        <span class="text-xs text-gray-500">使用自己的key</span>
+        <span class="text-xs text-gray-500">{{ $t('use_own_key') }}</span>
       </div>
       <UInput v-model="openaiKey" class="ml-auto"/>
     </div>

@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
     devtools: {enabled: false},
-    modules: ['@nuxt/ui'],
+    modules: ['@nuxt/ui', '@nuxtjs/i18n'],
     css: ['~/assets/css/style.css'],
     devServer: {
         port: 3001,
@@ -25,5 +25,15 @@ export default defineNuxtConfig({
                 }
             ]
         }
+    },
+    i18n: {
+        vueI18n: './i18n.config.ts',
+        strategy: 'no_prefix',
+        defaultLocale: 'zh',
     }
+    // nitro: {
+    //     vercel: {
+    //         regions: ["cle1", "iad1", "pdx1", "sfo1", "sin1", "syd1", "hnd1", "kix1"]
+    //     }
+    // }
 })
