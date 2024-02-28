@@ -53,6 +53,7 @@ export interface imgData {
 export interface imgReq {
     messages: string
     model: string
+    num_steps: number
 }
 
 interface Part {

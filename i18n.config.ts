@@ -17,6 +17,7 @@ export default defineI18nConfig(() => ({
             add_image: '添加图片',
             support_paste: '支持粘贴',
             send: '发送',
+            img_gen_steps: '图片生成步数',
         },
         en: {
             setting: 'Setting',
@@ -34,6 +35,7 @@ export default defineI18nConfig(() => ({
             add_image: 'Add image',
             support_paste: 'Support paste',
             send: 'Send',
+            img_gen_steps: 'Image generation steps',
         }
     }
 }))

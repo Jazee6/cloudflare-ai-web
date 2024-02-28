@@ -2,7 +2,7 @@ import {imgReq} from "~/utils/type";
 
 export default defineEventHandler(async (event) => {
     const body: imgReq = await readBody(event)
-    const {messages, model} = body
+    const {messages, model, num_steps} = body
 
     const encoder = new TextEncoder()
 
@@ -19,7 +19,10 @@ export default defineEventHandler(async (event) => {
                 },
                 body: JSON.stringify({
                     prompt: messages,
-                }),
+                    num_steps,
+                })
+            }).catch(e => {
+                clearInterval(interval)
             })
 
             const base64 = Buffer.from(await (res as Blob).arrayBuffer()).toString('base64')

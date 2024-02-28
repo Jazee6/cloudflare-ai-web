@@ -229,6 +229,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
           }, {
             messages: send.content,
             model,
+            num_steps: parseInt(localStorage.getItem('SDXL_steps')!) ?? 20
           } as imgReq,
           () => {
             setTimeout(() => {
