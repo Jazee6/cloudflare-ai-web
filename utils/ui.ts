@@ -33,17 +33,8 @@ export const models = [{
     id: '@cf/meta/m2m100-1.2b',
     name: '翻译-m2m100-1.2b'
 }, {
-    id: '@cf/meta/llama-2-7b-chat-fp16',
-    name: 'llama-2-7b-chat-fp16'
-}, {
-    id: '@cf/meta/llama-2-7b-chat-int8',
-    name: 'llama-2-7b-chat-int8'
-}, {
-    id: '@cf/mistral/mistral-7b-instruct-v0.1',
-    name: 'mistral-7b-instruct-v0.1'
-}, {
-    id: '@hf/thebloke/codellama-7b-instruct-awq',
-    name: '编程-codellama-7b-instruct-awq'
+    id: '@cf/qwen/qwen1.5-14b-chat-awq',
+    name: '通义千问1.5-14b'
 }]
 
 export function convertFileSize(size: number) {
