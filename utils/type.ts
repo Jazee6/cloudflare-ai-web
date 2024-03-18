@@ -128,3 +128,10 @@ export interface VisionReq {
         mimeType: string
     }
 }
+
+export interface Model {
+    id: string
+    name: string
+    type: 'chat' | 'text-to-image' | 'image-to-text' | 'text-to-text'
+    endpoint?: string
+}

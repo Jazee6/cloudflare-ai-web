@@ -4,6 +4,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import 'highlight.js/styles/github-dark-dimmed.min.css';
 import {useLocalStorage} from "@vueuse/core";
+import type {Model} from "~/utils/type";
 
 const input = ref('')
 const loading = ref(false)
@@ -18,7 +19,7 @@ const t_lang = computed(() => {
 const s_lang_selected = ref('chinese')
 const t_lang_selected = ref('english')
 const current = computed(() =>
-    models.find(i => i.id === selectedModel.value)
+    models.find(i => i.id === selectedModel.value.id)
 )
 const isOpen = ref(false)
 const access_pass = ref('')
@@ -45,9 +46,9 @@ const safeReply = useLocalStorage('safeReply', true)
 const {setLocale, t} = useI18n()
 let session: number, image: HTMLInputElement
 
-const selectedModel = ref(models[1].id)
+const selectedModel = ref(models[1])
 watch(selectedModel, v => {
-  localStorage.setItem('selectedModel', v)
+  localStorage.setItem('selectedModel', v.id)
 })
 const addHistory = ref(true)
 watch(addHistory, v => {
@@ -83,7 +84,7 @@ onMounted(async () => {
   })
 
   const model = localStorage.getItem('selectedModel')
-  selectedModel.value = models.find(i => i.id === model)?.id ?? models[1].id
+  selectedModel.value.id = models.find(i => i.id === model)?.id ?? models[1].id
   addHistory.value = localStorage.getItem('addHistory') === 'true'
   hideTabBar.value = localStorage.getItem('hideTabBar') === 'true'
   image = document.getElementById('image') as HTMLInputElement
@@ -148,8 +149,8 @@ const onerror = async (response: Response) => {
   history.value[history.value.length - 1].content += response.status + ' ' + response.statusText
 }
 
-const handleReq = async (event: KeyboardEvent, model: string) => {
-  if (model === 'gemini-pro-vision' && upImages.value.length === 0) {
+const handleReq = async (event: KeyboardEvent, model: Model) => {
+  if (model.type === 'image-to-text' && upImages.value.length === 0) {
     alert(t('need_image'))
     return
   }
@@ -169,7 +170,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
     role: 'user',
     content: text,
   }
-  if (model === '@cf/stabilityai/stable-diffusion-xl-base-1.0') {
+  if (model.type === 'text-to-image') {
     send.is_img = true
   }
   history.value.push(send)
@@ -197,10 +198,10 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
     }
   })
 
-  switch (model) {
+  switch (model.id) {
     case '@cf/meta/m2m100-1.2b':
       req('trans', {
-        model,
+        model: model.id,
         text: send.content,
         source_lang: s_lang_selected.value,
         target_lang: t_lang_selected.value
@@ -218,6 +219,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
       break
 
     case '@cf/stabilityai/stable-diffusion-xl-base-1.0':
+    case '@cf/lykon/dreamshaper-8-lcm':
       let time = 0
       await reqStream('img', (data: imgData) => {
             if (data.response === 'pending') {
@@ -228,7 +230,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
             history.value[history.value.length - 1].content = 'data:image/png;base64,' + data.response
           }, {
             messages: send.content,
-            model,
+            model: model.id,
             num_steps: parseInt(localStorage.getItem('SDXL_steps')!) ?? 20
           } as imgReq,
           () => {
@@ -247,7 +249,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
         scrollStream(el)
       }, {
         messages: upMessages(),
-        model,
+        model: model.id,
         key: localStorage.getItem('openaiKey') ?? '',
       } as openaiReq, onclose, onerror)
       break
@@ -290,7 +292,7 @@ const handleReq = async (event: KeyboardEvent, model: string) => {
         scrollStream(el)
       }, {
         messages: upMessages(),
-        model,
+        model: model.id,
       } as workersAiReq, onclose, onerror)
   }
 
@@ -432,7 +434,7 @@ function handleImageAdd() {
     <div class="flex flex-col w-full">
       <div ref="el" class="py-4 h-full overflow-y-auto pt-24 scrollbar-hide">
 
-        <div v-if="selectedModel==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
+        <div v-if="selectedModel.id==='@cf/meta/m2m100-1.2b'" class="flex justify-center sticky top-0 z-10">
           <div id="navbar" class="flex items-center p-2 rounded-xl shadow blur-global">
             <USelectMenu :options="s_lang" v-model="s_lang_selected">
 
@@ -472,13 +474,8 @@ function handleImageAdd() {
         </ul>
       </div>
       <div class="space-y-1 flex flex-col">
-        <USelectMenu class="self-center mt-1" v-model="selectedModel" :options="models" value-attribute="id"
-                     option-attribute="name">
-          <template #label>
-            {{ current.name }}
-          </template>
-        </USelectMenu>
-        <div v-show="selectedModel === 'gemini-pro-vision'" class="flex flex-wrap ml-1.5 space-x-1.5">
+        <USelectMenu class="self-center mt-1" v-model="selectedModel" :options="models" option-attribute="name"/>
+        <div v-show="selectedModel.id === 'gemini-pro-vision'" class="flex flex-wrap ml-1.5 space-x-1.5">
           <div v-for="i in upImages" :key="i.url" class="relative img-mask"
                @click="upImages.splice(upImages.indexOf(i),1)">
             <img :src="i.url" :alt="i.file.name"
@@ -494,7 +491,8 @@ function handleImageAdd() {
                      @keydown.prevent.enter="handleReq($event, selectedModel)"
                      autofocus :rows="1" autoresize @paste="handlePaste"
                      class="flex-1 max-h-48 overflow-y-auto p-1"/>
-          <UTooltip :text="$t('add_image') + '/' + $t('support_paste')" v-show="selectedModel === 'gemini-pro-vision'">
+          <UTooltip :text="$t('add_image') + '/' + $t('support_paste')"
+                    v-show="selectedModel.id === 'gemini-pro-vision'">
             <input id="image" type="file" class="hidden" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
                    multiple @change="handleImageAdd"/>
             <UButton class="m-1" @click="handleImage" :color="upImages.length?'primary':'gray'"
