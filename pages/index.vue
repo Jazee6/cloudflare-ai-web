@@ -84,7 +84,7 @@ onMounted(async () => {
   })
 
   const model = localStorage.getItem('selectedModel')
-  selectedModel.value.id = models.find(i => i.id === model)?.id ?? models[1].id
+  selectedModel.value = models.find(i => i.id === model) ?? models[1]
   addHistory.value = localStorage.getItem('addHistory') === 'true'
   hideTabBar.value = localStorage.getItem('hideTabBar') === 'true'
   image = document.getElementById('image') as HTMLInputElement
@@ -231,7 +231,7 @@ const handleReq = async (event: KeyboardEvent, model: Model) => {
           }, {
             messages: send.content,
             model: model.id,
-            num_steps: parseInt(localStorage.getItem('SDXL_steps')!) ?? 20
+            num_steps: localStorage.getItem('SDXL_steps') == null ? 20 : parseInt(localStorage.getItem('SDXL_steps')!),
           } as imgReq,
           () => {
             setTimeout(() => {
