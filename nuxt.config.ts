@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import {icons} from "@iconify-json/heroicons";
+
 export default defineNuxtConfig({
     devtools: {enabled: false},
     modules: ['@nuxt/ui', '@nuxtjs/i18n'],
@@ -23,6 +25,12 @@ export default defineNuxtConfig({
                     name: 'description',
                     content: 'Integrated web platform supporting GeminiPro/Cloudflare Workers AI/ChatGPT by Jazee6'
                 }
+            ],
+            link: [
+                {
+                    rel: 'manifest',
+                    href: '/manifest.json'
+                }
             ]
         }
     },
@@ -30,6 +38,19 @@ export default defineNuxtConfig({
         vueI18n: './i18n.config.ts',
         strategy: 'no_prefix',
         defaultLocale: 'zh',
+    },
+    vite: {
+        build: {
+            rollupOptions: {
+                output: {
+                    manualChunks: (id) => {
+                        if (id.includes('node_modules')) {
+                            return 'vendor'
+                        }
+                    }
+                }
+            }
+        }
     }
     // nitro: {
     //     vercel: {

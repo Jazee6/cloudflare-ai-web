@@ -4,7 +4,7 @@
   "start_url": ".",
   "display": "standalone",
   "background_color": "#fff",
-  "description": "An AI web App",
+  "description": "Cloudflare AI Web App",
   "icons": [
     {
       "src": "/pwa.webp",

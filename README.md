@@ -21,28 +21,29 @@ docker run -d --name cloudflare-ai-web \
 
 ## 特性
 
-- 利用免费的 Cloudflare Workers AI 快速搭建文本生成、AI翻译、AI绘画平台
+- 利用 Cloudflare Workers AI 快速搭建AI聊天、AI翻译、AI绘画平台
 - Vercel Edge Functions 部署，全球边缘网络加速，500000次免费额度，无限制响应时间
 - 支持 ChatGPT GeminiPro(Vision)，支持开启访问密码，支持自定义域名
 
 ### 模型支持
 
 - 视觉 `GeminiPro Vision`
-- 文生图 `stable-diffusion-xl-base-1.0`
-- 文本生成 `GeminiPro` `llama-2-7b-chat-fp16` `llama-2-7b-chat-int8` `mistral-7b-instruct-v0.1` `gpt-3.5-turbo`
-- 代码生成 `codellama-7b-instruct-awq`
+- 文生图 `stable-diffusion-xl-base-1.0` `dreamshaper-8-lcm`
+- 聊天 `GeminiPro` `gpt-3.5-turbo` `qwen1.5-14b-chat-awq`
 - 翻译 `m2m100-1.2b`
 
 ## 部署说明
 
-### 环境变量
+### 环境变量列表
 
-- `CF_TOKEN` - Cloudflare Workers AI Token
-- `CF_GATEWAY` - Cloudflare AI Gateway URL
-- `OPENAI_API_KEY` - OpenAI API Key (需要ChatGPT时填写)
-- `G_API_KEY` - Google AI API Key (需要GeminiPro时填写)
-- `G_API_URL` - Google AI 反代 (非美国ip填写，或参考以下配置)
-- `PASSWORD` - 访问密码 (可选)
+| 名称             | 描述                                 | 
+|----------------|------------------------------------|
+| CF_TOKEN       | Cloudflare Workers AI Token        |  
+| CF_GATEWAY     | Cloudflare AI Gateway URL          |    
+| OPENAI_API_KEY | OpenAI API Key (需要ChatGPT时填写)      |     
+| G_API_KEY      | Google AI API Key (需要GeminiPro时填写) |   
+| G_API_URL      | Google AI 反代 (非美国ip填写，或参考以下配置)     |    
+| PASSWORD       | 访问密码 (可选)                          |   
 
 #### CF_TOKEN
 

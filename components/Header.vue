@@ -1,37 +1,25 @@
 <script setup lang="ts">
 import {useDark, useToggle} from "@vueuse/core";
+import {useGlobalState} from "~/utils/store";
 
-const hideTabBar = useState('hideTabBar', () => true)
 const isDark = useDark()
 const toggleDark = useToggle(isDark)
-let handleClick
-
+const {openAside} = useGlobalState()
 onMounted(() => {
-  handleClick = () => {
-    location.reload()
-  }
+  openAside.value = localStorage.getItem('openAside') === 'true'
+})
+watch(openAside, (v) => {
+  localStorage.setItem('openAside', v.toString())
 })
 </script>
 
 <template>
-  <div id="navbar" class="blur-global dark:bg-neutral-800">
+  <header class="blur-global dark:bg-neutral-800 shadow h-16 fixed w-full z-50 rounded-b-lg">
     <UContainer class="h-full flex items-center">
-      <div class="w-9 h-9 cursor-pointer rounded-full transition-all hover:bg-neutral-300 dark:hover:bg-neutral-700"
-           @click="hideTabBar = !hideTabBar">
-        <UIcon name="i-heroicons-bars-3-20-solid" class="h-7 w-7 m-1"/>
-      </div>
-      <h1 @click="handleClick" class="text-lg font-bold ml-2 hover:cursor-pointer">CF AI Web</h1>
+      <IButton name="i-heroicons-bars-3-20-solid" @click="openAside = !openAside"/>
+      <h1 @click="()=>location.reload()" class="text-lg font-bold ml-2 hover:cursor-pointer">CF AI Web</h1>
       <IButton class="ml-auto" :name="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"
-               @click.passive.stop="toggleDark()"/>
+               @click="toggleDark()"/>
     </UContainer>
-  </div>
+  </header>
 </template>
-
-
-<style scoped>
-#navbar {
-  border-radius: 0 0 8px 8px;
-  z-index: 1;
-  @apply shadow h-16 shrink-0 fixed w-full z-50
-}
-</style>

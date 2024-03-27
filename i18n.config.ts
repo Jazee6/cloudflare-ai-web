@@ -18,6 +18,8 @@ export default defineI18nConfig(() => ({
             support_paste: '支持粘贴',
             send: '发送',
             img_gen_steps: '图片生成步数',
+            text_generation: '文本生成',
+            image_generation: '图像生成',
         },
         en: {
             setting: 'Setting',
@@ -36,6 +38,8 @@ export default defineI18nConfig(() => ({
             support_paste: 'Support paste',
             send: 'Send',
             img_gen_steps: 'Image generation steps',
+            text_generation: 'Text generation',
+            image_generation: 'Image generation',
         }
     }
 }))

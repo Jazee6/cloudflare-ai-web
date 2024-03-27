@@ -1,8 +1,4 @@
-html, body {
-    @apply h-full
-}
-
-#__nuxt {
+html, body, #__nuxt {
     @apply h-full
 }
 
@@ -27,4 +23,8 @@ html, body {
 .loading > td:last-child::after,
 .loading > ul:last-child li:last-child::after {
     content: ' ● ';
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    @apply hidden
 }
