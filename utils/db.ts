@@ -3,7 +3,7 @@ import Dexie, {type Table} from 'dexie';
 export interface Model {
     id: string
     name: string
-    provider: 'openai' | 'workers-ai'
+    provider: 'openai' | 'workers-ai' | 'google'
     type: 'chat' | 'text-to-image' | 'image-to-text' | 'text-to-text'
     endpoint?: string
 }
@@ -11,7 +11,7 @@ export interface Model {
 export interface HistoryItem {
     id?: number
     session: number
-    type: 'text' | 'image' | 'image-prompt'
+    type: 'text' | 'image' | 'image-prompt' | 'error'
     content: string
     role: 'user' | 'assistant'
 }
@@ -67,13 +67,25 @@ export class Database extends Dexie {
 
 export const DB = new Database();
 
+export const initialSettings = {
+    openaiKey: '',
+    image_steps: 20
+}
+
+export type Settings = typeof initialSettings
+
 export const textGenModels: Model[] = [{
+    id: 'gemini-pro',
+    name: 'Gemini Pro',
+    provider: 'google',
+    type: 'chat'
+}, {
     id: 'gpt-3.5-turbo',
     name: 'ChatGPT-3.5-turbo',
     provider: 'openai',
     endpoint: 'chat/completions',
     type: 'chat'
-},{
+}, {
     id: '@cf/meta/llama-2-7b-chat-fp16',
     name: 'llama-2-7b-chat-fp16',
     provider: 'workers-ai',
@@ -88,37 +100,37 @@ export const textGenModels: Model[] = [{
     name: 'mistral-7b-instruct-v0.1',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@cf/thebloke/discolm-german-7b-v1-awq',
     name: 'discolm-german-7b-v1-awq',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@cf/tiiuae/falcon-7b-instruct',
     name: 'falcon-7b-instruct',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@hf/thebloke/llama-2-13b-chat-awq',
     name: 'llama-2-13b-chat-awq',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@hf/thebloke/llamaguard-7b-awq',
     name: 'llamaguard-7b-awq',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@hf/thebloke/mistral-7b-instruct-v0.1-awq',
     name: 'mistral-7b-instruct-v0.1-awq',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@hf/thebloke/neural-chat-7b-v3-1-awq',
     name: 'neural-chat-7b-v3-1-awq',
     provider: 'workers-ai',
     type: 'chat'
-},{
+}, {
     id: '@cf/openchat/openchat-3.5-0106',
     name: 'openchat-3.5-0106',
     provider: 'workers-ai',

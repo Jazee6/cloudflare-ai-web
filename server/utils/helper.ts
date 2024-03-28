@@ -1,7 +1,7 @@
 import {OpenAIRes, WorkersRes} from "~/server/utils/types";
 import {createParser} from "eventsource-parser";
 
-const headers = {
+export const headers = {
     'Content-Type': 'text/event-stream',
 } as const
 

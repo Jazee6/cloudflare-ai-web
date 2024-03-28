@@ -29,6 +29,13 @@ export const scrollStream = (el: HTMLElement, distance: number = 100) => {
     }, 500)()
 }
 
+export function scrollToTop(el: HTMLElement | null) {
+    el?.scrollTo({
+        top: el.scrollHeight,
+        behavior: 'smooth'
+    })
+}
+
 export function getSystemPrompt() {
     const p: OpenAIMessage = {
         role: 'system',

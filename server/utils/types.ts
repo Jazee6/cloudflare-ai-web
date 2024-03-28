@@ -39,3 +39,8 @@ export interface WorkersReq {
 export interface WorkersRes {
     response: string
 }
+
+export interface GeminiReq {
+    model: string
+    messages: OpenAIMessage[]
+}

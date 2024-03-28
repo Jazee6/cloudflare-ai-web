@@ -28,8 +28,11 @@ const md: MarkdownIt = markdownit({
       </template>
       <template v-else>
         <li v-if="i.type==='text'" class="chat-item slide-top prose"
-            :class="[i.role==='user'?'send':'reply', index+1===history.length && loading ?  'loading':'' ]"
+            :class="[i.role==='user'?'send':'reply-text', index+1===history.length && loading ?  'loading':'' ]"
             v-html="i.role === 'user'? i.content: md.render(i.content)"/>
+        <li v-else-if="i.type==='error'" class="chat-item slide-top reply-error">
+          {{ i.content }}
+        </li>
       </template>
     </template>
   </ul>
@@ -49,8 +52,12 @@ const md: MarkdownIt = markdownit({
   @apply self-end bg-green-500 text-white dark:bg-green-700 dark:text-gray-300
 }
 
-.reply {
+.reply-text {
   @apply self-start bg-gray-200 text-black dark:bg-gray-400
+}
+
+.reply-error {
+  @apply self-start bg-red-200 dark:bg-red-400 dark:text-black
 }
 
 .send::selection {

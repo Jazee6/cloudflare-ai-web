@@ -7,7 +7,7 @@ const access_pass = ref('')
 function handlePass() {
   if (!access_pass.value) return
   localStorage.setItem('access_pass', access_pass.value)
-  location.reload()
+  passModal.value = false
 }
 </script>
 

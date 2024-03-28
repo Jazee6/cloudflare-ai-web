@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {workersReq, openAIReq} from "~/api";
-import {scrollStream} from "~/utils/tools";
-import {useThrottleFn} from "@vueuse/shared";
+import {workersReq, openAIReq, geminiReq} from "~/api";
+import {useLocalStorage} from "@vueuse/core";
+import {scrollToTop} from "~/utils/tools";
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +13,7 @@ const selectedTab = ref(0)
 const {selectedModel} = useGlobalState()
 const initializing = ref(true)
 const loading = ref(false)
+let settings: Ref<Settings>
 let session: number = 0
 
 async function initDB() {
@@ -51,6 +52,8 @@ onMounted(async () => {
     } else await getLatestData()
   }
 
+  settings = useLocalStorage('settings', initialSettings)
+
   initializing.value = false
 })
 
@@ -60,10 +63,7 @@ async function handleNewChat() {
 
   await nextTick(() => {
     const tabEl = document.getElementById('tabEl')
-    tabEl?.scrollTo({
-      behavior: 'smooth',
-      top: 0
-    })
+    scrollToTop(tabEl)
   })
 }
 
@@ -75,12 +75,37 @@ async function handleSwitchChat(e: MouseEvent) {
   selectedTab.value = parseInt(id)
   history.value = await DB.getHistory(parseInt(id))
   await router.push({query: {session: id}})
+  session = parseInt(id)
 }
 
-function handleDelete(id: number) {
+async function handleDelete(id: number) {
   if (tabs.value.length === 1) return
   tabs.value = tabs.value.filter(i => i.id !== id)
   DB.deleteTabAndHistory(id)
+
+  const nid = tabs.value[0].id as number
+  selectedTab.value = nid
+  history.value = await DB.getHistory(nid)
+  await router.push({query: {session: nid}})
+  session = nid
+}
+
+function basicCatch(e: Error) {
+  history.value[history.value.length - 1].content += e.message
+  history.value[history.value.length - 1].type = 'error'
+  nextTick(() => {
+    const chatList = document.getElementById('chatList')
+    scrollToTop(chatList)
+  })
+  DB.history.add(toRaw(history.value[history.value.length - 1]))
+}
+
+function basicFin() {
+  loading.value = false
+}
+
+function basicDone() {
+  DB.history.add(toRaw(history.value[history.value.length - 1]))
 }
 
 async function handleSend(input: string, addHistory: boolean) {
@@ -113,39 +138,36 @@ async function handleSend(input: string, addHistory: boolean) {
 
   const chatList = document.getElementById('chatList') as HTMLElement
   await nextTick(() => {
-    chatList.scrollTo({
-      behavior: 'smooth',
-      top: chatList.scrollHeight
-    })
+    scrollToTop(chatList)
   })
 
+  const req = {
+    model: selectedModel.value.id,
+    messages: getMessages(toRaw(history.value), addHistory)
+  }
   switch (selectedModel.value.provider) {
     case 'openai':
       openAIReq({
-        model: selectedModel.value.id,
-        messages: getMessages(toRaw(history.value), addHistory),
-        endpoint: selectedModel.value.endpoint!
+        ...req,
+        endpoint: selectedModel.value.endpoint!,
+        key: settings.value.openaiKey === '' ? undefined : settings.value.openaiKey
       }, text => {
         history.value[history.value.length - 1].content += text
         scrollStream(chatList)
-      }).then(() => {
-        DB.history.add(toRaw(history.value[history.value.length - 1]))
-      }).finally(() => {
-        loading.value = false
-      })
+      }).then(basicDone).catch(basicCatch).finally(basicFin)
       break
     case "workers-ai":
-      workersReq({
-        model: selectedModel.value.id,
-        messages: getMessages(toRaw(history.value), addHistory),
-      }, text => {
+      workersReq(req, text => {
         history.value[history.value.length - 1].content += text
         scrollStream(chatList)
-      }).then(() => {
-        DB.history.add(toRaw(history.value[history.value.length - 1]))
-      }).finally(() => {
-        loading.value = false
-      })
+      }).then(basicDone).catch(basicCatch).finally(basicFin)
+      break
+    case "google":
+      geminiReq(req, text => {
+        history.value[history.value.length - 1].content += text
+        scrollStream(chatList, 512)
+      }).then(basicDone).catch(basicCatch).finally(basicFin)
+      break
   }
 }
 </script>

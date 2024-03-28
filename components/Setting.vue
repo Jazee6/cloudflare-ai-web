@@ -2,11 +2,7 @@
 import {useLocalStorage} from "@vueuse/core";
 
 const {openSettings} = useGlobalState()
-const settings = useLocalStorage('settings', {
-  safeReply: true,
-  openaiKey: '',
-  image_steps: 20
-})
+const settings = useLocalStorage('settings', initialSettings)
 </script>
 
 <template>
@@ -15,10 +11,6 @@ const settings = useLocalStorage('settings', {
       <h2 class="font-bold text-lg">
         {{ $t('setting') }}
       </h2>
-      <div class="flex items-baseline">
-        {{ $t('block_sensitive_reply') }} (GeminiPro)
-        <UToggle v-model.lazy="settings.safeReply" class="ml-auto" disabled/>
-      </div>
       <div class="flex items-end">
         <div class="flex flex-col">
           OPENAI_API_KEY

@@ -1,5 +1,4 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import {icons} from "@iconify-json/heroicons";
 
 export default defineNuxtConfig({
     devtools: {enabled: false},
@@ -38,19 +37,6 @@ export default defineNuxtConfig({
         vueI18n: './i18n.config.ts',
         strategy: 'no_prefix',
         defaultLocale: 'zh',
-    },
-    vite: {
-        build: {
-            rollupOptions: {
-                output: {
-                    manualChunks: (id) => {
-                        if (id.includes('node_modules')) {
-                            return 'vendor'
-                        }
-                    }
-                }
-            }
-        }
     }
     // nitro: {
     //     vercel: {
