@@ -1,6 +1,5 @@
-import {handleErr, streamResponse, workersTextParser} from "~/server/utils/helper";
-import {WorkersReq} from "~/server/utils/types";
-import {WorkersBody} from "~/server/utils/types";
+import {handleErr, streamResponse, workersTextParser} from "~/utils/helper";
+import {WorkersBody, WorkersReq} from "~/utils/types";
 
 export default defineEventHandler(async (event) => {
     const body: WorkersReq = await readBody(event)

@@ -1,5 +1,5 @@
-import {handleErr, openaiParser, streamResponse} from "~/server/utils/helper";
-import {OpenAIBody, OpenAIReq} from "~/server/utils/types";
+import {handleErr, openaiParser, streamResponse} from "~/utils/helper";
+import {OpenAIBody, OpenAIReq} from "~/utils/types";
 
 export default defineEventHandler(async (event) => {
     const body: OpenAIReq = await readBody(event)

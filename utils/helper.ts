@@ -1,4 +1,3 @@
-import {OpenAIRes, WorkersRes} from "~/server/utils/types";
 import {createParser} from "eventsource-parser";
 
 export const headers = {

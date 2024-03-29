@@ -33,6 +33,19 @@ export default defineNuxtConfig({
             ]
         }
     },
+    vite: {
+        build: {
+            rollupOptions: {
+                output: {
+                    manualChunks: (id) => {
+                        if (id.includes('node_modules')) {
+                            return 'vendor'
+                        }
+                    }
+                }
+            }
+        }
+    },
     i18n: {
         vueI18n: './i18n.config.ts',
         strategy: 'no_prefix',

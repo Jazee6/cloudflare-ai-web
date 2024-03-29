@@ -1,6 +1,6 @@
 import {GoogleGenerativeAI} from '@google/generative-ai'
-import {GeminiReq} from "~/server/utils/types";
-import {headers} from "~/server/utils/helper";
+import {headers} from '~/utils/helper';
+import {GeminiReq} from "~/utils/types";
 
 const genAI = new GoogleGenerativeAI(process.env.G_API_KEY!)
 
