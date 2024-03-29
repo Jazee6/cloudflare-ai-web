@@ -13,16 +13,16 @@
   },
   "devDependencies": {
     "@nuxtjs/i18n": "^8.2.0",
-    "@tailwindcss/typography": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.12",
     "@types/markdown-it": "^13.0.7",
-    "nuxt": "^3.11.1",
+    "nuxt": "3.10.3",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "dependencies": {
     "@google/generative-ai": "^0.3.1",
-    "@nuxt/ui": "^2.14.2",
-    "dexie": "^3.2.7",
+    "@nuxt/ui": "^2.15.0",
+    "dexie": "^4.0.1",
     "eventsource-parser": "^1.1.2",
     "highlight.js": "^11.9.0",
     "markdown-it": "^14.1.0"

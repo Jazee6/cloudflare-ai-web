@@ -6,7 +6,8 @@ const isDark = useDark()
 const toggleDark = useToggle(isDark)
 const {openAside} = useGlobalState()
 onMounted(() => {
-  openAside.value = localStorage.getItem('openAside') === 'true'
+  const open = localStorage.getItem('openAside')
+  openAside.value = open === 'true' || open === null
 })
 watch(openAside, (v) => {
   localStorage.setItem('openAside', v.toString())
