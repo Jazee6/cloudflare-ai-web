@@ -15,7 +15,7 @@
     "@nuxtjs/i18n": "^8.2.0",
     "@tailwindcss/typography": "^0.5.12",
     "@types/markdown-it": "^13.0.7",
-    "nuxt": "3.10.3",
+    "nuxt": "^3.11.1",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },

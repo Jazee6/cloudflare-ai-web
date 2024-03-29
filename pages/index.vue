@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import {workersReq, openAIReq, geminiReq} from "~/api";
 import {useLocalStorage} from "@vueuse/core";
 
 const route = useRoute()

@@ -1,4 +1,6 @@
-import {createGlobalState} from "@vueuse/shared";
+import {createGlobalState} from "@vueuse/shared"
+import {textGenModels} from "./db"
+import {ref} from "vue"
 
 export const useGlobalState = createGlobalState(() => {
     const openModelSelect = ref(false)

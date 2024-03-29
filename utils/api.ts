@@ -1,5 +1,4 @@
-import {streamFetch} from "~/api/helper";
-import type {GeminiReq, OpenAIReq, WorkersReq} from "~/server/utils/types";
+import {streamFetch} from "~/utils/helper";
 
 export function openAIReq(req: OpenAIReq, onStream: (data: unknown) => void) {
     return streamFetch('/auth/openai', req, onStream)
