@@ -1,34 +1,13 @@
 import Dexie, {type Table} from 'dexie';
 
-export interface Model {
-    id: string
-    name: string
-    provider: 'openai' | 'workers-ai' | 'google'
-    type: 'chat' | 'text-to-image' | 'image-to-text' | 'text-to-text'
-    endpoint?: string
-}
-
-export interface HistoryItem {
-    id?: number
-    session: number
-    type: 'text' | 'image' | 'image-prompt' | 'error'
-    content: string
-    role: 'user' | 'assistant'
-}
-
-export interface TabItem {
-    id?: number
-    label: string
-}
-
 export class Database extends Dexie {
     history!: Table<HistoryItem>
     tab!: Table<TabItem>
 
     constructor() {
         super('ai')
-        this.version(3).stores({
-            history: '++id, session, type, role, content',
+        this.version(4).stores({
+            history: '++id, session, type, role, content, src',
             tab: '++id, label'
         }).upgrade(tx => {
             return tx.table('history').toCollection().modify(item => {
@@ -49,8 +28,15 @@ export class Database extends Dexie {
         return DB.tab.limit(100).reverse().toArray()
     }
 
-    getHistory(session: number) {
-        return DB.history.where('session').equals(session).limit(100).toArray()
+    async getHistory(session: number) {
+        const arr = await DB.history.where('session').equals(session).limit(100).toArray()
+        arr.forEach(i => {
+            if (i.type === 'image' && i.src instanceof Blob) {
+                URL.revokeObjectURL(i.content)
+                i.content = URL.createObjectURL(i.src)
+            }
+        })
+        return arr
     }
 
     addTab(label: string) {
@@ -140,12 +126,12 @@ export const textGenModels: Model[] = [{
 export const imageGenModels: Model[] = [{
     id: '@cf/lykon/dreamshaper-8-lcm',
     name: 'dreamshaper-8-lcm',
-    provider: 'workers-ai',
+    provider: 'workers-ai-image',
     type: 'text-to-image'
 }, {
     id: '@cf/stabilityai/stable-diffusion-xl-base-1.0',
     name: 'stable-diffusion-xl-base-1.0',
-    provider: 'workers-ai',
+    provider: 'workers-ai-image',
     type: 'text-to-image'
 }]
 

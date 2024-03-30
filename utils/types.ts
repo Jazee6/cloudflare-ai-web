@@ -1,3 +1,25 @@
+export interface Model {
+    id: string
+    name: string
+    provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image'
+    type: 'chat' | 'text-to-image' | 'image-to-text'
+    endpoint?: string
+}
+
+export interface HistoryItem {
+    id?: number
+    session: number
+    type: 'text' | 'image' | 'image-prompt' | 'error'
+    content: string
+    role: 'user' | 'assistant'
+    src?: Blob
+}
+
+export interface TabItem {
+    id?: number
+    label: string
+}
+
 export interface OpenAIMessage {
     role: 'system' | 'user' | 'assistant'
     content: string
@@ -31,9 +53,20 @@ export interface WorkersBody {
     messages: OpenAIMessage[]
 }
 
+export interface WorkersBodyImage {
+    prompt: string
+    num_steps?: number
+}
+
 export interface WorkersReq {
     model: string
     messages: OpenAIMessage[]
+}
+
+export interface WorkersReqImage {
+    model: string
+    messages: OpenAIMessage[]
+    num_steps?: number
 }
 
 export interface WorkersRes {

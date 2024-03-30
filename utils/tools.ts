@@ -1,5 +1,3 @@
-import type {OpenAIMessage} from "~/server/utils/types";
-import type {HistoryItem} from "~/utils/db";
 import {useThrottleFn} from "@vueuse/shared";
 
 const TOKEN_KEY = 'access_pass'
@@ -44,8 +42,17 @@ export function getSystemPrompt() {
     return p
 }
 
-export function getMessages(history: HistoryItem[], addHistory: boolean) {
-    if (addHistory)
+export function getMessages(history: HistoryItem[], options?: {
+    addHistory: boolean,
+    type: Model['type']
+}) {
+    if (options?.type === 'text-to-image') {
+        return [{
+            role: history[history.length - 2].role,
+            content: history[history.length - 2].content
+        }]
+    }
+    if (options?.addHistory)
         return [
             getSystemPrompt()
         ].concat(history.slice(0, -1).filter(i => i.type === 'text').map((item) => {

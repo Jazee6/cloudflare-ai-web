@@ -30,6 +30,9 @@ const md: MarkdownIt = markdownit({
         <li v-if="i.type==='text'" class="chat-item slide-top prose"
             :class="[i.role==='user'?'send':'reply-text', index+1===history.length && loading ?  'loading':'' ]"
             v-html="i.role === 'user'? i.content: md.render(i.content)"/>
+        <li v-else-if="i.type === 'image'">
+          <img class="chat-item slide-top" :src="i.content" :alt="history[index-1].content"/>
+        </li>
         <li v-else-if="i.type==='error'" class="chat-item slide-top reply-error">
           {{ i.content }}
         </li>

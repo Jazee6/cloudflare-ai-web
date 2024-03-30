@@ -1,4 +1,4 @@
-import {GoogleGenerativeAI} from '@google/generative-ai'
+import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from '@google/generative-ai'
 import {headers} from '~/utils/helper';
 import {GeminiReq} from "~/utils/types";
 
@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     const body: GeminiReq = await readBody(event)
     const {model, messages} = body
 
-    const m = genAI.getGenerativeModel({model})
+    const m = genAI.getGenerativeModel({model, safetySettings})
     let msg = messages.slice(1)
     let flag = ['user', 'assistant']
     for (let i = 0; i < msg.length; i++) {
@@ -46,3 +46,26 @@ export default defineEventHandler(async (event) => {
         headers,
     })
 })
+
+const safetySettings = [
+    {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+        threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    }
+]

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {useLocalStorage} from "@vueuse/core";
+import {workersImageReq} from "~/utils/api";
 
 const route = useRoute()
 const router = useRouter()
@@ -108,6 +109,7 @@ function basicDone() {
 
 async function handleSend(input: string, addHistory: boolean) {
   loading.value = true
+  const type = selectedModel.value.type
 
   if (history.value.length === 0) {
     const label = input.substring(0, 15)
@@ -131,7 +133,7 @@ async function handleSend(input: string, addHistory: boolean) {
     session,
     role: 'assistant',
     content: '',
-    type: 'text'
+    type: type === 'chat' ? 'text' : 'image'
   })
 
   const chatList = document.getElementById('chatList') as HTMLElement
@@ -141,7 +143,7 @@ async function handleSend(input: string, addHistory: boolean) {
 
   const req = {
     model: selectedModel.value.id,
-    messages: getMessages(toRaw(history.value), addHistory)
+    messages: getMessages(toRaw(history.value), {addHistory, type})
   }
   switch (selectedModel.value.provider) {
     case 'openai':
@@ -155,10 +157,24 @@ async function handleSend(input: string, addHistory: boolean) {
       }).then(basicDone).catch(basicCatch).finally(basicFin)
       break
     case "workers-ai":
-      workersReq(req, text => {
-        history.value[history.value.length - 1].content += text
+      workersReq(req, res => {
+        history.value[history.value.length - 1].content += res
         scrollStream(chatList)
       }).then(basicDone).catch(basicCatch).finally(basicFin)
+      break
+    case "workers-ai-image":
+      workersImageReq({
+        ...req,
+        num_steps: settings.value.image_steps,
+      }).then(res => {
+        history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
+        history.value[history.value.length - 1].src = res as Blob
+
+        setTimeout(() => {
+          scrollToTop(chatList)
+        }, 100)
+        basicDone()
+      }).catch(basicCatch).finally(basicFin)
       break
     case "google":
       geminiReq(req, text => {

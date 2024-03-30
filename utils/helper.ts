@@ -45,6 +45,14 @@ export function workersTextParser(chunk: string) {
     return data.response
 }
 
+export function imageResponse(res: Response) {
+    return new Response(res.body, {
+        headers: {
+            'Content-Type': 'image/png',
+        }
+    })
+}
+
 export async function handleErr(res: Response) {
     const text = await res.text()
     console.error(res.status, res.statusText, text)
@@ -53,7 +61,6 @@ export async function handleErr(res: Response) {
         statusText: res.statusText,
     })
 }
-
 
 const {passModal} = useGlobalState()
 
@@ -102,6 +109,10 @@ export async function basicFetch(
             })
         }
     }
+
+    if (response.headers.get('Content-Type')?.includes('image')) {
+        return await response.blob()
+    }
 }
 
 export function streamFetch(path: string, body: Object, onStream: (data: string) => void) {
@@ -112,4 +123,14 @@ export function streamFetch(path: string, body: Object, onStream: (data: string)
         },
         body: JSON.stringify(body),
     }, onStream)
+}
+
+export function postFetch(path: string, body: Object) {
+    return basicFetch(path, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    })
 }
