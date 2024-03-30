@@ -121,7 +121,7 @@ async function handleSend(input: string, addHistory: boolean) {
     session,
     role: 'user',
     content: input,
-    type: 'text'
+    type: type === 'chat' ? 'text' : 'image-prompt'
   } as HistoryItem
   const id = await DB.history.add(historyItem) as number
   history.value.push({

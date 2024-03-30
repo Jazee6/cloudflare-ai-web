@@ -27,7 +27,7 @@ const md: MarkdownIt = markdownit({
         <USkeleton class="loading-item"/>
       </template>
       <template v-else>
-        <li v-if="i.type==='text'" class="chat-item slide-top prose"
+        <li v-if="i.type==='text'||i.type==='image-prompt'" class="chat-item slide-top prose"
             :class="[i.role==='user'?'send':'reply-text', index+1===history.length && loading ?  'loading':'' ]"
             v-html="i.role === 'user'? i.content: md.render(i.content)"/>
         <li v-else-if="i.type === 'image'">
