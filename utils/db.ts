@@ -65,43 +65,23 @@ export const textGenModels: Model[] = [{
     endpoint: 'chat/completions',
     type: 'chat'
 }, {
-    id: '@cf/meta/llama-2-7b-chat-fp16',
-    name: 'llama-2-7b-chat-fp16',
+    id: '@cf/qwen/qwen1.5-14b-chat-awq',
+    name: 'qwen1.5-14b-chat-awq',
     provider: 'workers-ai',
     type: 'chat'
 }, {
-    id: '@cf/meta/llama-2-7b-chat-int8',
-    name: 'llama-2-7b-chat-int8',
+    id: '@cf/openchat/openchat-3.5-0106',
+    name: 'openchat-3.5-0106',
     provider: 'workers-ai',
     type: 'chat'
 }, {
-    id: '@cf/mistral/mistral-7b-instruct-v0.1',
-    name: 'mistral-7b-instruct-v0.1',
+    id: '@cf/google/gemma-7b-it-lora',
+    name: 'gemma-7b-it-lora',
     provider: 'workers-ai',
     type: 'chat'
 }, {
-    id: '@cf/thebloke/discolm-german-7b-v1-awq',
-    name: 'discolm-german-7b-v1-awq',
-    provider: 'workers-ai',
-    type: 'chat'
-}, {
-    id: '@cf/tiiuae/falcon-7b-instruct',
-    name: 'falcon-7b-instruct',
-    provider: 'workers-ai',
-    type: 'chat'
-}, {
-    id: '@hf/thebloke/llama-2-13b-chat-awq',
-    name: 'llama-2-13b-chat-awq',
-    provider: 'workers-ai',
-    type: 'chat'
-}, {
-    id: '@hf/thebloke/llamaguard-7b-awq',
-    name: 'llamaguard-7b-awq',
-    provider: 'workers-ai',
-    type: 'chat'
-}, {
-    id: '@hf/thebloke/mistral-7b-instruct-v0.1-awq',
-    name: 'mistral-7b-instruct-v0.1-awq',
+    id: '@hf/thebloke/openhermes-2.5-mistral-7b-awq',
+    name: 'openhermes-2.5-mistral-7b-awq',
     provider: 'workers-ai',
     type: 'chat'
 }, {
@@ -110,8 +90,8 @@ export const textGenModels: Model[] = [{
     provider: 'workers-ai',
     type: 'chat'
 }, {
-    id: '@cf/openchat/openchat-3.5-0106',
-    name: 'openchat-3.5-0106',
+    id: '@hf/nexusflow/starling-lm-7b-beta',
+    name: 'starling-lm-7b-beta',
     provider: 'workers-ai',
     type: 'chat'
 }]

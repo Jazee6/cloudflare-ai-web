@@ -57,6 +57,8 @@ onMounted(async () => {
 })
 
 async function handleNewChat() {
+  if (loading.value) return
+
   await initDB()
   history.value = []
 
@@ -67,6 +69,8 @@ async function handleNewChat() {
 }
 
 async function handleSwitchChat(e: MouseEvent) {
+  if (loading.value) return
+
   const target = e.target as HTMLElement
   const id = target.dataset.id
   if (!id) return
@@ -78,6 +82,8 @@ async function handleSwitchChat(e: MouseEvent) {
 }
 
 async function handleDelete(id: number) {
+  if (loading.value) return
+
   if (tabs.value.length === 1) return
   tabs.value = tabs.value.filter(i => i.id !== id)
   DB.deleteTabAndHistory(id)

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type {TabItem} from "~/utils/db";
 import {useGlobalState} from "~/utils/store";
 
 const {openAside, openSettings} = useGlobalState()
@@ -26,7 +25,7 @@ defineProps<{
           {{ i.label }}
         </div>
         <UIcon name="i-heroicons-trash" v-if="i.id === selected" @click="handleDelete(i.id)"
-               class="w-6 hover:bg-red-500 transition-all"/>
+               class="shrink-0 hover:bg-red-500 transition-all"/>
       </li>
     </ol>
     <div class="flex my-1">
