@@ -9,15 +9,8 @@ export class Database extends Dexie {
         this.version(4).stores({
             history: '++id, session, type, role, content, src',
             tab: '++id, label'
-        }).upgrade(tx => {
-            return tx.table('history').toCollection().modify(item => {
-                if (item['is_img']) {
-                    item.type = 'image'
-                } else {
-                    item.type = 'text'
-                }
-            })
         })
+        // this.version(5).upgrade()
     }
 
     getLatestTab() {
