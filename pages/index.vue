@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {useLocalStorage} from "@vueuse/core";
-import {workersImageReq} from "~/utils/api";
 
 const route = useRoute()
 const router = useRouter()

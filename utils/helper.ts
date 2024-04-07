@@ -86,7 +86,7 @@ export async function basicFetch(
     if (isLogin()) {
         headers.set('Authorization', getToken()!)
     }
-    const response = await fetch('/api' + path, {
+    const response = await fetch('/api/auth' + path, {
         ...options,
         headers,
     })
