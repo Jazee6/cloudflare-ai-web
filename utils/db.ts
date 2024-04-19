@@ -65,6 +65,11 @@ export const textGenModels: Model[] = [{
     endpoint: 'chat/completions',
     type: 'chat'
 }, {
+    id: '@cf/meta/llama-3-8b-instruct',
+    name: 'llama-3-8b-instruct',
+    provider: 'workers-ai',
+    type: 'chat'
+}, {
     id: '@cf/qwen/qwen1.5-14b-chat-awq',
     name: 'qwen1.5-14b-chat-awq',
     provider: 'workers-ai',
