@@ -40,6 +40,8 @@ docker run -d --name cloudflare-ai-web \
 
 https://developers.cloudflare.com/workers-ai/models/
 
+你可以在`./utils/db.ts`中增删模型
+
 ## 部署说明
 
 ### 环境变量列表
