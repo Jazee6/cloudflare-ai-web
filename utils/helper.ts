@@ -92,10 +92,11 @@ export async function basicFetch(
     })
 
     if (!response.ok) {
-        if (response.status === 401 && response.statusText === 'password incorrect') {
+        const text = await response.text()
+        if (response.status === 401 && text === 'Password Incorrect') {
             passModal.value = true
         }
-        throw new Error(response.status + ' ' + response.statusText + ' ' + await response.text())
+        throw new Error(response.status + ' ' + response.statusText + ' ' + text)
     }
 
     if (response.headers.get('Content-Type')?.includes('text/event-stream')) {
