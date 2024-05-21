@@ -7,24 +7,28 @@ const settings = useLocalStorage('settings', initialSettings)
 
 <template>
   <UModal v-model="openSettings">
-    <div class="p-4 flex flex-col space-y-3">
-      <h2 class="font-bold text-lg">
-        {{ $t('setting') }}
-      </h2>
-      <div class="flex items-end">
+    <h2 class="font-bold text-lg px-4 pt-4">
+      {{ $t('setting') }}
+    </h2>
+    <ul class="flex flex-col space-y-2 p-4">
+      <li class="flex items-end">
         <div class="flex flex-col">
           OPENAI_API_KEY
           <span class="text-xs text-gray-500">{{ $t('use_own_key') }}</span>
         </div>
-        <UInput v-model.trim.lazy="settings.openaiKey" class="ml-auto"/>
-      </div>
-      <div>
+        <UInput placeholder="sk-xxx" v-model.trim.lazy="settings.openaiKey" class="ml-auto"/>
+      </li>
+      <li>
         <div class="flex">
           {{ $t('img_gen_steps') }}
           <span class="ml-auto">{{ settings.image_steps }}</span>
         </div>
-        <URange :min="1" :max="20" v-model.lazy="settings.image_steps" class="w-full"/>
-      </div>
-    </div>
+        <URange :min="1" :max="20" v-model.lazy="settings.image_steps" class="w-full mt-1"/>
+      </li>
+      <li>
+        {{ $t('system_prompt') }}
+        <UTextarea autoresize placeholder="You are ChatGPT..." v-model.trim.lazy="settings.system_prompt" class="mt-1"/>
+      </li>
+    </ul>
   </UModal>
 </template>

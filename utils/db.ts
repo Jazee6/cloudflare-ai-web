@@ -48,7 +48,8 @@ export const DB = new Database();
 
 export const initialSettings = {
     openaiKey: '',
-    image_steps: 20
+    image_steps: 20,
+    system_prompt: 'You are ChatGPT, a large language model trained by OpenAI. Follow the user\'s instructions carefully. Respond using markdown.',
 }
 
 export type Settings = typeof initialSettings
@@ -92,6 +93,11 @@ export const textGenModels: Model[] = [{
 }, {
     id: '@hf/nexusflow/starling-lm-7b-beta',
     name: 'starling-lm-7b-beta',
+    provider: 'workers-ai',
+    type: 'chat'
+}, {
+    id: '@cf/meta/llama-3-8b-instruct',
+    name: 'llama-3-8b-instruct',
     provider: 'workers-ai',
     type: 'chat'
 }]

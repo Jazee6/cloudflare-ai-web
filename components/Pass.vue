@@ -18,7 +18,7 @@ function handlePass() {
         {{ $t('input_password') }}
       </div>
       <div class="flex space-x-2">
-        <UInput v-model.trim.lazy="access_pass" type="password" @keydown.enter="handlePass" class="flex-1"/>
+        <UInput v-model.trim="access_pass" type="password" @keydown.enter="handlePass" class="flex-1"/>
         <UButton @click="handlePass">{{ $t('confirm') }}</UButton>
       </div>
     </div>
