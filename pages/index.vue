@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {useLocalStorage} from "@vueuse/core";
+import {deepClone} from "@vue/devtools-shared";
 
 const route = useRoute()
 const router = useRouter()
@@ -18,7 +19,8 @@ async function initDB() {
   session = await DB.addTab(t('new_chat')) as number
   tabs.value.unshift({
     id: session,
-    label: t('new_chat')
+    label: t('new_chat'),
+    created_at: Date.now()
   })
   selectedTab.value = session
   await router.push({query: {session}})
@@ -70,6 +72,7 @@ async function handleNewChat() {
 async function handleSwitchChat(e: MouseEvent) {
   if (loading.value) return
 
+  // TODO revokeObjectURL
   const target = e.target as HTMLElement
   const id = target.dataset.id
   if (!id) return
@@ -112,7 +115,10 @@ function basicDone() {
   DB.history.add(toRaw(history.value[history.value.length - 1]))
 }
 
-async function handleSend(input: string, addHistory: boolean) {
+async function handleSend(input: string, addHistory: boolean, files: {
+  file: File
+  url: string
+}[]) {
   loading.value = true
   const type = selectedModel.value.type
 
@@ -122,12 +128,18 @@ async function handleSend(input: string, addHistory: boolean) {
       tabs.value.find(i => i.id === session)!.label = label
     })
   }
-  const historyItem = {
+
+  if (files.length) {
+
+  }
+
+  const historyItem: HistoryItem = {
     session,
     role: 'user',
     content: input,
-    type: type === 'chat' ? 'text' : 'image-prompt'
-  } as HistoryItem
+    type: type === 'text-to-image' ? 'image-prompt' : 'text',
+    created_at: Date.now()
+  }
   const id = await DB.history.add(historyItem) as number
   history.value.push({
     id,
@@ -138,13 +150,14 @@ async function handleSend(input: string, addHistory: boolean) {
     session,
     role: 'assistant',
     content: '',
-    type: type === 'chat' ? 'text' : 'image'
+    type: type === 'chat' ? 'text' : 'image',
+    created_at: Date.now()
   })
 
   const chatList = document.getElementById('chatList') as HTMLElement
-  await nextTick(() => {
+  nextTick(() => {
     scrollToTop(chatList)
-  })
+  }).then(r => r)
 
   const req = {
     model: selectedModel.value.id,
@@ -172,14 +185,22 @@ async function handleSend(input: string, addHistory: boolean) {
         ...req,
         num_steps: settings.value.image_steps,
       }).then(res => {
-        history.value[history.value.length - 1].content = URL.createObjectURL(res as Blob)
-        history.value[history.value.length - 1].src = res as Blob
+        const blob = res as Blob
+        Object.assign(history.value[history.value.length - 1], {
+          content: input,
+          src: [blob],
+          src_url: [URL.createObjectURL(blob)]
+        })
 
         setTimeout(() => {
           scrollToTop(chatList)
+          basicFin()
         }, 100)
-        basicDone()
-      }).catch(basicCatch).finally(basicFin)
+      }).then(() => {
+        const store = {...toRaw(history.value[history.value.length - 1])}
+        delete store.src_url
+        DB.history.add(store)
+      }).catch(basicCatch)
       break
     case "google":
       geminiReq(req, text => {

@@ -13,13 +13,14 @@ export default defineI18nConfig(() => ({
             with_history: '发送时携带历史记录',
             without_history: '发送时不携带历史记录',
             please_input_text: '请输入文本',
-            // add_image: '添加图片',
+            add_image: '添加图片',
             // support_paste: '支持粘贴',
             send: '发送',
             img_gen_steps: '图片生成步数',
             text_generation: '文本生成',
             image_generation: '图像生成',
             system_prompt: '系统提示',
+            vision: '视觉',
         },
         en: {
             setting: 'Setting',
@@ -33,13 +34,14 @@ export default defineI18nConfig(() => ({
             with_history: 'Send with history',
             without_history: 'Send without history',
             please_input_text: 'Please input text',
-            // add_image: 'Add image',
+            add_image: 'Add image',
             // support_paste: 'Support paste',
             send: 'Send',
             img_gen_steps: 'Image generation steps',
             text_generation: 'Text generation',
             image_generation: 'Image generation',
             system_prompt: 'System prompt',
+            vision: 'Vision',
         }
     }
 }))

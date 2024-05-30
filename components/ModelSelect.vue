@@ -11,21 +11,29 @@ watch(selectedModel, v => {
   localStorage.setItem('selectedModel', v.id)
 })
 
-const groups = computed(() => [{
-  key: 'text generation',
-  label: t('text_generation'),
-  commands: textGenModels.map(i => ({
-    id: i.id,
-    label: i.name
-  }))
-}, {
-  key: 'image generation',
-  label: t('image_generation'),
-  commands: imageGenModels.map(i => ({
-    id: i.id,
-    label: i.name
-  }))
-}])
+const groups = computed(() => [
+  {
+    key: 'vision',
+    label: t('vision'),
+    commands: visionModals.map(i => ({
+      id: i.id,
+      label: i.name
+    }))
+  }, {
+    key: 'text generation',
+    label: t('text_generation'),
+    commands: textGenModels.map(i => ({
+      id: i.id,
+      label: i.name
+    }))
+  }, {
+    key: 'image generation',
+    label: t('image_generation'),
+    commands: imageGenModels.map(i => ({
+      id: i.id,
+      label: i.name
+    }))
+  }])
 
 function onSelect(option: { id: string }) {
   selectedModel.value = models.find(i => i.id === option.id) || textGenModels[0]
