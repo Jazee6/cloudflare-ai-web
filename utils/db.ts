@@ -39,6 +39,7 @@ export class Database extends Dexie {
                 i.src?.forEach(src => {
                     i.src_url!.push(URL.createObjectURL(src))
                 })
+                i.content = 'image'
             }
         })
         return arr
