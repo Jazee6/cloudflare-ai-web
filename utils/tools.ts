@@ -18,7 +18,7 @@ export const clearToken = () => {
     localStorage.removeItem(TOKEN_KEY);
 }
 
-export const scrollStream = (el: HTMLElement, distance: number = 100) => {
+export const scrollStream = (el: HTMLElement, distance: number = 200) => {
     useThrottleFn(() => {
         (el.scrollTop + el.clientHeight >= el.scrollHeight - distance) && el.scrollTo({
             top: el.scrollHeight,

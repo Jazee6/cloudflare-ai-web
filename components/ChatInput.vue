@@ -36,20 +36,39 @@ function handleInput(e: KeyboardEvent) {
 
   if (input.value.trim() === '') return
   if (p.loading) return
-  p.handleSend(input.value, addHistory.value, fileList.value)
+  p.handleSend(input.value, addHistory.value, toRaw(fileList.value))
   input.value = ''
+  fileList.value = []
+}
+
+const imageType = ['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']
+
+function checkFile(file: File) {
+  if (fileList.value.length >= 5) {
+    alert('You can only upload up to 5 images')
+    return false
+  }
+  if (imageType.indexOf(file.type) === -1) {
+    alert(imageType.join(', ') + ' only')
+    return false
+  }
+  if (file.size > 1024 * 1024 * 15) {
+    alert('The image size should be less than 15MB')
+    return false
+  }
+  return true
 }
 
 function handleAddFiles() {
   const input = document.createElement('input')
   input.type = 'file'
-  input.accept = 'image/*'
+  input.accept = imageType.join(',')
   input.multiple = true
   input.onchange = () => {
     const files = Array.from(input.files || [])
     files.forEach(file => {
-      if (file.type.indexOf('image') === -1) return
-      if (fileList.value.length >= 5) return
+      if (!checkFile(file)) return
+
       const url = URL.createObjectURL(file)
       fileList.value.push({file, url})
     })
@@ -57,25 +76,34 @@ function handleAddFiles() {
   input.click()
 }
 
-// TODO paste ?? size limit ?? tips
-
 onUnmounted(() => {
   fileList.value.forEach(i => {
     URL.revokeObjectURL(i.url)
   })
 })
+
+const handlePaste = (e: ClipboardEvent) => {
+  const files = Array.from(e.clipboardData?.files || [])
+  files.forEach(file => {
+    if (!checkFile(file)) return
+
+    const url = URL.createObjectURL(file)
+    fileList.value.push({file, url})
+  })
+}
 </script>
 
 <template>
   <div class="relative">
     <div class="absolute bottom-10 w-full flex flex-col">
-      <UButton class="self-center drop-shadow-xl mb-1" color="white" @click="openModelSelect=!openModelSelect">
+      <UButton class="self-center drop-shadow-xl mb-1 blur-global" color="white"
+               @click="openModelSelect=!openModelSelect">
         {{ selectedModel.name }}
         <template #trailing>
           <UIcon name="i-heroicons-chevron-down-solid"/>
         </template>
       </UButton>
-      <ul v-if="selectedModel.type === 'vision'" style="margin: 0"
+      <ul v-if="selectedModel.type === 'universal'" style="margin: 0"
           class="flex flex-wrap bg-white dark:bg-[#121212] rounded-t-md">
         <li v-for="file in fileList" :key="file.url" class="relative group/img">
           <button @click="fileList.splice(fileList.indexOf(file), 1)"
@@ -86,7 +114,7 @@ onUnmounted(() => {
             </svg>
           </button>
           <img :src="file.url"
-               class="w-16 h-16 m-1 shadow-xl object-contain cursor-pointer group-hover/img:brightness-75 transition-all rounded-md"
+               class="max-h-16 m-1 shadow-xl cursor-pointer group-hover/img:brightness-75 transition-all rounded-md"
                alt="selected image" @click="handleImgZoom($event.target as HTMLImageElement)"/>
         </li>
       </ul>
@@ -96,11 +124,12 @@ onUnmounted(() => {
         <UButton class="m-1" @click="addHistory = !addHistory" :color="addHistory?'primary':'gray'"
                  icon="i-heroicons-clock-solid"/>
       </UTooltip>
-      <UTooltip v-if="selectedModel.type === 'vision'" :text="$t('add_image')">
+      <UTooltip v-if="selectedModel.type === 'universal'" :text="$t('add_image')">
         <UButton @click="handleAddFiles" color="white" class="m-1" icon="i-heroicons-paper-clip-16-solid"/>
       </UTooltip>
       <UTextarea v-model="input" :placeholder="$t('please_input_text') + '...' "
                  @keydown.prevent.enter="handleInput($event)"
+                 @paste="handlePaste"
                  autofocus :rows="1" autoresize
                  class="flex-1 max-h-48 overflow-y-auto p-1"/>
       <UButton @click="handleInput($event)" :disabled="loading" class="m-1">

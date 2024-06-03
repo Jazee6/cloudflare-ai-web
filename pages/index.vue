@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {useLocalStorage} from "@vueuse/core";
-import {deepClone} from "@vue/devtools-shared";
 
 const route = useRoute()
 const router = useRouter()
@@ -72,7 +71,12 @@ async function handleNewChat() {
 async function handleSwitchChat(e: MouseEvent) {
   if (loading.value) return
 
-  // TODO revokeObjectURL
+  history.value.forEach(i => {
+    if (i.src_url) {
+      i.src_url.forEach(URL.revokeObjectURL)
+    }
+  })
+
   const target = e.target as HTMLElement
   const id = target.dataset.id
   if (!id) return
@@ -130,7 +134,7 @@ async function handleSend(input: string, addHistory: boolean, files: {
   }
 
   if (files.length) {
-
+    await addFiles(files)
   }
 
   const historyItem: HistoryItem = {
@@ -150,7 +154,7 @@ async function handleSend(input: string, addHistory: boolean, files: {
     session,
     role: 'assistant',
     content: '',
-    type: type === 'chat' ? 'text' : 'image',
+    type: (type === 'chat' || type === 'universal') ? 'text' : 'image',
     created_at: Date.now()
   })
 
@@ -203,12 +207,36 @@ async function handleSend(input: string, addHistory: boolean, files: {
       }).catch(basicCatch)
       break
     case "google":
-      geminiReq(req, text => {
+      const form = new FormData()
+      form.append('model', req.model)
+      form.append('messages', JSON.stringify(req.messages))
+      files.forEach(i => form.append('files', i.file))
+      geminiReq(form, text => {
         history.value[history.value.length - 1].content += text
         scrollStream(chatList, 512)
       }).then(basicDone).catch(basicCatch).finally(basicFin)
       break
   }
+}
+
+async function addFiles(files: {
+  file: File
+  url: string
+}[]) {
+  const historyItem: HistoryItem = {
+    session,
+    role: 'user',
+    content: 'input image',
+    type: 'image',
+    created_at: Date.now(),
+    src: files.map(i => i.file),
+  }
+  const id: number = await DB.history.add(historyItem)
+  history.value.push({
+    id,
+    src_url: files.map(i => i.url),
+    ...historyItem
+  })
 }
 </script>
 

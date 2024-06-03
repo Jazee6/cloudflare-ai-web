@@ -2,7 +2,7 @@ export interface Model {
     id: string
     name: string
     provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image'
-    type: 'chat' | 'text-to-image' | 'vision'
+    type: 'chat' | 'text-to-image' | 'universal'
     endpoint?: string
 }
 
@@ -76,7 +76,7 @@ export interface WorkersRes {
     response: string
 }
 
-export interface GeminiReq {
-    model: string
-    messages: OpenAIMessage[]
-}
+// export interface GeminiReq {
+//     model: string
+//     messages: OpenAIMessage[]
+// }

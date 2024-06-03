@@ -135,3 +135,10 @@ export function postFetch(path: string, body: Object) {
         body: JSON.stringify(body),
     })
 }
+
+export function streamFetchWithFile(path: string, body: FormData, onStream: (data: string) => void) {
+    return basicFetch(path, {
+        method: "POST",
+        body,
+    }, onStream)
+}

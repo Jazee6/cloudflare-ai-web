@@ -20,7 +20,7 @@ export default defineI18nConfig(() => ({
             text_generation: '文本生成',
             image_generation: '图像生成',
             system_prompt: '系统提示',
-            vision: '视觉',
+            universal: '多模',
         },
         en: {
             setting: 'Setting',
@@ -41,7 +41,7 @@ export default defineI18nConfig(() => ({
             text_generation: 'Text generation',
             image_generation: 'Image generation',
             system_prompt: 'System prompt',
-            vision: 'Vision',
+            universal: 'Universal',
         }
     }
 }))

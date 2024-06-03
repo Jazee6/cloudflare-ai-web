@@ -66,12 +66,12 @@ export const initialSettings = {
 
 export type Settings = typeof initialSettings
 
-export const visionModals: Model[] = [
+export const uniModals: Model[] = [
     {
-        id: 'gemini-pro',
-        name: 'Gemini Pro',
+        id: 'gemini-1.5-flash',
+        name: 'gemini 1.5 flash',
         provider: 'google',
-        type: 'vision'
+        type: 'universal'
     }
 ]
 
@@ -135,4 +135,4 @@ export const imageGenModels: Model[] = [{
     type: 'text-to-image'
 }]
 
-export const models: Model[] = [...visionModals, ...textGenModels, ...imageGenModels]
+export const models: Model[] = [...uniModals, ...textGenModels, ...imageGenModels]

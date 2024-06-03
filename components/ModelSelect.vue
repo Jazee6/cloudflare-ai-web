@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {imageGenModels, textGenModels} from "~/utils/db";
+import {imageGenModels, textGenModels, uniModals} from "~/utils/db";
 
 const {t} = useI18n()
 const {selectedModel, openModelSelect} = useGlobalState()
@@ -13,9 +13,9 @@ watch(selectedModel, v => {
 
 const groups = computed(() => [
   {
-    key: 'vision',
-    label: t('vision'),
-    commands: visionModals.map(i => ({
+    key: 'universal',
+    label: t('universal'),
+    commands: uniModals.map(i => ({
       id: i.id,
       label: i.name
     }))
