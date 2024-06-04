@@ -4,7 +4,7 @@ WORKDIR /app
 
 EXPOSE 3000
 
-RUN npm i -g pnpm
+RUN npm i -g pnpm@9.1.4
 
 COPY package.json ./
 
