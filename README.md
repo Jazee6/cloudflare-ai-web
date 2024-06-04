@@ -51,7 +51,7 @@ https://developers.cloudflare.com/workers-ai/models/
 | CF_TOKEN       | Cloudflare Workers AI Token        |  
 | CF_GATEWAY     | Cloudflare AI Gateway URL          |    
 | OPENAI_API_KEY | OpenAI API Key (需要ChatGPT时填写)      |     
-| G_API_KEY      | Google AI API Key (需要GeminiPro时填写) |
+| G_API_KEY      | Google AI API Key (需要GeminiPro时填写) | 
 | PASSWORD       | 访问密码 (可选)                          |   
 
 #### CF_TOKEN
@@ -63,6 +63,8 @@ https://dash.cloudflare.com/profile/api-tokens
 - 单击继续以显示摘要
 - 单击创建令牌
 - 复制您的令牌，设置环境变量
+
+示例：https://gateway.ai.cloudflare.com/v1/A484BCC718B10B73022BFE2D9AB49776/myai
 
 #### CF_GATEWAY
 
