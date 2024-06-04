@@ -8,6 +8,8 @@ RUN npm i -g pnpm@9.1.4
 
 COPY package.json ./
 
+COPY patches ./patches
+
 RUN pnpm install
 
 COPY . .

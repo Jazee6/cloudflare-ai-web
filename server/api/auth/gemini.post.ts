@@ -1,4 +1,4 @@
-import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from '@google/generative-ai'
+import {GoogleGenerativeAI} from '@google/generative-ai'
 import {headers} from '~/utils/helper';
 import {OpenAIMessage} from "~/utils/types";
 
@@ -12,14 +12,6 @@ export default defineEventHandler(async (event) => {
 
     const m = genAI.getGenerativeModel({model})
     let msg = messages.slice(1)
-    // let flag = ['user', 'assistant']
-    // for (let i = 0; i < msg.length; i++) {
-    //     if (msg[i].role !== flag[i % 2]) {
-    //         flag = []
-    //         break
-    //     }
-    // }
-    // if (!flag.length) return new Response('对话失效，请重新开始对话', {status: 400})
 
     let res
     if (files.length) {
