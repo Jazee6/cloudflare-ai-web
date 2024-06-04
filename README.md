@@ -16,7 +16,6 @@ https://dash.deno.com
 - Build Step改为`NITRO_PRESET=deno-deploy npm run build_node`
 - Deploy Project
 - 设置环境变量
-- 部分地区可能需要Gemini反代
 
 ### Docker
 
@@ -53,6 +52,7 @@ https://developers.cloudflare.com/workers-ai/models/
 | CF_GATEWAY     | Cloudflare AI Gateway URL          |    
 | OPENAI_API_KEY | OpenAI API Key (需要ChatGPT时填写)      |     
 | G_API_KEY      | Google AI API Key (需要GeminiPro时填写) | 
+| G_API_URL      | Google AI 反代 (不支持地区填写，或参考以下配置)     |    
 | PASSWORD       | 访问密码 (可选)                          |   
 
 示例： 查看`.env.example`文件
@@ -75,11 +75,25 @@ https://dash.cloudflare.com/
 - 添加新 AI Gateway
 - 填写名称和URL slug创建
 - 单击右上角API Endpoints
-- 复制您的Universal Endpoint(去掉末尾'/')，设置环境变量
+- 复制您的Universal Endpoint(去掉末尾`/`)，设置环境变量
 
 #### G_API_KEY
 
 https://ai.google.dev/tutorials/rest_quickstart#set_up_your_api_key
+
+#### G_API_URL
+
+参考 https://github.com/Jazee6/gemini-proxy 搭建反代，末尾无需`/`
+
+或者在`nuxt.config.ts`中添加以下配置
+
+```
+nitro: {
+    vercel: {
+        regions: ["sin1", "syd1", "sfo1", "iad1", "pdx1", "cle1"]
+    }
+}
+```
 
 ## Star History
 

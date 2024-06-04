@@ -53,7 +53,7 @@ export default defineNuxtConfig({
     }
     // nitro: {
     //     vercel: {
-    //         regions: ["cle1", "iad1", "pdx1", "sfo1", "sin1", "syd1", "hnd1", "kix1"]
+    //         regions: ["sin1", "syd1", "sfo1", "iad1", "pdx1", "cle1"]
     //     }
     // }
 })

@@ -37,7 +37,7 @@ defineProps<{
   </aside>
 </template>
 
-<style scoped>
+<style scoped lang="postcss">
 .hide {
   @apply -translate-x-full opacity-0 w-0 m-0 invisible transition-all
 }
