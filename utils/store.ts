@@ -1,4 +1,5 @@
 import {createGlobalState} from "@vueuse/shared"
+import {ref} from "vue"
 
 export const useGlobalState = createGlobalState(() => {
     const openModelSelect = ref(false)
