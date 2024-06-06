@@ -73,6 +73,13 @@ export const uniModals: Model[] = [
         name: 'Gemini 1.5 flash',
         provider: 'google',
         type: 'universal'
+    },
+    {
+        id: 'gpt-4o',
+        name: 'ChatGPT-4o',
+        provider: 'openai',
+        endpoint: 'chat/completions',
+        type: 'universal'
     }
 ]
 
