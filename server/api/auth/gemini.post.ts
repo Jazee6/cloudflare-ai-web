@@ -1,4 +1,4 @@
-import {GoogleGenerativeAI} from '@google/generative-ai'
+import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, SafetySetting} from '@google/generative-ai'
 import {headers} from '~/utils/helper';
 import {OpenAIMessage} from "~/utils/types";
 
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     const messages: OpenAIMessage[] = JSON.parse(<string>body.get('messages'))
     const files = body.getAll('files') as File[]
 
-    const m = genAI.getGenerativeModel({model})
+    const m = genAI.getGenerativeModel({model, safetySettings})
     let msg = messages.slice(1)
 
     let res
@@ -60,3 +60,22 @@ async function fileToGenerativePart(file: File) {
         },
     };
 }
+
+const safetySettings: SafetySetting[] = [
+    {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+]
