@@ -1,7 +1,7 @@
 export interface Model {
     id: string
     name: string
-    provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image'
+    provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image' | 'moonshot'
     type: 'chat' | 'text-to-image' | 'universal'
     endpoint?: string
 }
@@ -39,6 +39,12 @@ export interface OpenAIReq {
     endpoint: string
     messages: OpenAIMessage[]
     key?: string
+}
+
+export interface MoonshotReq {
+    model: string
+    endpoint: string
+    messages: OpenAIMessage[]
 }
 
 export interface OpenAIRes {
