@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {imageGenModels, textGenModels, uniModals} from "~/utils/db";
+import { imageGenModels, textGenModels, uniModals } from "~/utils/db";
 
-const {t} = useI18n()
-const {selectedModel, openModelSelect} = useGlobalState()
+const { t } = useI18n()
+const { selectedModel, openModelSelect } = useGlobalState()
 onMounted(() => {
   const model = localStorage.getItem('selectedModel')
   selectedModel.value = models.find(i => i.id === model) || uniModals[0]
@@ -16,6 +16,14 @@ const groups = computed(() => [
     key: 'universal',
     label: t('universal'),
     commands: uniModals.map(i => ({
+      id: i.id,
+      label: i.name
+    }))
+  },
+  {
+    key: 'moonshot',
+    label: 'Moonshot',
+    commands: moonshot.map(i => ({
       id: i.id,
       label: i.name
     }))
@@ -42,6 +50,6 @@ function onSelect(option: { id: string }) {
 
 <template>
   <UModal v-model="openModelSelect">
-    <UCommandPalette @update:model-value="onSelect" :groups="groups" :model-value="selectedModel"/>
+    <UCommandPalette @update:model-value="onSelect" :groups="groups" :model-value="selectedModel" />
   </UModal>
 </template>

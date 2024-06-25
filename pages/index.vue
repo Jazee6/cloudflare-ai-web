@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import {useLocalStorage} from "@vueuse/core";
+import { useLocalStorage } from "@vueuse/core";
 
 const route = useRoute()
 const router = useRouter()
-const {t} = useI18n()
+const { t } = useI18n()
 
 const tabs = ref<TabItem[]>([])
 const history = ref<HistoryItem[]>([])
 const selectedTab = ref(0)
-const {selectedModel} = useGlobalState()
+const { selectedModel } = useGlobalState()
 const initializing = ref(true)
 const loading = ref(false)
 let settings: Ref<Settings>
@@ -22,7 +22,7 @@ async function initDB() {
     created_at: Date.now()
   })
   selectedTab.value = session
-  await router.push({query: {session}})
+  await router.push({ query: { session } })
 }
 
 async function loadData() {
@@ -35,7 +35,7 @@ async function getLatestData() {
   if (tab) {
     session = tab.id!
     await loadData()
-    await router.push({query: {session}})
+    await router.push({ query: { session } })
   } else await initDB()
 }
 
@@ -83,7 +83,7 @@ async function handleSwitchChat(e: MouseEvent) {
   if (parseInt(id) === selectedTab.value) return
   selectedTab.value = parseInt(id)
   history.value = await DB.getHistory(parseInt(id))
-  await router.push({query: {session: id}})
+  await router.push({ query: { session: id } })
   session = parseInt(id)
 }
 
@@ -97,7 +97,7 @@ async function handleDelete(id: number) {
   const nid = tabs.value[0].id as number
   selectedTab.value = nid
   history.value = await DB.getHistory(nid)
-  await router.push({query: {session: nid}})
+  await router.push({ query: { session: nid } })
   session = nid
 }
 
@@ -128,7 +128,7 @@ async function handleSend(input: string, addHistory: boolean, files: {
 
   if (history.value.length === 0) {
     const label = input.substring(0, 15)
-    DB.tab.update(session, {label}).then(() => {
+    DB.tab.update(session, { label }).then(() => {
       tabs.value.find(i => i.id === session)!.label = label
     })
   }
@@ -165,7 +165,7 @@ async function handleSend(input: string, addHistory: boolean, files: {
 
   const req = {
     model: selectedModel.value.id,
-    messages: getMessages(toRaw(history.value), {addHistory, type})
+    messages: getMessages(toRaw(history.value), { addHistory, type })
   }
   switch (selectedModel.value.provider) {
     case 'openai':
@@ -201,7 +201,7 @@ async function handleSend(input: string, addHistory: boolean, files: {
           basicFin()
         }, 100)
       }).then(() => {
-        const store = {...toRaw(history.value[history.value.length - 1])}
+        const store = { ...toRaw(history.value[history.value.length - 1]) }
         delete store.src_url
         DB.history.add(store)
       }).catch(basicCatch)
@@ -214,6 +214,15 @@ async function handleSend(input: string, addHistory: boolean, files: {
       geminiReq(form, text => {
         history.value[history.value.length - 1].content += text
         scrollStream(chatList, 512)
+      }).then(basicDone).catch(basicCatch).finally(basicFin)
+      break
+    case "moonshot":
+      moonshotReq({
+        ...req,
+        endpoint: selectedModel.value.endpoint!,
+      }, text => {
+        history.value[history.value.length - 1].content += text
+        scrollStream(chatList)
       }).then(basicDone).catch(basicCatch).finally(basicFin)
       break
   }
@@ -242,20 +251,20 @@ async function addFiles(files: {
 
 <template>
   <UContainer class="flex h-full w-full overflow-y-auto">
-    <ModelSelect/>
-    <Setting/>
-    <Pass/>
+    <ModelSelect />
+    <Setting />
+    <Pass />
 
     <Sidebar :tabs="tabs" :selected="selectedTab" :handle-delete="handleDelete" :handle-new-chat="handleNewChat"
-             :handle-switch-chat="handleSwitchChat"/>
+      :handle-switch-chat="handleSwitchChat" />
     <main class="w-full flex flex-col">
-      <USkeleton v-if="initializing" class="h-24 w-3/5 self-end rounded-xl mt-20"/>
-      <USkeleton v-if="initializing" class="h-24 w-3/5 rounded-xl mt-2"/>
+      <USkeleton v-if="initializing" class="h-24 w-3/5 self-end rounded-xl mt-20" />
+      <USkeleton v-if="initializing" class="h-24 w-3/5 rounded-xl mt-2" />
 
       <template v-else>
-        <ChatList id="chatList" :history="history" :loading="loading"/>
+        <ChatList id="chatList" :history="history" :loading="loading" />
         <ChatInput class="mt-auto" :session="session" :loading="loading" :selected-model="selectedModel"
-                   :handle-send="handleSend"/>
+          :handle-send="handleSend" />
       </template>
     </main>
   </UContainer>

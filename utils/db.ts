@@ -82,6 +82,29 @@ export const uniModals: Model[] = [
     }
 ]
 
+export const moonshot: Model[] = [
+    {
+        id: 'moonshot-v1-8k',
+        name: 'Moonshot-v1-8k',
+        provider: 'moonshot',
+        endpoint: 'v1/chat/completions',
+        type: 'chat'
+    },{
+      id: 'moonshot-v1-32k',
+      name: 'Moonshot-v1-32k',
+      provider: 'moonshot',
+      endpoint: 'v1/chat/completions',
+      type: 'chat'
+    },
+    {
+      id: 'moonshot-v1-128k',
+      name: 'Moonshot-v1-128k',
+      provider: 'moonshot',
+      endpoint: 'v1/chat/completions',
+      type: 'chat'
+    },
+]
+
 export const textGenModels: Model[] = [{
     id: 'gpt-3.5-turbo',
     name: 'ChatGPT-3.5-turbo',
@@ -142,4 +165,4 @@ export const imageGenModels: Model[] = [{
     type: 'text-to-image'
 }]
 
-export const models: Model[] = [...uniModals, ...textGenModels, ...imageGenModels]
+export const models: Model[] = [...uniModals, ...textGenModels, ...imageGenModels, ...moonshot]
