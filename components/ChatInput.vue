@@ -107,7 +107,7 @@ const handlePaste = (e: ClipboardEvent) => {
           class="flex flex-wrap bg-white dark:bg-[#121212] rounded-t-md">
         <li v-for="file in fileList" :key="file.url" class="relative group/img">
           <button @click="fileList.splice(fileList.indexOf(file), 1)"
-                  class="absolute z-10 hidden group-hover/img:block rounded-full bg-neutral-100 right-0 hover:brightness-75 transition-all">
+                  class="absolute z-10 hidden group-hover/img:block rounded-full bg-neutral-100 right-0 hover:brightness-75 dark:bg-[#121212] transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 16 16">
               <path fill="currentColor"
                     d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94z"/>

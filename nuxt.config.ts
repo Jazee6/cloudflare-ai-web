@@ -22,13 +22,18 @@ export default defineNuxtConfig({
                 },
                 {
                     name: 'description',
-                    content: 'Integrated web platform supporting GeminiPro/Cloudflare Workers AI/ChatGPT by Jazee6'
+                    content: 'Integrated web platform supporting Gemini Pro/Cloudflare Workers AI/ChatGPT by Jazee6'
                 }
             ],
             link: [
                 {
                     rel: 'manifest',
                     href: '/manifest.json'
+                }
+            ],
+            noscript: [
+                {
+                    innerHTML: 'This website requires JavaScript.'
                 }
             ]
         }
