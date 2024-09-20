@@ -1,20 +1,19 @@
-import { handleErr, openaiParser, streamResponse } from "~/utils/helper";
-import { OpenAIBody, OpenAIReq } from "~/utils/types";
+import {handleErr, openaiParser, streamResponse} from "~/utils/helper";
+import {OpenAIBody, OpenAIReq} from "~/utils/types";
 
 export default defineEventHandler(async (event) => {
     const body: OpenAIReq = await readBody(event);
-    const { model, messages, key } = body;
+    const {model, messages, key, endpoint} = body;
 
     const openAIBody: OpenAIBody = {
         stream: true,
-        model, // 使用传入的模型参数
+        model,
         messages,
     };
 
-    // 检查是否提供了自定义的 OPENAI_API_URL
-    const apiUrl = process.env.OPENAI_API_URL ? 
-        `${process.env.OPENAI_API_URL}/v1/chat/completions` : 
-        `${process.env.CF_GATEWAY}/openai/${endpoint}`; 
+    const apiUrl = process.env.OPENAI_API_URL ?
+        `${process.env.OPENAI_API_URL}/v1/chat/completions` :
+        `${process.env.CF_GATEWAY}/openai/${endpoint}`;
 
     const res = await fetch(apiUrl, {
         method: 'POST',
