@@ -51,6 +51,7 @@ https://developers.cloudflare.com/workers-ai/models/
 | CF_TOKEN       | Cloudflare Workers AI Token        |  
 | CF_GATEWAY     | Cloudflare AI Gateway URL          |    
 | OPENAI_API_KEY | OpenAI API Key (需要ChatGPT时填写)      |     
+| OPENAI_API_URL | 自定义OpenAI API请求地址 |
 | G_API_KEY      | Google AI API Key (需要GeminiPro时填写) | 
 | G_API_URL      | Google AI 反代 (不支持地区填写，或参考以下配置)     |    
 | PASSWORD       | 访问密码 (可选)                          |   
