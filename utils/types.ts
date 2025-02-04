@@ -1,7 +1,7 @@
 export interface Model {
     id: string
     name: string
-    provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image'
+    provider: 'openai' | 'workers-ai' | 'google' | 'workers-ai-image' | 'groq'
     type: 'chat' | 'text-to-image' | 'universal'
     endpoint?: string
 }

@@ -178,6 +178,16 @@ async function handleSend(input: string, addHistory: boolean, files: {
         scrollStream(chatList)
       }).then(basicDone).catch(basicCatch).finally(basicFin)
       break
+    case 'groq':
+      groqReq({
+        ...req,
+        endpoint: selectedModel.value.endpoint!,
+        key: settings.value.groqKey === '' ? undefined : settings.value.groqKey
+      }, text => {
+        history.value[history.value.length - 1].content += text
+        scrollStream(chatList)
+      }).then(basicDone).catch(basicCatch).finally(basicFin)
+      break
     case "workers-ai":
       workersReq(req, res => {
         history.value[history.value.length - 1].content += res

@@ -89,6 +89,18 @@ export const textGenModels: Model[] = [{
     endpoint: 'chat/completions',
     type: 'chat'
 }, {
+    id: 'gpt-4o',
+    name: 'ChatGPT-4o',
+    provider: 'openai',
+    endpoint: 'chat/completions',
+    type: 'chat'
+}, {
+    id: 'deepseek-r1-distill-llama-70b',
+    name: 'deepseek-70b',
+    provider: 'groq',
+    endpoint: 'chat/completions',
+    type: 'chat'
+}, {
     id: '@cf/qwen/qwen1.5-14b-chat-awq',
     name: 'qwen1.5-14b-chat-awq',
     provider: 'workers-ai',

@@ -4,6 +4,10 @@ export function openAIReq(req: OpenAIReq, onStream: (data: unknown) => void) {
     return streamFetch('/openai', req, onStream)
 }
 
+export function groqReq(req: groqReq, onStream: (data: unknown) => void) {
+    return streamFetch('/groq', req, onStream)
+}
+
 export function workersReq(req: WorkersReq, onStream: (data: unknown) => void) {
     return streamFetch('/workers', req, onStream)
 }
