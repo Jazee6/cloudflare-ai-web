@@ -55,7 +55,7 @@ https://developers.cloudflare.com/workers-ai/models/
 | GROQ_API_KEY | Groq API Key (需要groq时填写)      |     
 | GROQ_API_URL | 自定义groq API请求地址 |
 | G_API_KEY      | Google AI API Key (需要GeminiPro时填写) | 
-| G_API_URL      | Google AI 反代 (不支持地区填写,或参考以下配置)     |    
+| G_API_URL      | Google AI 反代 (不支持地区填写，或参考以下配置)     |    
 | PASSWORD       | 访问密码 (可选)                          |   
 
 示例： 查看`.env.example`文件
