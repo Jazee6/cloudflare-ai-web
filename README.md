@@ -6,7 +6,7 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web&env=CF_TOKEN,CF_GATEWAY&envDescription=%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%BF%A1%E6%81%AF%E8%AF%B7%E6%9F%A5%E7%9C%8B&envLink=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web)
 
-示例:https://ai.jaze.top
+示例：https://ai.jaze.top
 
 ### Deno Deploy
 
@@ -50,22 +50,22 @@ https://developers.cloudflare.com/workers-ai/models/
 |----------------|------------------------------------|
 | CF_TOKEN       | Cloudflare Workers AI Token        |  
 | CF_GATEWAY     | Cloudflare AI Gateway URL          |    
-| OPENAI_API_KEY | OpenAI API Key （需要ChatGPT时填写）      |     
+| OPENAI_API_KEY | OpenAI API Key (需要ChatGPT时填写)      |     
 | OPENAI_API_URL | 自定义OpenAI API请求地址 |
-| GROQ_API_KEY | Groq API Key （需要groq时填写）      |     
+| GROQ_API_KEY | Groq API Key (需要groq时填写)      |     
 | GROQ_API_URL | 自定义groq API请求地址 |
-| G_API_KEY      | Google AI API Key （需要GeminiPro时填写） | 
-| G_API_URL      | Google AI 反代 （不支持地区填写,或参考以下配置）     |    
-| PASSWORD       | 访问密码 （可选）                          |   
+| G_API_KEY      | Google AI API Key (需要GeminiPro时填写) | 
+| G_API_URL      | Google AI 反代 (不支持地区填写,或参考以下配置)     |    
+| PASSWORD       | 访问密码 (可选)                          |   
 
-示例: 查看`.env.example`文件
+示例： 查看`.env.example`文件
 
 #### CF_TOKEN
 
 https://dash.cloudflare.com/profile/api-tokens
 
 - 单击创建令牌
-- 使用Workers AI （Beta）模板
+- 使用Workers AI (Beta)模板
 - 单击继续以显示摘要
 - 单击创建令牌
 - 复制您的令牌，设置环境变量
@@ -78,7 +78,7 @@ https://dash.cloudflare.com/
 - 添加新 AI Gateway
 - 填写名称和URL slug创建
 - 单击右上角API Endpoints
-- 复制您的Universal Endpoint（去掉末尾`/`），设置环境变量
+- 复制您的Universal Endpoint(去掉末尾`/`)，设置环境变量
 
 
 #### GROQ_API_KEY
