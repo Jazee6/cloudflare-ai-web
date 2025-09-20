@@ -45,7 +45,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
-    "@cloudflare/workers-types": "^4.20250917.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.18.1",

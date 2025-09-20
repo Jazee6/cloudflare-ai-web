@@ -1,7 +1,7 @@
 import { createAiGateway } from "ai-gateway-provider";
 import { createWorkersAI } from "workers-ai-provider";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import type { TextGenerationModels } from "workers-ai-provider/src/workersai-models";
+import { Model } from "@/components/model-select";
 
 const aigateway = createAiGateway({
   accountId: process.env.CF_ACCOUNT_ID!,
@@ -15,7 +15,7 @@ const workersai = createWorkersAI({
 
 interface Data {
   messages: UIMessage[];
-  model: TextGenerationModels;
+  model: Model["id"];
 }
 
 export async function POST(request: Request) {

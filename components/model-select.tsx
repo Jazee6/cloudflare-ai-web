@@ -25,7 +25,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { GoogleLogo, MetaLogo } from "@/components/logo";
 import { ChevronDown } from "lucide-react";
 
-interface Model {
+export interface Model {
   id: string;
   name: string;
   logo: ReactNode;
