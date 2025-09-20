@@ -1,4 +1,4 @@
-import { Message } from "@/lib/db";
+import type { Message } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 const UserChatItem = ({

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChatStatus } from "ai";
+import type { ChatStatus } from "ai";
 import { ArrowUp, Loader2, RefreshCw, Square, StopCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";

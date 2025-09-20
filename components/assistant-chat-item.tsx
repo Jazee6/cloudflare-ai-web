@@ -1,12 +1,10 @@
-import { Message } from "@/lib/db";
+import type { Message } from "@/lib/db";
 import { cn, getRandomId } from "@/lib/utils";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import rehypeShikiFromHighlighter from "@shikijs/rehype/core";
-import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
 import CopyButton from "@/components/copy-button";
 
 const highlighter = await createHighlighterCore({
