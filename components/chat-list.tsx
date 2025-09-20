@@ -20,7 +20,7 @@ const ChatList = ({
       {messages.map((message) => {
         if (message.role === "user") {
           return (
-            <li key={message.id} className="self-end max-w-[90%]">
+            <li key={message.id} className="self-end max-w-[90%] ani-slide-top">
               <UserChatItem parts={message.parts} />
             </li>
           );
@@ -28,7 +28,7 @@ const ChatList = ({
 
         if (message.role === "assistant") {
           return (
-            <li key={message.id} className="">
+            <li key={message.id} className="ani-slide-top">
               <AssistantChatItem parts={message.parts} />
             </li>
           );

@@ -6,8 +6,10 @@ import { db, type Message } from "@/lib/db";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import {
+  startTransition,
   unstable_ViewTransition as ViewTransition,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
@@ -15,12 +17,17 @@ import Footer from "@/components/footer";
 import ChatList from "@/components/chat-list";
 import { getStoredModelId } from "@/components/model-select";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import { debounce } from "next/dist/server/utils";
 
 const Page = () => {
   const { session_id } = useParams();
   const searchParams = useSearchParams();
   const isNew = searchParams.get("new") !== null;
   const [loaded, setLoaded] = useState(isNew);
+  const [showToBottom, setShowToBottom] = useState(false);
+  const chatListRef = useRef<HTMLDivElement>(null);
 
   const initMessages = useLiveQuery(
     () =>
@@ -71,6 +78,14 @@ const Page = () => {
   }, [initMessages, setMessages, loaded]);
 
   useEffect(() => {
+    if (loaded) {
+      chatListRef.current?.scrollTo({
+        top: chatListRef.current.scrollHeight,
+      });
+    }
+  }, [loaded]);
+
+  useEffect(() => {
     if (isNew && initMessages) {
       if (initMessages[0].parts[0].type === "text") {
         sendMessage({
@@ -86,6 +101,41 @@ const Page = () => {
       toast.error("Unknown error occurred. Please try again.");
     }
   }, [error]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <messages>
+  useEffect(() => {
+    if (status === "streaming" && chatListRef.current) {
+      if (
+        chatListRef.current.scrollHeight -
+          chatListRef.current.scrollTop -
+          chatListRef.current.clientHeight <
+        200
+      ) {
+        chatListRef.current.scrollTo({
+          top: chatListRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }
+  }, [status, messages]);
+
+  useEffect(() => {
+    const onScroll = debounce(() => {
+      if (chatListRef.current) {
+        if (
+          chatListRef.current.scrollTop + chatListRef.current.clientHeight <
+          chatListRef.current.scrollHeight - 100
+        ) {
+          startTransition(() => setShowToBottom(true));
+        } else {
+          startTransition(() => setShowToBottom(false));
+        }
+      }
+    }, 100);
+    chatListRef.current?.addEventListener("scroll", onScroll);
+
+    return () => chatListRef.current?.removeEventListener("scroll", onScroll);
+  }, []);
 
   const onSendMessage = async (data: onSendMessageProps) => {
     const { message } = data;
@@ -108,18 +158,41 @@ const Page = () => {
     sendMessage({
       text: message,
     });
+    chatListRef.current?.scrollTo({
+      top: chatListRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
   return (
     <div className="flex flex-col h-screen">
       <div
+        ref={chatListRef}
         className="overflow-y-auto scrollbar px-4"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
-        <ChatList messages={messages} className="pt-16 pb-[50vh]" />
+        <ChatList messages={messages} className="pt-16 pb-48" />
       </div>
 
       <div className="mt-auto pb-1 space-y-1 absolute bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent px-2">
+        {showToBottom && (
+          <ViewTransition>
+            <Button
+              size="icon"
+              variant="outline"
+              className="rounded-full shadow-xl absolute left-1/2 -translate-x-1/2 -top-10 z-10"
+              onClick={() => {
+                chatListRef.current?.scrollTo({
+                  top: chatListRef.current.scrollHeight,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <ChevronDown />
+            </Button>
+          </ViewTransition>
+        )}
+
         <ViewTransition name="chat-input">
           <ChatInput
             className="mx-auto max-w-3xl bg-background shadow-xl"
