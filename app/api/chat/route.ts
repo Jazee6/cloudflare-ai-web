@@ -1,7 +1,7 @@
 import { createAiGateway } from "ai-gateway-provider";
 import { createWorkersAI } from "workers-ai-provider";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { Model } from "@/components/model-select";
+import type { Model } from "@/components/model-select";
 
 const aigateway = createAiGateway({
   accountId: process.env.CF_ACCOUNT_ID!,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     messages: convertToModelMessages(messages),
     maxOutputTokens: 2048,
     system:
-      "You are a helpful assistant. Follow the user's instructions carefully. Respond using markdown.",
+      "You are a helpful assistant. Follow the user's instructions carefully. Respond using GitHub Flavored Markdown.",
   });
 
   return result.toUIMessageStreamResponse();

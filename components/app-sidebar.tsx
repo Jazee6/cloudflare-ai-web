@@ -132,7 +132,7 @@ const AppSidebar = () => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center">
-              <Button size="icon" variant="ghost" className="size-8">
+              <Button size="icon" variant="ghost" className="size-8" disabled>
                 <Cog />
               </Button>
               <Link href="/" className="ml-auto">
