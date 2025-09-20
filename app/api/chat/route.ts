@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     messages: convertToModelMessages(messages),
     maxOutputTokens: 2048,
     system:
-      "You are a helpful assistant. Follow the user's instructions carefully. Respond using markdown.",
+      "You are a helpful assistant. Follow the user's instructions carefully. Respond using GitHub Flavored Markdown.",
   });
 
   return result.toUIMessageStreamResponse();

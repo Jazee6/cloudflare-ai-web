@@ -52,6 +52,7 @@ const Page = () => {
       if (!isError) {
         db.message.add({
           ...message,
+          parts: message.parts.filter((item) => item.type === "text"),
           sessionId: session_id as string,
           createdAt: new Date(),
         });

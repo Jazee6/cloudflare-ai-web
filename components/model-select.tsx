@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { type ReactNode, useEffect, useState } from "react";
-import { GoogleLogo, MetaLogo } from "@/components/logo";
+import { GoogleLogo, MetaLogo, QWenLogo } from "@/components/logo";
 import { ChevronDown } from "lucide-react";
 
 export interface Model {
@@ -45,12 +45,12 @@ const models: Model[] = [
     logo: <GoogleLogo />,
     type: "Text Generation",
   },
-  // {
-  //   id: "@cf/qwen/qwq-32b",
-  //   name: "qwq-32b",
-  //   logo: <GoogleLogo />,
-  //   type: "Text Generation",
-  // },
+  {
+    id: "@cf/qwen/qwq-32b",
+    name: "qwq-32b",
+    logo: <QWenLogo />,
+    type: "Text Generation",
+  },
 ];
 
 export const getStoredModelId = () =>
