@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { type ReactNode, useEffect, useState } from "react";
-import { GoogleLogo, MetaLogo, QWenLogo } from "@/components/logo";
+import { GoogleLogo, MetaLogo, MistralLogo, QWenLogo } from "@/components/logo";
 import { ChevronDown } from "lucide-react";
 
 export interface Model {
@@ -35,14 +35,20 @@ export interface Model {
 const models: Model[] = [
   {
     id: "@cf/meta/llama-4-scout-17b-16e-instruct",
-    name: "llama-4-scout-17b-16e-instruct",
+    name: "llama-4-scout-17b",
     logo: <MetaLogo />,
     type: "Text Generation",
   },
   {
     id: "@cf/google/gemma-3-12b-it",
-    name: "gemma-3-12b-it",
+    name: "gemma-3-12b",
     logo: <GoogleLogo />,
+    type: "Text Generation",
+  },
+  {
+    id: "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    name: "mistral-small-3.1-24b",
+    logo: <MistralLogo />,
     type: "Text Generation",
   },
   {

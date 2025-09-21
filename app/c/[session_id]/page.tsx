@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
+import { TextShimmer } from "@/components/ui/text-shimmer";
 
 const Page = () => {
   const { session_id } = useParams();
@@ -171,7 +172,11 @@ const Page = () => {
         className="overflow-y-auto scrollbar px-4"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
-        <ChatList messages={messages} className="pt-16 pb-48" />
+        <ChatList
+          status={status}
+          messages={messages}
+          className="pt-16 pb-48 max-w-3xl mx-auto"
+        />
       </div>
 
       <div className="mt-auto pb-1 space-y-1 absolute bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent px-2">
