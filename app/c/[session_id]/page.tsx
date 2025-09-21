@@ -20,7 +20,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
-import { TextShimmer } from "@/components/ui/text-shimmer";
 
 const Page = () => {
   const { session_id } = useParams();

@@ -100,7 +100,9 @@ const AppSidebar = () => {
                   {sessions.map(({ id, name }) => (
                     <SidebarMenuItem key={id}>
                       <SidebarMenuButton asChild isActive={session_id === id}>
-                        <Link href={`/c/${id}`}>{name}</Link>
+                        <Link href={`/c/${id}`} prefetch={true}>
+                          {name}
+                        </Link>
                       </SidebarMenuButton>
 
                       {session_id === id && (
@@ -135,7 +137,7 @@ const AppSidebar = () => {
               <Button size="icon" variant="ghost" className="size-8" disabled>
                 <Cog />
               </Button>
-              <Link href="/" className="ml-auto">
+              <Link href="/" className="ml-auto" prefetch={true}>
                 <Button variant="ghost">
                   新对话
                   <Plus />
