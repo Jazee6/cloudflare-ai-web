@@ -27,6 +27,6 @@
 
 示例： 查看`.env.example`文件
 
-#### CF_TOKEN
+#### CF_WORKERS_AI_TOKEN
 
 - 管理账户 - 账户API令牌 - 创建令牌 - 使用Workers AI模板创建

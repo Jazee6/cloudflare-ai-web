@@ -22,7 +22,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { type ReactNode, useEffect, useState } from "react";
-import { GoogleLogo, MetaLogo, MistralLogo, QWenLogo } from "@/components/logo";
+import {
+  DeepSeekLogo,
+  GoogleLogo,
+  MetaLogo,
+  MistralLogo,
+  QWenLogo,
+} from "@/components/logo";
 import { ChevronDown } from "lucide-react";
 
 export interface Model {
@@ -55,6 +61,12 @@ const models: Model[] = [
     id: "@cf/qwen/qwq-32b",
     name: "qwq-32b",
     logo: <QWenLogo />,
+    type: "Text Generation",
+  },
+  {
+    id: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+    name: "deepseek-r1-distill-qwen-32b",
+    logo: <DeepSeekLogo />,
     type: "Text Generation",
   },
 ];
