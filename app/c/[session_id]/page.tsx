@@ -15,11 +15,11 @@ import {
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import ChatList from "@/components/chat-list";
-import { getStoredModelId } from "@/components/model-select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
+import { getStoredModel } from "@/components/model-select";
 
 const Page = () => {
   const { session_id } = useParams();
@@ -50,9 +50,13 @@ const Page = () => {
   } = useChat<Message>({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: () => ({
-        model: getStoredModelId(),
-      }),
+      body: () => {
+        const { id } = getStoredModel();
+
+        return {
+          model: id,
+        };
+      },
     }),
     experimental_throttle: 100,
     onFinish: ({ message, isError }) => {
@@ -155,13 +159,31 @@ const Page = () => {
     await db.session.update(session_id as string, {
       updatedAt: new Date(),
     });
-    sendMessage({
-      text: message,
-    });
+
     chatListRef.current?.scrollTo({
       top: chatListRef.current.scrollHeight,
       behavior: "smooth",
     });
+
+    const { type } = getStoredModel();
+    if (type === "Text Generation") {
+      sendMessage({
+        text: message,
+      });
+    }
+    // if (type === "Text to Image") {
+    //   const res = await fetch("/api/image", {
+    //     method: "POST",
+    //     body: JSON.stringify({
+    //       prompt: message,
+    //       model: getStoredModel().id,
+    //     }),
+    //   });
+    //   if (res.ok) {
+    //     const blob = await res.blob();
+    //     console.log(blob);
+    //   }
+    // }
   };
 
   return (
