@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ChatStatus } from "ai";
-import { ArrowUp, Loader2, RefreshCw, Square, StopCircle } from "lucide-react";
+import { ArrowUp, Loader2, RefreshCw, Square } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -99,7 +99,7 @@ const ChatInput = ({
 
             <Button
               size="icon"
-              className="size-8 ml-auto"
+              className="ml-auto"
               disabled={
                 status === "submitted" ||
                 (input.trim().length === 0 && status === "ready")

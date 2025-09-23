@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { type ReactNode, useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   DeepSeekLogo,
   GoogleLogo,
@@ -29,16 +30,16 @@ import {
   MistralLogo,
   QWenLogo,
 } from "@/components/logo";
-import { ChevronDown } from "lucide-react";
 
 export interface Model {
   id: string;
   name: string;
   logo: ReactNode;
-  type: "Text Generation";
+  type: "Text Generation" | "Text to Image";
+  disabled?: boolean;
 }
 
-const models: Model[] = [
+export const models: Model[] = [
   {
     id: "@cf/meta/llama-4-scout-17b-16e-instruct",
     name: "llama-4-scout-17b",
@@ -69,10 +70,36 @@ const models: Model[] = [
     logo: <DeepSeekLogo />,
     type: "Text Generation",
   },
+  {
+    id: "@cf/black-forest-labs/flux-1-schnell",
+    name: "flux-1-schnell",
+    logo: (
+      <div className="bg-linear-to-br from-secondary to-primary size-4 rounded-full"></div>
+    ),
+    type: "Text to Image",
+    disabled: true,
+  },
 ];
 
 export const getStoredModelId = () =>
   (localStorage.getItem("CF_AI_MODEL") ?? models[0].id) as Model["id"];
+
+export const getStoredModel = () =>
+  models.find((m) => m.id === getStoredModelId()) ?? models[0];
+
+const groupedModels: {
+  type: Model["type"];
+  models: Model[];
+}[] = [];
+
+for (const model of models) {
+  let group = groupedModels.find((g) => g.type === model.type);
+  if (!group) {
+    group = { type: model.type, models: [] as Model[] };
+    groupedModels.push(group);
+  }
+  group.models.push(model);
+}
 
 const ModelList = ({
   setOpen,
@@ -86,25 +113,28 @@ const ModelList = ({
       <CommandInput placeholder="Filter models..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Text Generation">
-          {models.map((model) => (
-            <CommandItem
-              key={model.id}
-              value={model.id}
-              onSelect={(value) => {
-                setSelectedModel(
-                  models.find((m) => m.id === value) ?? models[0],
-                );
-                setOpen(false);
-              }}
-            >
-              <span className="size-4 flex items-center justify-center">
-                {model.logo}
-              </span>
-              {model.name}
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        {groupedModels.map(({ type, models }) => (
+          <CommandGroup key={type} heading={type}>
+            {models.map((model) => (
+              <CommandItem
+                disabled={model.disabled}
+                key={model.id}
+                value={model.id}
+                onSelect={(value) => {
+                  setSelectedModel(
+                    models.find((m) => m.id === value) ?? models[0],
+                  );
+                  setOpen(false);
+                }}
+              >
+                <span className="size-4 flex items-center justify-center">
+                  {model.logo}
+                </span>
+                {model.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
       </CommandList>
     </Command>
   );
@@ -132,7 +162,7 @@ function ComboBoxResponsive() {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           {selectedModel ? (
-            <Button variant="outline">
+            <Button variant="ghost">
               <span className="size-4 flex items-center justify-center">
                 {selectedModel.logo}
               </span>
@@ -152,7 +182,7 @@ function ComboBoxResponsive() {
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         {selectedModel ? (
-          <Button variant="outline">
+          <Button variant="ghost">
             <span className="size-4 flex items-center justify-center">
               {selectedModel.logo}
             </span>
