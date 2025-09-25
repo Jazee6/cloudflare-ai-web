@@ -8,6 +8,7 @@ import { DefaultChatTransport, generateId } from "ai";
 import {
   startTransition,
   unstable_ViewTransition as ViewTransition,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -22,7 +23,7 @@ import { debounce } from "next/dist/server/utils";
 import { getStoredModel } from "@/components/model-select";
 
 const Page = () => {
-  const { session_id } = useParams();
+  const { session_id } = useParams() as { session_id: string };
   const searchParams = useSearchParams();
   const isNew = searchParams.get("new") !== null;
   const [loaded, setLoaded] = useState(isNew);
@@ -33,10 +34,10 @@ const Page = () => {
     () =>
       db.message
         .where("sessionId")
-        .equals(session_id as string)
+        .equals(session_id)
         .limit(100)
         .sortBy("createdAt"),
-    [session_id as string],
+    [session_id],
   );
 
   const {
@@ -50,11 +51,14 @@ const Page = () => {
   } = useChat<Message>({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: () => {
+      prepareSendMessagesRequest: ({ messages }) => {
         const { id } = getStoredModel();
 
         return {
-          model: id,
+          body: {
+            messages: messages.slice(-10),
+            model: id,
+          },
         };
       },
     }),
@@ -63,16 +67,25 @@ const Page = () => {
       if (!isError) {
         db.message.add({
           ...message,
-          parts: message.parts.filter((item) => item.type === "text"),
-          sessionId: session_id as string,
+          sessionId: session_id,
           createdAt: new Date(),
         });
-        db.session.update(session_id as string, {
+        db.session.update(session_id, {
           updatedAt: new Date(),
         });
       }
     },
   });
+
+  const scrollToBottom = useCallback(
+    (behavior: "smooth" | "instant" = "smooth") => {
+      chatListRef.current?.scrollTo({
+        top: chatListRef.current.scrollHeight,
+        behavior,
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (initMessages && !loaded) {
@@ -83,11 +96,9 @@ const Page = () => {
 
   useEffect(() => {
     if (loaded) {
-      chatListRef.current?.scrollTo({
-        top: chatListRef.current.scrollHeight,
-      });
+      scrollToBottom("instant");
     }
-  }, [loaded]);
+  }, [loaded, scrollToBottom]);
 
   useEffect(() => {
     if (isNew && initMessages) {
@@ -115,10 +126,7 @@ const Page = () => {
           chatListRef.current.clientHeight <
         200
       ) {
-        chatListRef.current.scrollTo({
-          top: chatListRef.current.scrollHeight,
-          behavior: "smooth",
-        });
+        scrollToBottom();
       }
     }
   }, [status, messages]);
@@ -153,37 +161,18 @@ const Page = () => {
         },
       ],
       role: "user",
-      sessionId: session_id as string,
+      sessionId: session_id,
       createdAt: new Date(),
     });
-    await db.session.update(session_id as string, {
+    await db.session.update(session_id, {
       updatedAt: new Date(),
     });
 
-    chatListRef.current?.scrollTo({
-      top: chatListRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    scrollToBottom();
 
-    const { type } = getStoredModel();
-    if (type === "Text Generation") {
-      sendMessage({
-        text: message,
-      });
-    }
-    // if (type === "Text to Image") {
-    //   const res = await fetch("/api/image", {
-    //     method: "POST",
-    //     body: JSON.stringify({
-    //       prompt: message,
-    //       model: getStoredModel().id,
-    //     }),
-    //   });
-    //   if (res.ok) {
-    //     const blob = await res.blob();
-    //     console.log(blob);
-    //   }
-    // }
+    sendMessage({
+      text: message,
+    });
   };
 
   return (

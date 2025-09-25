@@ -1,6 +1,4 @@
 import type { Model } from "@/components/model-select";
-import { experimental_generateImage as generateImage } from "ai";
-import { workersai } from "@/app/api";
 
 interface Data {
   prompt: string;
@@ -10,18 +8,25 @@ interface Data {
 export async function POST(request: Request) {
   const { prompt, model } = (await request.json()) as Data;
 
-  const { image } = await generateImage({
-    model: workersai.image(model),
-    prompt,
-    // size: "1024x1024",
-    n: 1,
-  });
-
-  const { uint8Array, mediaType } = image;
-
-  return new Response(new Blob([uint8Array.buffer as ArrayBuffer]), {
-    headers: {
-      "Content-Type": mediaType,
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.CF_WORKERS_AI_TOKEN}`,
+      },
+      method: "POST",
+      body: JSON.stringify({
+        prompt,
+        // steps: 4,
+      }),
     },
-  });
+  );
+
+  if (!res.ok) {
+    return new Response("Error generating image", { status: 500 });
+  }
+
+  const image = await res.blob();
+
+  return new Response(image);
 }
