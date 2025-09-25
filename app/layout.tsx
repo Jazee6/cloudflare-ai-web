@@ -28,7 +28,7 @@ export default function RootLayout({
 
           <SidebarInset>
             <header className="h-16 flex items-center px-4 absolute">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ml-1 z-10" />
             </header>
 
             {children}

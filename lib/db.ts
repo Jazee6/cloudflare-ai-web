@@ -1,4 +1,4 @@
-import type { TextUIPart, UIDataTypes, UIMessagePart, UITools } from "ai";
+import type { UIDataTypes, UIMessagePart, UITools } from "ai";
 import Dexie, { type EntityTable } from "dexie";
 
 export interface Session {
@@ -9,7 +9,7 @@ export interface Session {
 
 export interface Message<
   METADATA = unknown,
-  DATA_PARTS extends UIDataTypes = UIDataTypes & TextUIPart,
+  DATA_PARTS extends UIDataTypes = UIDataTypes,
   TOOLS extends UITools = UITools,
 > {
   id: string;
