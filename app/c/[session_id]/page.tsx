@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
 import { getStoredModel } from "@/components/model-select";
+import AuthDialog from "@/components/auth-dialog";
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -29,6 +30,7 @@ const Page = () => {
   const [loaded, setLoaded] = useState(isNew);
   const [showToBottom, setShowToBottom] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   const initMessages = useLiveQuery(
     () =>
@@ -40,42 +42,45 @@ const Page = () => {
     [session_id],
   );
 
-  const {
-    messages,
-    sendMessage,
-    status,
-    setMessages,
-    stop,
-    error,
-    regenerate,
-  } = useChat<Message>({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ messages }) => {
-        const { id } = getStoredModel();
+  const { messages, sendMessage, status, setMessages, stop, regenerate } =
+    useChat<Message>({
+      transport: new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest: ({ messages }) => {
+          const { id } = getStoredModel();
 
-        return {
-          body: {
-            messages: messages.slice(-10),
-            model: id,
-          },
-        };
+          return {
+            headers: {
+              Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
+            },
+            body: {
+              messages: messages.slice(-10),
+              model: id,
+            },
+          };
+        },
+      }),
+      experimental_throttle: 100,
+      onFinish: ({ message, isError }) => {
+        if (!isError) {
+          db.message.add({
+            ...message,
+            sessionId: session_id,
+            createdAt: new Date(),
+          });
+          db.session.update(session_id, {
+            updatedAt: new Date(),
+          });
+        }
       },
-    }),
-    experimental_throttle: 100,
-    onFinish: ({ message, isError }) => {
-      if (!isError) {
-        db.message.add({
-          ...message,
-          sessionId: session_id,
-          createdAt: new Date(),
-        });
-        db.session.update(session_id, {
-          updatedAt: new Date(),
-        });
-      }
-    },
-  });
+      onError: async (error) => {
+        if (error.message === "Unauthorized") {
+          setAuthDialogOpen(true);
+          return;
+        }
+        toast.error("Unknown error occurred. Please try again.");
+      },
+    });
 
   const scrollToBottom = useCallback(
     (behavior: "smooth" | "instant" = "smooth") => {
@@ -110,12 +115,6 @@ const Page = () => {
       }
     }
   }, [isNew, initMessages, sendMessage]);
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Unknown error occurred. Please try again.");
-    }
-  }, [error]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <messages>
   useEffect(() => {
@@ -219,6 +218,8 @@ const Page = () => {
         </ViewTransition>
         <Footer />
       </div>
+
+      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </div>
   );
 };

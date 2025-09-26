@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  if (!process.env.API_PASSWORD) {
+  if (!process.env.APP_PASSWORD) {
     return NextResponse.next();
   }
-  const password = request.headers.get("x-app-password");
-  if (password !== process.env.API_PASSWORD) {
-    return new Response(null, { status: 401 });
+  const password = request.headers.get("Authorization");
+  if (password !== process.env.APP_PASSWORD) {
+    return new Response("Unauthorized", { status: 401 });
   }
 }
 
