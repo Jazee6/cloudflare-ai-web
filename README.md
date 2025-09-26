@@ -24,6 +24,7 @@
 |---------------------|-----------------------------|
 | CF_ACCOUNT_ID       | Cloudflare 账户ID             |  
 | CF_WORKERS_AI_TOKEN | Cloudflare Workers AI Token |
+| APP_PASSWORD        | 访问密码                        |
 
 示例： 查看`.env.example`文件
 
