@@ -13,11 +13,14 @@ export const metadata: Metadata = {
   description: "Cloudflare AI Platform with one-click deployment.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // const cookieStore = await cookies();
+  // const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+
   return (
     <html lang="zh">
       <body className="scrollbar-thumb-border scrollbar-track-transparent">

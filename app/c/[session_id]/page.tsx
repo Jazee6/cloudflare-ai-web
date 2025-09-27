@@ -20,8 +20,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { debounce } from "next/dist/server/utils";
-import { getStoredModel } from "@/components/model-select";
 import AuthDialog from "@/components/auth-dialog";
+import { getStoredModel } from "@/lib/utils";
+import { models } from "@/lib/models";
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -203,6 +204,7 @@ const Page = () => {
 
         <ViewTransition name="chat-input">
           <ChatInput
+            models={models.filter((i) => i.type === "Text Generation")}
             className="mx-auto max-w-3xl bg-background shadow-xl"
             onSendMessage={onSendMessage}
             status={status}
