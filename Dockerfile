@@ -14,7 +14,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN bun run build
+RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
@@ -35,4 +35,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["bun", "./server.js"]
+CMD ["node", "./server.js"]
