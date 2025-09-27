@@ -15,6 +15,7 @@
 - 使用 Cloudflare Workers AI 快速搭建多模型AI平台
 - 支持 Serverless 快速部署
 - 聊天记录本地存储
+- 支持设置访问密码
 
 ## 部署说明
 
