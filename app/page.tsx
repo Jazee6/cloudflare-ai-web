@@ -1,22 +1,20 @@
 "use client";
 
-import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
-import Footer from "@/components/footer";
-import {
-  unstable_ViewTransition as ViewTransition,
-  useCallback,
-  useEffect,
-} from "react";
-import { db } from "@/lib/db";
 import { generateId } from "ai";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  unstable_ViewTransition as ViewTransition,
+  Suspense,
+} from "react";
+import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
+import Footer from "@/components/footer";
 import { TextEffect } from "@/components/ui/text-effect";
+import { db } from "@/lib/db";
 import { models } from "@/lib/models";
-import { connection } from "next/server";
 
-export default async function Home() {
-  await connection();
-
+const Index = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -75,5 +73,13 @@ export default async function Home() {
 
       <Footer classname="mt-auto mb-1" />
     </div>
+  );
+};
+
+export default function Home() {
+  return (
+    <Suspense>
+      <Index />
+    </Suspense>
   );
 }
