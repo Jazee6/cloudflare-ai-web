@@ -178,7 +178,7 @@ const Page = () => {
     <div className="flex flex-col h-screen">
       <div
         ref={chatListRef}
-        className="overflow-y-auto scrollbar px-4"
+        className="overflow-y-auto scrollbar"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
         <ChatList
