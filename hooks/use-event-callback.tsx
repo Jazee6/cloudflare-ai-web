@@ -5,18 +5,18 @@ import { useIsomorphicLayoutEffect } from "./use-isomorphic-layout-effect";
 
 /**
  * Custom hook that creates a memoized event callback that's safe to call during rendering.
- * 
+ *
  * This hook ensures that the callback always has access to the latest values
  * while maintaining a stable reference, preventing unnecessary re-renders.
  */
 export function useEventCallback<Args extends unknown[], R>(
-  fn: (...args: Args) => R
+  fn: (...args: Args) => R,
 ): (...args: Args) => R;
 export function useEventCallback<Args extends unknown[], R>(
-  fn: ((...args: Args) => R) | undefined
+  fn: ((...args: Args) => R) | undefined,
 ): ((...args: Args) => R) | undefined;
 export function useEventCallback<Args extends unknown[], R>(
-  fn: ((...args: Args) => R) | undefined
+  fn: ((...args: Args) => R) | undefined,
 ): ((...args: Args) => R) | undefined {
   const ref = useRef<typeof fn>(() => {
     throw new Error("Cannot call an event handler while rendering.");
