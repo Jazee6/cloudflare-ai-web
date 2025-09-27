@@ -10,6 +10,17 @@
 
 示例：https://ai.jaze.top
 
+### Docker
+
+```bash
+docker run -d --name cloudflare-ai-web \
+  -e CF_ACCOUNT_ID=YOUR_CF_ACCOUNT_ID \
+  -e CF_WORKERS_AI_TOKEN=YOUR_CF_WORKERS_AI_TOKEN \
+  -p 3000:3000 \
+  --restart=always \
+  jazee6/cloudflare-ai-web
+```
+
 ## 特性
 
 - 使用 Cloudflare Workers AI 快速搭建多模型AI平台
