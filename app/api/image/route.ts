@@ -1,4 +1,4 @@
-import type { Model } from "@/components/model-select";
+import type { Model } from "@/lib/models";
 
 interface Data {
   prompt: string;

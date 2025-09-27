@@ -4,9 +4,9 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
-import type { Model } from "@/components/model-select";
-import type { Message } from "@/lib/db";
 import { workersai } from "@/app/api";
+import type { Message } from "@/lib/db";
+import type { Model } from "@/lib/models";
 
 interface Data {
   messages: Message[];
