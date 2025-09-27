@@ -32,5 +32,14 @@ export async function POST(request: Request) {
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    messageMetadata: ({ part }) => {
+      if (part.type === "start") {
+        return {
+          model,
+        };
+      }
+    },
+  });
 }

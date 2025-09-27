@@ -100,12 +100,6 @@ const Page = () => {
   }, [initMessages, setMessages, loaded]);
 
   useEffect(() => {
-    if (loaded) {
-      scrollToBottom("instant");
-    }
-  }, [loaded, scrollToBottom]);
-
-  useEffect(() => {
     if (isNew && initMessages) {
       if (initMessages[0].parts[0].type === "text") {
         sendMessage({

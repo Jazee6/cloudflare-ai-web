@@ -143,7 +143,7 @@ const ModelList = ({
 function ComboBoxResponsive() {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
-  const [selectedModel, setSelectedModel] = useState<Model>();
+  const [selectedModel, setSelectedModel] = useState<Model>(models[0]);
 
   useEffect(() => {
     setSelectedModel(
@@ -161,15 +161,13 @@ function ComboBoxResponsive() {
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          {selectedModel ? (
-            <Button variant="ghost">
-              <span className="size-4 flex items-center justify-center">
-                {selectedModel.logo}
-              </span>
-              {selectedModel.name}
-              <ChevronDown />
-            </Button>
-          ) : null}
+          <Button variant="ghost">
+            <span className="size-4 flex items-center justify-center">
+              {selectedModel.logo}
+            </span>
+            {selectedModel.name}
+            <ChevronDown />
+          </Button>
         </PopoverTrigger>
         <PopoverContent className="p-0" align="start">
           <ModelList setOpen={setOpen} setSelectedModel={setSelectedModel} />
@@ -181,15 +179,13 @@ function ComboBoxResponsive() {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        {selectedModel ? (
-          <Button variant="ghost">
-            <span className="size-4 flex items-center justify-center">
-              {selectedModel.logo}
-            </span>
-            {selectedModel.name}
-            <ChevronDown />
-          </Button>
-        ) : null}
+        <Button variant="ghost">
+          <span className="size-4 flex items-center justify-center">
+            {selectedModel.logo}
+          </span>
+          {selectedModel.name}
+          <ChevronDown />
+        </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerTitle></DrawerTitle>

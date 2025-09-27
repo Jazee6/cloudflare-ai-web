@@ -94,7 +94,7 @@ const ChatInput = ({
               </FormItem>
             )}
           />
-          <div className="flex items-center p-2">
+          <div className="flex items-center p-2 space-x-1">
             <ModelSelect />
 
             <Button
