@@ -12,8 +12,11 @@ import { generateId } from "ai";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TextEffect } from "@/components/ui/text-effect";
 import { models } from "@/lib/models";
+import { connection } from "next/server";
 
-export default function Home() {
+export default async function Home() {
+  await connection();
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
