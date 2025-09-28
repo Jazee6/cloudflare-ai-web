@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import ModelSelect from "@/components/model-select";
+import type { Model } from "@/lib/models";
 
 export interface onSendMessageProps {
   message: string;
@@ -25,12 +26,14 @@ const ChatInput = ({
   onStop,
   onRetry,
   status = "ready",
+  models,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
   onStop?: () => void;
   onRetry?: () => void;
   status?: ChatStatus;
+  models: Model[];
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -94,8 +97,8 @@ const ChatInput = ({
               </FormItem>
             )}
           />
-          <div className="flex items-center p-2">
-            <ModelSelect />
+          <div className="flex items-center p-2 space-x-1">
+            <ModelSelect models={models} />
 
             <Button
               size="icon"

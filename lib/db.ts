@@ -8,7 +8,9 @@ export interface Session {
 }
 
 export interface Message<
-  METADATA = unknown,
+  METADATA = {
+    model: string;
+  },
   DATA_PARTS extends UIDataTypes = UIDataTypes,
   TOOLS extends UITools = UITools,
 > {

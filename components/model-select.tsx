@@ -21,93 +21,40 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import {
-  DeepSeekLogo,
-  GoogleLogo,
-  MetaLogo,
-  MistralLogo,
-  QWenLogo,
-} from "@/components/logo";
+import type { Model } from "@/lib/models";
+import { getStoredModelId } from "@/lib/utils";
 
-export interface Model {
-  id: string;
-  name: string;
-  logo: ReactNode;
-  type: "Text Generation" | "Text to Image";
-  disabled?: boolean;
-}
+const getGroupedModels = (models: Model[]) => {
+  const groupedModels: {
+    type: Model["type"];
+    models: Model[];
+  }[] = [];
 
-export const models: Model[] = [
-  {
-    id: "@cf/meta/llama-4-scout-17b-16e-instruct",
-    name: "llama-4-scout-17b",
-    logo: <MetaLogo />,
-    type: "Text Generation",
-  },
-  {
-    id: "@cf/google/gemma-3-12b-it",
-    name: "gemma-3-12b",
-    logo: <GoogleLogo />,
-    type: "Text Generation",
-  },
-  {
-    id: "@cf/mistralai/mistral-small-3.1-24b-instruct",
-    name: "mistral-small-3.1-24b",
-    logo: <MistralLogo />,
-    type: "Text Generation",
-  },
-  {
-    id: "@cf/qwen/qwq-32b",
-    name: "qwq-32b",
-    logo: <QWenLogo />,
-    type: "Text Generation",
-  },
-  {
-    id: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
-    name: "deepseek-r1-distill-qwen-32b",
-    logo: <DeepSeekLogo />,
-    type: "Text Generation",
-  },
-  {
-    id: "@cf/black-forest-labs/flux-1-schnell",
-    name: "flux-1-schnell",
-    logo: (
-      <div className="bg-linear-to-br from-secondary to-primary size-4 rounded-full"></div>
-    ),
-    type: "Text to Image",
-    disabled: true,
-  },
-];
-
-export const getStoredModelId = () =>
-  (localStorage.getItem("CF_AI_MODEL") ?? models[0].id) as Model["id"];
-
-export const getStoredModel = () =>
-  models.find((m) => m.id === getStoredModelId()) ?? models[0];
-
-const groupedModels: {
-  type: Model["type"];
-  models: Model[];
-}[] = [];
-
-for (const model of models) {
-  let group = groupedModels.find((g) => g.type === model.type);
-  if (!group) {
-    group = { type: model.type, models: [] as Model[] };
-    groupedModels.push(group);
+  for (const model of models) {
+    let group = groupedModels.find((g) => g.type === model.type);
+    if (!group) {
+      group = { type: model.type, models: [] as Model[] };
+      groupedModels.push(group);
+    }
+    group.models.push(model);
   }
-  group.models.push(model);
-}
+
+  return groupedModels;
+};
 
 const ModelList = ({
+  models,
   setOpen,
   setSelectedModel,
 }: {
+  models: Model[];
   setOpen: (open: boolean) => void;
   setSelectedModel: (models: Model) => void;
 }) => {
+  const groupedModels = getGroupedModels(models);
+
   return (
     <Command>
       <CommandInput placeholder="Filter models..." />
@@ -117,7 +64,6 @@ const ModelList = ({
           <CommandGroup key={type} heading={type}>
             {models.map((model) => (
               <CommandItem
-                disabled={model.disabled}
                 key={model.id}
                 value={model.id}
                 onSelect={(value) => {
@@ -140,7 +86,7 @@ const ModelList = ({
   );
 };
 
-function ComboBoxResponsive() {
+function ComboBoxResponsive({ models }: { models: Model[] }) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [selectedModel, setSelectedModel] = useState<Model>();
@@ -149,7 +95,7 @@ function ComboBoxResponsive() {
     setSelectedModel(
       models.find((item) => item.id === getStoredModelId()) ?? models[0],
     );
-  }, []);
+  }, [models]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -161,7 +107,7 @@ function ComboBoxResponsive() {
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          {selectedModel ? (
+          {selectedModel && (
             <Button variant="ghost">
               <span className="size-4 flex items-center justify-center">
                 {selectedModel.logo}
@@ -169,10 +115,14 @@ function ComboBoxResponsive() {
               {selectedModel.name}
               <ChevronDown />
             </Button>
-          ) : null}
+          )}
         </PopoverTrigger>
         <PopoverContent className="p-0" align="start">
-          <ModelList setOpen={setOpen} setSelectedModel={setSelectedModel} />
+          <ModelList
+            setOpen={setOpen}
+            setSelectedModel={setSelectedModel}
+            models={models}
+          />
         </PopoverContent>
       </Popover>
     );
@@ -181,7 +131,7 @@ function ComboBoxResponsive() {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        {selectedModel ? (
+        {selectedModel && (
           <Button variant="ghost">
             <span className="size-4 flex items-center justify-center">
               {selectedModel.logo}
@@ -189,20 +139,24 @@ function ComboBoxResponsive() {
             {selectedModel.name}
             <ChevronDown />
           </Button>
-        ) : null}
+        )}
       </DrawerTrigger>
       <DrawerContent>
         <DrawerTitle></DrawerTitle>
         <div className="mt-4 border-t">
-          <ModelList setOpen={setOpen} setSelectedModel={setSelectedModel} />
+          <ModelList
+            setOpen={setOpen}
+            setSelectedModel={setSelectedModel}
+            models={models}
+          />
         </div>
       </DrawerContent>
     </Drawer>
   );
 }
 
-const ModelSelect = () => {
-  return <ComboBoxResponsive></ComboBoxResponsive>;
+const ModelSelect = ({ models }: { models: Model[] }) => {
+  return <ComboBoxResponsive models={models}></ComboBoxResponsive>;
 };
 
 export default ModelSelect;

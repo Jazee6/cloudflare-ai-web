@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cog, MoreHorizontal, Plus } from "lucide-react";
+import { Cog, Moon, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { db, type Session } from "@/lib/db";
+import LoadingIndicator from "@/components/loading-indicator";
 
 interface GroupedSessions {
   type: "today" | "last 7 days" | "last 30 days" | "earlier";
@@ -90,7 +91,25 @@ const AppSidebar = () => {
   return (
     <>
       <Sidebar>
-        {/*<SidebarHeader />*/}
+        {/*<SidebarHeader>*/}
+        {/*  <SidebarMenu>*/}
+        {/*    <SidebarMenuItem>*/}
+        {/*      <SidebarMenuButton asChild isActive={pathname === "/image"}>*/}
+        {/*        <Link*/}
+        {/*          href="/image"*/}
+        {/*          onNavigate={(event) => {*/}
+        {/*            event.preventDefault();*/}
+        {/*            toast.info("Image generation is coming soon!");*/}
+        {/*          }}*/}
+        {/*        >*/}
+        {/*          <Image />*/}
+        {/*          Image*/}
+        {/*          <LoadingIndicator className="ml-auto" />*/}
+        {/*        </Link>*/}
+        {/*      </SidebarMenuButton>*/}
+        {/*    </SidebarMenuItem>*/}
+        {/*  </SidebarMenu>*/}
+        {/*</SidebarHeader>*/}
         <SidebarContent>
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
@@ -100,8 +119,9 @@ const AppSidebar = () => {
                   {sessions.map(({ id, name }) => (
                     <SidebarMenuItem key={id}>
                       <SidebarMenuButton asChild isActive={session_id === id}>
-                        <Link href={`/c/${id}`} prefetch={true}>
+                        <Link href={`/c/${id}`}>
                           {name}
+                          <LoadingIndicator className="ml-auto" />
                         </Link>
                       </SidebarMenuButton>
 
@@ -119,7 +139,7 @@ const AppSidebar = () => {
                                 setSessionId(id);
                               }}
                             >
-                              <span className="text-destructive">删除</span>
+                              <span className="text-destructive">Delete</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -137,9 +157,14 @@ const AppSidebar = () => {
               <Button size="icon" variant="ghost" className="size-8" disabled>
                 <Cog />
               </Button>
-              <Link href="/" className="ml-auto" prefetch={true}>
+
+              <Button size="icon" variant="ghost" className="size-8" disabled>
+                <Moon />
+              </Button>
+
+              <Link href="/" className="ml-auto">
                 <Button variant="ghost">
-                  新对话
+                  New Chat
                   <Plus />
                 </Button>
               </Link>
@@ -151,12 +176,16 @@ const AppSidebar = () => {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除对话吗？</AlertDialogTitle>
-            <AlertDialogDescription>无法撤销</AlertDialogDescription>
+            <AlertDialogTitle>
+              Are you sure you want to delete this session?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>确认</AlertDialogAction>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

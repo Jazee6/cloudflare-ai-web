@@ -1,40 +1,58 @@
 "use client";
 
+import { generateId } from "ai";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  unstable_ViewTransition as ViewTransition,
+  Suspense,
+} from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
-import { unstable_ViewTransition as ViewTransition } from "react";
-import { db } from "@/lib/db";
-import { generateId } from "ai";
-import { useRouter } from "next/navigation";
 import { TextEffect } from "@/components/ui/text-effect";
+import { db } from "@/lib/db";
+import { models } from "@/lib/models";
 
-export default function Home() {
+const Index = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const onSendMessage = async (data: onSendMessageProps) => {
-    const { message } = data;
+  const onSendMessage = useCallback(
+    async (data: onSendMessageProps) => {
+      const { message } = data;
 
-    const sessionId = crypto.randomUUID();
-    await db.session.add({
-      updatedAt: new Date(),
-      name: message.slice(0, 20),
-      id: sessionId,
-    });
-    await db.message.add({
-      id: generateId(),
-      parts: [
-        {
-          type: "text",
-          text: message,
-        },
-      ],
-      role: "user",
-      sessionId,
-      createdAt: new Date(),
-    });
+      const sessionId = crypto.randomUUID();
+      await db.session.add({
+        updatedAt: new Date(),
+        name: message.slice(0, 20),
+        id: sessionId,
+      });
+      await db.message.add({
+        id: generateId(),
+        parts: [
+          {
+            type: "text",
+            text: message,
+          },
+        ],
+        role: "user",
+        sessionId,
+        createdAt: new Date(),
+      });
 
-    router.replace(`/c/${sessionId}?new`);
-  };
+      router.replace(`/c/${sessionId}?new`);
+    },
+    [router],
+  );
+
+  const query = searchParams.get("q");
+
+  useEffect(() => {
+    if (query) {
+      onSendMessage({ message: query });
+    }
+  }, [query, onSendMessage]);
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
@@ -46,6 +64,7 @@ export default function Home() {
         </div>
         <ViewTransition name="chat-input">
           <ChatInput
+            models={models.filter((i) => i.type === "Text Generation")}
             className="mx-auto max-w-3xl"
             onSendMessage={onSendMessage}
           />
@@ -54,5 +73,13 @@ export default function Home() {
 
       <Footer classname="mt-auto mb-1" />
     </div>
+  );
+};
+
+export default function Home() {
+  return (
+    <Suspense>
+      <Index />
+    </Suspense>
   );
 }
