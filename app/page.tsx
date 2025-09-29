@@ -1,22 +1,16 @@
 "use client";
 
 import { generateId } from "ai";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  unstable_ViewTransition as ViewTransition,
-  Suspense,
-} from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, unstable_ViewTransition as ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import { TextEffect } from "@/components/ui/text-effect";
 import { db } from "@/lib/db";
 import { models } from "@/lib/models";
 
-const Index = () => {
+export default function Home() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const onSendMessage = useCallback(
     async (data: onSendMessageProps) => {
@@ -46,14 +40,6 @@ const Index = () => {
     [router],
   );
 
-  const query = searchParams.get("q");
-
-  useEffect(() => {
-    if (query) {
-      onSendMessage({ message: query });
-    }
-  }, [query, onSendMessage]);
-
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="flex flex-col justify-center h-full w-full space-y-4 px-4">
@@ -73,13 +59,5 @@ const Index = () => {
 
       <Footer classname="mt-auto mb-1" />
     </div>
-  );
-};
-
-export default function Home() {
-  return (
-    <Suspense>
-      <Index />
-    </Suspense>
   );
 }

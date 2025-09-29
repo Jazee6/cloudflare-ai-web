@@ -1,28 +1,28 @@
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { useParams, useSearchParams } from "next/navigation";
-import { db, type Message } from "@/lib/db";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
+import { useLiveQuery } from "dexie-react-hooks";
+import { ChevronDown } from "lucide-react";
+import { debounce } from "next/dist/server/utils";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   startTransition,
-  unstable_ViewTransition as ViewTransition,
   useCallback,
   useEffect,
   useRef,
   useState,
+  unstable_ViewTransition as ViewTransition,
 } from "react";
-import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
-import Footer from "@/components/footer";
-import ChatList from "@/components/chat-list";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
-import { debounce } from "next/dist/server/utils";
 import AuthDialog from "@/components/auth-dialog";
-import { getStoredModel } from "@/lib/utils";
+import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
+import ChatList from "@/components/chat-list";
+import Footer from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { db, type Message } from "@/lib/db";
 import { models } from "@/lib/models";
+import { getStoredModel } from "@/lib/utils";
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -173,7 +173,7 @@ const Page = () => {
     <div className="flex flex-col h-screen">
       <div
         ref={chatListRef}
-        className="overflow-y-auto scrollbar"
+        className="overflow-y-auto scrollbar px-2"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
         <ChatList
