@@ -5,12 +5,12 @@ import type { ChatStatus } from "ai";
 import { ArrowUp, Loader2, RefreshCw, Square } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import ModelSelect from "@/components/model-select";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import ModelSelect from "@/components/model-select";
 import type { Model } from "@/lib/models";
+import { cn } from "@/lib/utils";
 
 export interface onSendMessageProps {
   message: string;
@@ -79,7 +79,7 @@ const ChatInput = ({
                 <FormControl>
                   <Textarea
                     autoFocus
-                    className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar"
+                    className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar rounded-b-none rounded-t"
                     placeholder="Text here..."
                     onKeyDown={(event) => {
                       if (
@@ -97,7 +97,7 @@ const ChatInput = ({
               </FormItem>
             )}
           />
-          <div className="flex items-center p-2 space-x-1">
+          <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
             <ModelSelect models={models} />
 
             <Button

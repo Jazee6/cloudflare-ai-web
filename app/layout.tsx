@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
+import AppSidebar from "@/components/app-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/app-sidebar";
-import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Cloudflare AI Web",
@@ -22,21 +23,23 @@ export default async function RootLayout({
   // const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
   return (
-    <html lang="zh">
+    <html lang="zh" suppressHydrationWarning>
       <body className="scrollbar-thumb-border scrollbar-track-transparent">
-        <Toaster position="top-center" richColors />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Toaster position="top-center" richColors />
 
-        <SidebarProvider>
-          <AppSidebar />
+          <SidebarProvider>
+            <AppSidebar />
 
-          <SidebarInset>
-            <header className="h-16 flex items-center px-4 absolute">
-              <SidebarTrigger className="-ml-1 z-10" />
-            </header>
+            <SidebarInset>
+              <header className="h-16 flex items-center px-4 absolute">
+                <SidebarTrigger className="-ml-1 z-10" />
+              </header>
 
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
