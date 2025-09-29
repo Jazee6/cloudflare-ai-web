@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cog, Moon, MoreHorizontal, Plus } from "lucide-react";
+import { Cog, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -156,10 +156,6 @@ const AppSidebar = () => {
             <SidebarMenuItem className="flex items-center">
               <Button size="icon" variant="ghost" className="size-8" disabled>
                 <Cog />
-              </Button>
-
-              <Button size="icon" variant="ghost" className="size-8" disabled>
-                <Moon />
               </Button>
 
               <Link href="/" className="ml-auto">
