@@ -1,6 +1,8 @@
 "use client";
 
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -21,10 +23,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { Model } from "@/lib/models";
-import { getStoredModelId } from "@/lib/utils";
+import { getStoredModelId, type StoredModelKey } from "@/lib/utils";
 
 const getGroupedModels = (models: Model[]) => {
   const groupedModels: {
@@ -77,6 +78,11 @@ const ModelList = ({
                   {model.logo}
                 </span>
                 {model.name}
+                {model.tag?.map((item) => (
+                  <Badge key={item} variant="outline" className="ml-auto">
+                    {item}
+                  </Badge>
+                ))}
               </CommandItem>
             ))}
           </CommandGroup>
@@ -86,22 +92,29 @@ const ModelList = ({
   );
 };
 
-function ComboBoxResponsive({ models }: { models: Model[] }) {
+function ComboBoxResponsive({
+  models,
+  modalKey,
+}: {
+  models: Model[];
+  modalKey: StoredModelKey;
+}) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [selectedModel, setSelectedModel] = useState<Model>();
 
   useEffect(() => {
     setSelectedModel(
-      models.find((item) => item.id === getStoredModelId()) ?? models[0],
+      models.find((item) => item.id === getStoredModelId(modalKey)) ??
+        models[0],
     );
-  }, [models]);
+  }, [models, modalKey]);
 
   useEffect(() => {
     if (selectedModel) {
-      localStorage.setItem("CF_AI_MODEL", selectedModel.id);
+      localStorage.setItem(modalKey, selectedModel.id);
     }
-  }, [selectedModel]);
+  }, [selectedModel, modalKey]);
 
   if (isDesktop) {
     return (
@@ -155,8 +168,19 @@ function ComboBoxResponsive({ models }: { models: Model[] }) {
   );
 }
 
-const ModelSelect = ({ models }: { models: Model[] }) => {
-  return <ComboBoxResponsive models={models}></ComboBoxResponsive>;
+const ModelSelect = ({
+  models,
+  modalKey,
+}: {
+  models: Model[];
+  modalKey: StoredModelKey;
+}) => {
+  return (
+    <ComboBoxResponsive
+      models={models}
+      modalKey={modalKey}
+    ></ComboBoxResponsive>
+  );
 };
 
 export default ModelSelect;

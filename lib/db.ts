@@ -22,6 +22,11 @@ export interface Message<
   createdAt: Date;
 }
 
+export interface ImagesDataPart {
+  images: Blob[];
+  urls?: string[];
+}
+
 export const db = new Dexie("CF_AI_DB") as Dexie & {
   session: EntityTable<Session, "id">;
   message: EntityTable<Message, "id">;

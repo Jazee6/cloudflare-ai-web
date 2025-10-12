@@ -10,8 +10,10 @@ export const getRandomId = () => {
   return Math.random().toString(36).slice(2);
 };
 
-export const getStoredModel = () =>
-  models.find((m) => m.id === getStoredModelId()) ?? models[0];
+export type StoredModelKey = "CF_AI_MODEL" | "CF_AI_MODEL_IMAGE";
 
-export const getStoredModelId = () =>
-  (localStorage.getItem("CF_AI_MODEL") ?? models[0].id) as Model["id"];
+export const getStoredModel = (key: StoredModelKey = "CF_AI_MODEL") =>
+  models.find((m) => m.id === getStoredModelId(key)) ?? models[0];
+
+export const getStoredModelId = (key: StoredModelKey = "CF_AI_MODEL") =>
+  (localStorage.getItem(key) ?? models[0].id) as Model["id"];

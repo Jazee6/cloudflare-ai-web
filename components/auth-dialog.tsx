@@ -45,7 +45,7 @@ const AuthDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>请输入访问密码</DialogTitle>
+          <DialogTitle>Please enter your password to continue</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -63,7 +63,7 @@ const AuthDialog = ({
               )}
             />
             <DialogFooter className="mt-4">
-              <Button type="submit">提交</Button>
+              <Button type="submit">Submit</Button>
             </DialogFooter>
           </form>
         </Form>

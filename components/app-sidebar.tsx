@@ -1,10 +1,11 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cog, MoreHorizontal, Plus } from "lucide-react";
+import { Cog, ImageIcon, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import LoadingIndicator from "@/components/loading-indicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +30,13 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { db, type Session } from "@/lib/db";
-import LoadingIndicator from "@/components/loading-indicator";
 
 interface GroupedSessions {
   type: "today" | "last 7 days" | "last 30 days" | "earlier";
@@ -47,6 +48,7 @@ const AppSidebar = () => {
   const router = useRouter();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
+  const pathname = usePathname();
 
   const sessions = useLiveQuery(() =>
     db.session.limit(100).reverse().sortBy("updatedAt"),
@@ -91,25 +93,39 @@ const AppSidebar = () => {
   return (
     <>
       <Sidebar>
-        {/*<SidebarHeader>*/}
-        {/*  <SidebarMenu>*/}
-        {/*    <SidebarMenuItem>*/}
-        {/*      <SidebarMenuButton asChild isActive={pathname === "/image"}>*/}
-        {/*        <Link*/}
-        {/*          href="/image"*/}
-        {/*          onNavigate={(event) => {*/}
-        {/*            event.preventDefault();*/}
-        {/*            toast.info("Image generation is coming soon!");*/}
-        {/*          }}*/}
-        {/*        >*/}
-        {/*          <Image />*/}
-        {/*          Image*/}
-        {/*          <LoadingIndicator className="ml-auto" />*/}
-        {/*        </Link>*/}
-        {/*      </SidebarMenuButton>*/}
-        {/*    </SidebarMenuItem>*/}
-        {/*  </SidebarMenu>*/}
-        {/*</SidebarHeader>*/}
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/image"}>
+                <Link href="/image">
+                  <ImageIcon />
+                  Image
+                  <LoadingIndicator className="ml-auto" />
+                </Link>
+              </SidebarMenuButton>
+
+              {pathname === "/image" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuAction>
+                      <MoreHorizontal />
+                    </SidebarMenuAction>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="start">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setDeleteConfirmOpen(true);
+                        setSessionId("image");
+                      }}
+                    >
+                      <span className="text-destructive">Delete</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
         <SidebarContent>
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>

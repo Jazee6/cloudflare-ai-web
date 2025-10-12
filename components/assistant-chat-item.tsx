@@ -1,5 +1,6 @@
-import type { Message } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { Brain, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Fragment } from "react";
 import { Streamdown } from "streamdown";
 import {
   Accordion,
@@ -7,7 +8,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Brain, Loader2 } from "lucide-react";
+import type { ImagesDataPart, Message } from "@/lib/db";
+import { cn } from "@/lib/utils";
 
 const AssistantChatItem = ({
   className,
@@ -43,6 +45,27 @@ const AssistantChatItem = ({
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+          );
+        }
+
+        if (part.type === "data-images") {
+          return (
+            <Fragment key={key}>
+              {(part.data as ImagesDataPart).urls?.map((url, index) => {
+                const key = `image-${index}`;
+
+                return (
+                  <Image
+                    src={url}
+                    alt={key}
+                    key={key}
+                    width={512}
+                    height={512}
+                    className="rounded-md"
+                  />
+                );
+              })}
+            </Fragment>
           );
         }
 

@@ -48,7 +48,7 @@ const Page = () => {
       transport: new DefaultChatTransport({
         api: "/api/chat",
         prepareSendMessagesRequest: ({ messages }) => {
-          const { id } = getStoredModel();
+          const { id } = getStoredModel("CF_AI_MODEL");
 
           return {
             headers: {
@@ -111,9 +111,8 @@ const Page = () => {
     }
   }, [isNew, initMessages, sendMessage]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <messages>
   useEffect(() => {
-    if (status === "streaming" && chatListRef.current) {
+    if (status === "streaming" && chatListRef.current && messages.length) {
       if (
         chatListRef.current.scrollHeight -
           chatListRef.current.scrollTop -
@@ -123,7 +122,7 @@ const Page = () => {
         scrollToBottom();
       }
     }
-  }, [status, messages]);
+  }, [status, messages, scrollToBottom]);
 
   useEffect(() => {
     const onScroll = debounce(() => {
@@ -179,7 +178,7 @@ const Page = () => {
         <ChatList
           status={status}
           messages={messages}
-          className="pt-16 pb-48 max-w-3xl mx-auto"
+          className="pt-16 pb-60 max-w-3xl mx-auto"
         />
       </div>
 
