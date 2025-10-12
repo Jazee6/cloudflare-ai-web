@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     typedEnv: true,
     viewTransition: true,
+    reactCompiler: true,
   },
 };
 

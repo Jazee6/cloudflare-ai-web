@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
-import { cn } from "@/lib/utils";
+import { cn, type StoredModelKey } from "@/lib/utils";
 
 export interface onSendMessageProps {
   message: string;
@@ -27,6 +27,7 @@ const ChatInput = ({
   onRetry,
   status = "ready",
   models,
+  modalKey,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -34,6 +35,7 @@ const ChatInput = ({
   onRetry?: () => void;
   status?: ChatStatus;
   models: Model[];
+  modalKey?: StoredModelKey;
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -98,7 +100,7 @@ const ChatInput = ({
             )}
           />
           <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-            <ModelSelect models={models} />
+            <ModelSelect models={models} modalKey={modalKey ?? "CF_AI_MODEL"} />
 
             <Button
               size="icon"
