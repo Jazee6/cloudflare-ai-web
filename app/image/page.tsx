@@ -56,7 +56,7 @@ const Page = () => {
         top: chatListRef.current.scrollHeight,
         behavior: "smooth",
       });
-    }, 100);
+    }, 200);
   };
 
   return (

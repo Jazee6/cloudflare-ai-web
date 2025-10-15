@@ -39,22 +39,30 @@ export const useImage = ({
       );
   }, []);
 
-  const sendPrompt = async (prompt: string) => {
+  const sendPrompt = async (
+    prompt: string,
+    options?: {
+      isRegenerate?: boolean;
+    },
+  ) => {
     setStatus("submitted");
-    const promptMessage: Message = {
-      id: generateId(),
-      parts: [
-        {
-          type: "text",
-          text: prompt,
-        },
-      ],
-      role: "user",
-      sessionId: "image",
-      createdAt: new Date(),
-    };
-    setMessages((prev) => [...prev, promptMessage]);
-    await db.message.add(promptMessage);
+    const { isRegenerate } = options ?? {};
+    if (!isRegenerate) {
+      const promptMessage: Message = {
+        id: generateId(),
+        parts: [
+          {
+            type: "text",
+            text: prompt,
+          },
+        ],
+        role: "user",
+        sessionId: "image",
+        createdAt: new Date(),
+      };
+      setMessages((prev) => [...prev, promptMessage]);
+      await db.message.add(promptMessage);
+    }
 
     const res = await fetch("/api/image", {
       method: "POST",
@@ -81,7 +89,7 @@ export const useImage = ({
     }
     if (!res.ok) {
       setStatus("error");
-      toast.error(res.statusText);
+      toast.error(await res.text());
       return;
     }
 
@@ -123,7 +131,7 @@ export const useImage = ({
     if (m) {
       if (m.parts[0].type === "text") {
         setStatus("submitted");
-        await sendPrompt(m.parts[0].text);
+        await sendPrompt(m.parts[0].text, { isRegenerate: true });
         return;
       }
     }

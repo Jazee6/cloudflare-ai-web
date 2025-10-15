@@ -5,14 +5,9 @@ interface Data {
   model: Model["id"];
 }
 
-const base64ToBlob = (base64: string, mime: string) => {
-  const byteChars = atob(base64);
-  const byteNumbers = new Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) {
-    byteNumbers[i] = byteChars.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mime });
+const base64ToUint8Array = (base64: string) => {
+  const binaryString = atob(base64);
+  return Uint8Array.from(binaryString, (m) => m.codePointAt(0) ?? 0);
 };
 
 export async function POST(request: Request) {
@@ -37,15 +32,19 @@ export async function POST(request: Request) {
     return new Response("Error generating image", { status: 500 });
   }
 
-  const data: {
-    result: {
-      image: string;
-    };
-  } = await res.json();
-
-  return new Response(base64ToBlob(data.result.image, "image/png"), {
-    headers: {
-      "Content-Type": "image/png",
-    },
-  });
+  switch (model) {
+    case "@cf/lykon/dreamshaper-8-lcm":
+    case "@cf/bytedance/stable-diffusion-xl-lightning": {
+      return new Response(res.body);
+    }
+    case "@cf/black-forest-labs/flux-1-schnell":
+    case "@cf/leonardo/lucid-origin": {
+      const data: {
+        result: {
+          image: string;
+        };
+      } = await res.json();
+      return new Response(base64ToUint8Array(data.result.image));
+    }
+  }
 }
