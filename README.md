@@ -10,6 +10,8 @@
 
 示例：https://ai.jaze.top
 
+> 额度用完时可能无法响应，建议自行部署
+
 ### Docker
 
 ```bash

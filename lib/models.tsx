@@ -56,8 +56,26 @@ export const models: Model[] = [
     tag: ["32b"],
   },
   {
+    id: "@cf/bytedance/stable-diffusion-xl-lightning",
+    name: "stable-diffusion-xl-lightning",
+    logo: defaultLogo,
+    type: "Text to Image",
+  },
+  {
+    id: "@cf/black-forest-labs/flux-1-schnell",
+    name: "flux-1-schnell",
+    logo: defaultLogo,
+    type: "Text to Image",
+  },
+  {
     id: "@cf/leonardo/lucid-origin",
     name: "lucid-origin",
+    logo: defaultLogo,
+    type: "Text to Image",
+  },
+  {
+    id: "@cf/lykon/dreamshaper-8-lcm",
+    name: "dreamshaper-8-lcm",
     logo: defaultLogo,
     type: "Text to Image",
   },
