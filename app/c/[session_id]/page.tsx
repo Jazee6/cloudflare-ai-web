@@ -48,7 +48,7 @@ const Page = () => {
       transport: new DefaultChatTransport({
         api: "/api/chat",
         prepareSendMessagesRequest: ({ messages }) => {
-          const { id } = getStoredModel("CF_AI_MODEL");
+          const { id, provider } = getStoredModel("CF_AI_MODEL");
 
           return {
             headers: {
@@ -57,6 +57,7 @@ const Page = () => {
             body: {
               messages: messages.slice(-10),
               model: id,
+              provider,
             },
           };
         },

@@ -1,4 +1,4 @@
-import type { UIDataTypes, UIMessagePart, UITools } from "ai";
+import type { UIMessage } from "ai";
 import Dexie, { type EntityTable } from "dexie";
 
 export interface Session {
@@ -7,20 +7,10 @@ export interface Session {
   updatedAt: Date;
 }
 
-export interface Message<
-  METADATA = {
-    model: string;
-  },
-  DATA_PARTS extends UIDataTypes = UIDataTypes,
-  TOOLS extends UITools = UITools,
-> {
-  id: string;
+export type Message = UIMessage & {
   sessionId: string;
-  role: "system" | "user" | "assistant";
-  metadata?: METADATA;
-  parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
   createdAt: Date;
-}
+};
 
 export interface ImagesDataPart {
   images: Blob[];
