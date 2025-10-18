@@ -102,6 +102,7 @@ export const modelList: Model[] = [
     name: "dreamshaper-8-lcm",
     logo: defaultLogo,
     type: "Text to Image",
+    provider: "workers-ai",
   },
 ];
 
