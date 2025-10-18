@@ -97,6 +97,12 @@ export const modelList: Model[] = [
     type: "Text to Image",
     provider: "workers-ai",
   },
+  {
+    id: "@cf/lykon/dreamshaper-8-lcm",
+    name: "dreamshaper-8-lcm",
+    logo: defaultLogo,
+    type: "Text to Image",
+  },
 ];
 
 const providers = process.env.NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS?.split(",");
