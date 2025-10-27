@@ -12,7 +12,7 @@ import {
   useEffect,
   useRef,
   useState,
-  unstable_ViewTransition as ViewTransition,
+  ViewTransition,
 } from "react";
 import { toast } from "sonner";
 import AuthDialog from "@/components/auth-dialog";

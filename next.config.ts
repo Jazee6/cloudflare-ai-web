@@ -3,10 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
+  reactCompiler: true,
   experimental: {
     typedEnv: true,
-    viewTransition: true,
-    reactCompiler: true,
   },
 };
 

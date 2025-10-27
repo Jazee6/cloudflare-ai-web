@@ -7,7 +7,7 @@ import {
   useEffect,
   useRef,
   useState,
-  unstable_ViewTransition as ViewTransition,
+  ViewTransition,
 } from "react";
 import AuthDialog from "@/components/auth-dialog";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";

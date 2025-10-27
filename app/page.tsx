@@ -2,7 +2,7 @@
 
 import { generateId } from "ai";
 import { useRouter } from "next/navigation";
-import { useCallback, unstable_ViewTransition as ViewTransition } from "react";
+import { useCallback, ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import { TextEffect } from "@/components/ui/text-effect";
