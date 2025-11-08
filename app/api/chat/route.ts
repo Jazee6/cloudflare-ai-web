@@ -46,13 +46,6 @@ export async function POST(request: Request) {
     maxOutputTokens: provider === "workers-ai" ? 2048 : undefined,
     system:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
-    providerOptions: {
-      google: {
-        thinkingConfig: {
-          includeThoughts: true,
-        },
-      },
-    },
     tools,
   });
 

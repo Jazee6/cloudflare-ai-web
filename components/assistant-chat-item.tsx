@@ -61,7 +61,7 @@ const AssistantChatItem = ({
                     key={key}
                     width={512}
                     height={512}
-                    className="rounded-md"
+                    className="rounded-md hover:brightness-75 transition-all"
                   />
                 );
               })}

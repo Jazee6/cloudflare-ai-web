@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   DeepSeekLogo,
   GoogleLogo,
+  IBMLogo,
   MetaLogo,
   MistralLogo,
   QWenLogo,
@@ -12,6 +13,7 @@ export interface Model {
   name: string;
   logo: ReactNode;
   type: "Text Generation" | "Text to Image";
+  input?: ["image"];
   provider: "workers-ai" | "google";
   tag?: string[];
 }
@@ -26,6 +28,7 @@ export const modelList: Model[] = [
     name: "gemini-2.5-flash",
     logo: <GoogleLogo />,
     type: "Text Generation",
+    input: ["image"],
     provider: "google",
     tag: ["new"],
   },
@@ -34,7 +37,16 @@ export const modelList: Model[] = [
     name: "gemini-2.5-pro",
     logo: <GoogleLogo />,
     type: "Text Generation",
+    input: ["image"],
     provider: "google",
+    tag: ["new"],
+  },
+  {
+    id: "@cf/ibm-granite/granite-4.0-h-micro",
+    name: "granite-4.0-h-micro",
+    logo: <IBMLogo />,
+    type: "Text Generation",
+    provider: "workers-ai",
     tag: ["new"],
   },
   {
@@ -42,6 +54,7 @@ export const modelList: Model[] = [
     name: "llama-4-scout",
     logo: <MetaLogo />,
     type: "Text Generation",
+    // input: ["image"],
     provider: "workers-ai",
     tag: ["17b"],
   },
@@ -50,6 +63,7 @@ export const modelList: Model[] = [
     name: "mistral-small-3.1",
     logo: <MistralLogo />,
     type: "Text Generation",
+    // input: ["image"],
     provider: "workers-ai",
     tag: ["24b"],
   },
@@ -58,6 +72,7 @@ export const modelList: Model[] = [
     name: "qwq",
     logo: <QWenLogo />,
     type: "Text Generation",
+    // input: ["image"],
     provider: "workers-ai",
     tag: ["32b"],
   },
@@ -86,13 +101,6 @@ export const modelList: Model[] = [
   {
     id: "@cf/leonardo/lucid-origin",
     name: "lucid-origin",
-    logo: defaultLogo,
-    type: "Text to Image",
-    provider: "workers-ai",
-  },
-  {
-    id: "@cf/lykon/dreamshaper-8-lcm",
-    name: "dreamshaper-8-lcm",
     logo: defaultLogo,
     type: "Text to Image",
     provider: "workers-ai",

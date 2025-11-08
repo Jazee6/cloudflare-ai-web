@@ -103,9 +103,12 @@ const Page = () => {
 
   useEffect(() => {
     if (isNew && initMessages) {
-      if (initMessages[0].parts[0].type === "text") {
+      const text = initMessages[0].parts.find((i) => i.type === "text")?.text;
+      const files = initMessages[0].parts.filter((i) => i.type === "file");
+      if (text) {
         sendMessage({
-          text: initMessages[0].parts[0].text,
+          text,
+          files,
         });
         history.replaceState(null, "", location.pathname);
       }
@@ -144,14 +147,15 @@ const Page = () => {
   }, []);
 
   const onSendMessage = async (data: onSendMessageProps) => {
-    const { message } = data;
+    const { text, files } = data;
 
     await db.message.add({
       id: generateId(),
       parts: [
+        ...(files ?? []),
         {
           type: "text",
-          text: message,
+          text,
         },
       ],
       role: "user",
@@ -164,8 +168,9 @@ const Page = () => {
 
     scrollToBottom();
 
-    sendMessage({
-      text: message,
+    await sendMessage({
+      text,
+      files,
     });
   };
 
