@@ -43,13 +43,13 @@ const Page = () => {
     return () => chatListRef.current?.removeEventListener("scroll", onScroll);
   }, []);
 
-  const onSendMessage = async ({ message }: onSendMessageProps) => {
+  const onSendMessage = async ({ text }: onSendMessageProps) => {
     chatListRef.current?.scrollTo({
       top: chatListRef.current.scrollHeight,
       behavior: "smooth",
     });
 
-    await sendPrompt(message);
+    await sendPrompt(text);
 
     setTimeout(() => {
       chatListRef.current?.scrollTo({

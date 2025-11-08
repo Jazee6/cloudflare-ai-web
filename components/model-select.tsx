@@ -95,20 +95,23 @@ const ModelList = ({
 function ComboBoxResponsive({
   models,
   modalKey,
+  selectedModel,
+  setSelectedModel,
 }: {
   models: Model[];
   modalKey: StoredModelKey;
+  selectedModel?: Model;
+  setSelectedModel: (model: Model) => void;
 }) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
-  const [selectedModel, setSelectedModel] = useState<Model>();
 
   useEffect(() => {
     setSelectedModel(
       models.find((item) => item.id === getStoredModelId(modalKey)) ??
         models[0],
     );
-  }, [models, modalKey]);
+  }, [models, modalKey, setSelectedModel]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -171,14 +174,20 @@ function ComboBoxResponsive({
 const ModelSelect = ({
   models,
   modalKey,
+  selectedModel,
+  setSelectedModel,
 }: {
   models: Model[];
   modalKey: StoredModelKey;
+  selectedModel?: Model;
+  setSelectedModel: (model: Model) => void;
 }) => {
   return (
     <ComboBoxResponsive
       models={models}
       modalKey={modalKey}
+      selectedModel={selectedModel}
+      setSelectedModel={setSelectedModel}
     ></ComboBoxResponsive>
   );
 };

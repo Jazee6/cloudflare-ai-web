@@ -14,20 +14,21 @@ export default function Home() {
 
   const onSendMessage = useCallback(
     async (data: onSendMessageProps) => {
-      const { message } = data;
+      const { text, files } = data;
 
       const sessionId = crypto.randomUUID();
       await db.session.add({
         updatedAt: new Date(),
-        name: message.slice(0, 20),
+        name: text.slice(0, 20),
         id: sessionId,
       });
       await db.message.add({
         id: generateId(),
         parts: [
+          ...(files ?? []),
           {
             type: "text",
-            text: message,
+            text,
           },
         ],
         role: "user",
