@@ -41,11 +41,9 @@ export async function POST(request: Request) {
         }),
       });
 
-      if (process.env.VERCEL_OIDC_TOKEN) {
-        Object.assign(tools, {
-          executeCode: executeCode(),
-        });
-      }
+      Object.assign(tools, {
+        executeCode: executeCode(),
+      });
       break;
   }
 
