@@ -13,7 +13,7 @@ export interface Model {
   name: string;
   logo: ReactNode;
   type: "Text Generation" | "Text to Image";
-  input?: ["image"];
+  input?: Array<"image" | "search">;
   provider: "workers-ai" | "google";
   tag?: string[];
 }
@@ -28,7 +28,7 @@ export const modelList: Model[] = [
     name: "gemini-2.5-flash",
     logo: <GoogleLogo />,
     type: "Text Generation",
-    input: ["image"],
+    input: ["image", "search"],
     provider: "google",
     tag: ["new"],
   },
@@ -37,7 +37,7 @@ export const modelList: Model[] = [
     name: "gemini-2.5-pro",
     logo: <GoogleLogo />,
     type: "Text Generation",
-    input: ["image"],
+    input: ["image", "search"],
     provider: "google",
     tag: ["new"],
   },

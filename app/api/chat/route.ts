@@ -9,16 +9,16 @@ import {
 import { aigateway, google, workersai } from "@/app/api";
 import type { Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
-import { executeCode } from "ai-sdk-tool-code-execution";
 
 interface Data {
   messages: Message[];
   model: Model["id"];
   provider: Model["provider"];
+  search?: boolean;
 }
 
 export async function POST(request: Request) {
-  const { messages, model, provider } = (await request.json()) as Data;
+  const { messages, model, provider, search } = (await request.json()) as Data;
 
   let providerModel: LanguageModelV2;
   const tools = {};
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
       providerModel = aigateway([google.chat(model)]);
 
       Object.assign(tools, {
-        code_execution: google.tools.codeExecution({}),
-        // google_search: google.tools.googleSearch({}),
+        // code_execution: google.tools.codeExecution({}),
         // url_context: google.tools.urlContext({}),
+        ...(search ? { google_search: google.tools.googleSearch({}) } : {}),
       });
       break;
     case "workers-ai":
@@ -41,11 +41,11 @@ export async function POST(request: Request) {
         }),
       });
 
-      if (process.env.VERCEL_OIDC_TOKEN) {
-        Object.assign(tools, {
-          executeCode: executeCode(),
-        });
-      }
+      // if (process.env.VERCEL_OIDC_TOKEN) {
+      //   Object.assign(tools, {
+      //     executeCode: executeCode(),
+      //   });
+      // }
       break;
   }
 

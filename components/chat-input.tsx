@@ -4,13 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
   ArrowUp,
+  Earth,
   Loader2,
   Paperclip,
   RefreshCw,
   Square,
   X,
 } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
 import { cn, type StoredModelKey } from "@/lib/utils";
+import { Toggle } from "@/components/ui/toggle";
 
 export interface onSendMessageProps {
   text: string;
@@ -68,6 +69,11 @@ const ChatInput = ({
   const input = form.watch("input");
   const [selectedModel, setSelectedModel] = useState<Model>();
   const [files, setFiles] = useState<FileUIPart[]>([]);
+  const [searchEnabled, setSearchEnabled] = useState(false);
+
+  useEffect(() => {
+    setSearchEnabled(localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true");
+  }, []);
 
   useEffect(() => {
     if (!selectedModel?.input?.includes("image")) {
@@ -233,6 +239,24 @@ const ChatInput = ({
               models={models}
               modalKey={modalKey ?? "CF_AI_MODEL"}
             />
+
+            {selectedModel?.input?.includes("search") && (
+              <Toggle
+                aria-label="Toggle web search"
+                className="data-[state=on]:border"
+                pressed={searchEnabled}
+                onPressedChange={(pressed) => {
+                  localStorage.setItem(
+                    "CF_AI_SEARCH_ENABLED",
+                    pressed ? "true" : "false",
+                  );
+                  setSearchEnabled(pressed);
+                }}
+              >
+                <Earth />
+                Search
+              </Toggle>
+            )}
 
             {selectedModel?.input?.includes("image") && (
               <Button
