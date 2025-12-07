@@ -62,7 +62,6 @@ const Page = () => {
           };
         },
       }),
-      experimental_throttle: 100,
       onFinish: ({ message, isError }) => {
         if (!isError) {
           db.message.add({
