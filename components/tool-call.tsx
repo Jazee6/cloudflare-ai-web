@@ -62,19 +62,23 @@ const ToolCall = ({ part }: { part: ToolUIPart }) => {
           </div>
         </AccordionTrigger>
         <AccordionContent>
-          <div>
-            <h3 className="font-semibold font-mono">Input</h3>
-            <Streamdown mode="static" className="-my-2">
-              {`\`\`\`json\n${JSON.stringify(part.input, null, 2)}\n\`\`\``}
-            </Streamdown>
-          </div>
+          {part.input ? (
+            <div>
+              <h3 className="font-semibold font-mono">Input</h3>
+              <Streamdown mode="static" className="-my-2">
+                {`\`\`\`json\n${JSON.stringify(part.input, null, 2)}\n\`\`\``}
+              </Streamdown>
+            </div>
+          ) : null}
 
-          <div>
-            <h3 className="font-semibold font-mono">Output</h3>
-            <Streamdown mode="static" className="-my-2">
-              {`\`\`\`json\n${JSON.stringify(part.output, null, 2)}\n\`\`\``}
-            </Streamdown>
-          </div>
+          {part.output ? (
+            <div>
+              <h3 className="font-semibold font-mono">Output</h3>
+              <Streamdown mode="static" className="-my-2">
+                {`\`\`\`json\n${JSON.stringify(part.output, null, 2)}\n\`\`\``}
+              </Streamdown>
+            </div>
+          ) : null}
 
           {part.state === "output-error" && (
             <Alert variant="destructive">
