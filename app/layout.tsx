@@ -23,7 +23,7 @@ export default async function RootLayout({
   // const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
   return (
-    <html lang="zh" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="scrollbar-thumb-border scrollbar-track-transparent">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster position="top-center" richColors />

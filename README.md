@@ -1,4 +1,4 @@
-# cloudflare-ai-web
+# Cloudflare AI Web
 
 ![readme.png](https://github.com/user-attachments/assets/e1c4e604-568d-4778-8780-29473619744f)
 
@@ -46,8 +46,6 @@ docker run -d --name cloudflare-ai-web \
 | CF_AI_GATEWAY_TOKEN                 | Cloudflare AI网关授权令牌     |    |
 | NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS | Cloudflare AI网关提供者      |    |
 | GOOGLE_API_KEY                      | Google AI Studio 令牌     |    |
-
-示例： 查看`.env.example`文件
 
 #### CF_WORKERS_AI_TOKEN
 
