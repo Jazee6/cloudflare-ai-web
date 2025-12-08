@@ -2,6 +2,7 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import {
   convertToModelMessages,
   extractReasoningMiddleware,
+  stepCountIs,
   streamText,
   wrapLanguageModel,
 } from "ai";
@@ -13,21 +14,23 @@ interface Data {
   messages: Message[];
   model: Model["id"];
   provider: Model["provider"];
+  search?: boolean;
 }
 
 export async function POST(request: Request) {
-  const { messages, model, provider } = (await request.json()) as Data;
+  const { messages, model, provider, search } = (await request.json()) as Data;
 
   let providerModel: LanguageModelV2;
   const tools = {};
   switch (provider) {
     case "google":
       providerModel = aigateway([google.chat(model)]);
-      // Object.assign(tools, {
-      //   code_execution: google.tools.codeExecution({}),
-      //   google_search: google.tools.googleSearch({}),
-      //   url_context: google.tools.urlContext({}),
-      // });
+
+      Object.assign(tools, {
+        // code_execution: google.tools.codeExecution({}),
+        // url_context: google.tools.urlContext({}),
+        ...(search ? { google_search: google.tools.googleSearch({}) } : {}),
+      });
       break;
     case "workers-ai":
       providerModel = wrapLanguageModel({
@@ -37,6 +40,12 @@ export async function POST(request: Request) {
           startWithReasoning: model === "@cf/qwen/qwq-32b",
         }),
       });
+
+      // if (process.env.VERCEL_OIDC_TOKEN) {
+      //   Object.assign(tools, {
+      //     executeCode: executeCode(),
+      //   });
+      // }
       break;
   }
 
@@ -47,6 +56,7 @@ export async function POST(request: Request) {
     system:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
     tools,
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();

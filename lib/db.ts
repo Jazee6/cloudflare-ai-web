@@ -10,6 +10,7 @@ export interface Session {
 export type Message = UIMessage & {
   sessionId: string;
   createdAt: Date;
+  search?: boolean;
 };
 
 export interface ImagesDataPart {

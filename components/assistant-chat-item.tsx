@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/accordion";
 import type { ImagesDataPart, Message } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import ToolCall from "@/components/tool-call";
+import type { ToolUIPart } from "ai";
 
 const AssistantChatItem = ({
   className,
@@ -67,6 +69,10 @@ const AssistantChatItem = ({
               })}
             </Fragment>
           );
+        }
+
+        if (part.type.startsWith("tool-")) {
+          return <ToolCall key={key} part={part as ToolUIPart} />;
         }
 
         return null;

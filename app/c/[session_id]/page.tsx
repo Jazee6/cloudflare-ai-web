@@ -58,6 +58,7 @@ const Page = () => {
               messages: messages.slice(-10),
               model: id,
               provider,
+              search: localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true",
             },
           };
         },
@@ -120,7 +121,7 @@ const Page = () => {
         chatListRef.current.scrollHeight -
           chatListRef.current.scrollTop -
           chatListRef.current.clientHeight <
-        200
+        250
       ) {
         scrollToBottom();
       }
