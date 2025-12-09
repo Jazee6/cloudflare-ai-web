@@ -1,8 +1,8 @@
 # Cloudflare AI Web
 
-![readme.png](https://github.com/user-attachments/assets/e1c4e604-568d-4778-8780-29473619744f)
-
 [中文](./README.md) | English
+
+![readme.png](https://github.com/user-attachments/assets/e1c4e604-568d-4778-8780-29473619744f)
 
 ## Deployment
 
