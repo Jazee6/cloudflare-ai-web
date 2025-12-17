@@ -59,3 +59,6 @@ Supported providers:
 
 Multiple providers are separated by commas
 
+## Sponsor
+
+[Click Me](https://jaze.top/sponsor)
