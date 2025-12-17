@@ -58,3 +58,7 @@ docker run -d --name cloudflare-ai-web \
 - google
 
 多个提供者使用逗号分隔
+
+## 赞助
+
+[Click Me](https://jaze.top/sponsor)
