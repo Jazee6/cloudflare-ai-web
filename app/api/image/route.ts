@@ -13,7 +13,24 @@ const base64ToUint8Array = (base64: string) => {
 export async function POST(request: Request) {
   const { prompt, model } = (await request.json()) as Data;
 
-  const res = await fetch(
+  let res: Response;
+  // if (model === "@cf/black-forest-labs/flux-2-klein-4b") {
+  //   const form = new FormData();
+  //   form.append("prompt", prompt);
+  //
+  //   res = await fetch(
+  //     `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${process.env.CF_WORKERS_AI_TOKEN}`,
+  //         "Content-Type": "multipart/form-data",
+  //       },
+  //       method: "POST",
+  //       body: form,
+  //     },
+  //   );
+  // }
+  res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
     {
       headers: {

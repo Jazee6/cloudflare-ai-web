@@ -33,7 +33,7 @@ const ChatList = memo(
           if (message.role === "assistant") {
             return (
               <li key={message.id} className="ani-slide-top">
-                <AssistantChatItem parts={message.parts} />
+                <AssistantChatItem parts={message.parts} status={status} />
               </li>
             );
           }
