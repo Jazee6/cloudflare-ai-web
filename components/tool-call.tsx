@@ -61,11 +61,11 @@ const ToolCall = ({ part }: { part: ToolUIPart }) => {
             )}
           </div>
         </AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent className="space-y-2">
           {part.input ? (
             <div>
-              <h3 className="font-semibold font-mono">Input</h3>
-              <Streamdown mode="static" className="-my-2">
+              <h3 className="font-semibold font-mono mb-2">Input</h3>
+              <Streamdown mode="static">
                 {`\`\`\`json\n${JSON.stringify(part.input, null, 2)}\n\`\`\``}
               </Streamdown>
             </div>
@@ -73,8 +73,8 @@ const ToolCall = ({ part }: { part: ToolUIPart }) => {
 
           {part.output ? (
             <div>
-              <h3 className="font-semibold font-mono">Output</h3>
-              <Streamdown mode="static" className="-my-2">
+              <h3 className="font-semibold font-mono mb-2">Output</h3>
+              <Streamdown mode="static">
                 {`\`\`\`json\n${JSON.stringify(part.output, null, 2)}\n\`\`\``}
               </Streamdown>
             </div>

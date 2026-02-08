@@ -11,14 +11,19 @@ import {
 import type { ImagesDataPart, Message } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import ToolCall from "@/components/tool-call";
-import type { ToolUIPart } from "ai";
+import type { ChatStatus, ToolUIPart } from "ai";
+import { cjk } from "@streamdown/cjk";
+import { code } from "@streamdown/code";
+import { math } from "@streamdown/math";
 
 const AssistantChatItem = ({
   className,
   parts,
+  status,
 }: {
   className?: string;
   parts: Message["parts"];
+  status: ChatStatus;
 }) => {
   return (
     <div className={cn("", className)}>
@@ -26,7 +31,16 @@ const AssistantChatItem = ({
         const key = `${part.type}-${index}`;
 
         if (part.type === "text") {
-          return <Streamdown key={key}>{part.text}</Streamdown>;
+          return (
+            <Streamdown
+              key={key}
+              caret="circle"
+              isAnimating={status === "streaming"}
+              plugins={{ cjk, code, math }}
+            >
+              {part.text}
+            </Streamdown>
+          );
         }
 
         if (part.type === "reasoning") {
@@ -43,7 +57,12 @@ const AssistantChatItem = ({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Streamdown>{part.text}</Streamdown>
+                  <Streamdown
+                    caret="circle"
+                    isAnimating={status === "streaming"}
+                  >
+                    {part.text}
+                  </Streamdown>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

@@ -30,7 +30,6 @@ export const modelList: Model[] = [
     type: "Text Generation",
     input: ["image", "search"],
     provider: "google",
-    tag: ["new"],
   },
   {
     id: "gemini-2.5-pro",
@@ -39,7 +38,6 @@ export const modelList: Model[] = [
     type: "Text Generation",
     input: ["image", "search"],
     provider: "google",
-    tag: ["new"],
   },
   {
     id: "@cf/ibm-granite/granite-4.0-h-micro",
@@ -47,7 +45,6 @@ export const modelList: Model[] = [
     logo: <IBMLogo />,
     type: "Text Generation",
     provider: "workers-ai",
-    tag: ["new"],
   },
   {
     id: "@cf/meta/llama-4-scout-17b-16e-instruct",
@@ -56,7 +53,6 @@ export const modelList: Model[] = [
     type: "Text Generation",
     // input: ["image"],
     provider: "workers-ai",
-    tag: ["17b"],
   },
   {
     id: "@cf/mistralai/mistral-small-3.1-24b-instruct",
@@ -65,7 +61,6 @@ export const modelList: Model[] = [
     type: "Text Generation",
     // input: ["image"],
     provider: "workers-ai",
-    tag: ["24b"],
   },
   {
     id: "@cf/qwen/qwq-32b",
@@ -74,7 +69,6 @@ export const modelList: Model[] = [
     type: "Text Generation",
     // input: ["image"],
     provider: "workers-ai",
-    tag: ["32b"],
   },
   {
     id: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
@@ -82,7 +76,6 @@ export const modelList: Model[] = [
     logo: <DeepSeekLogo />,
     type: "Text Generation",
     provider: "workers-ai",
-    tag: ["32b"],
   },
   {
     id: "@cf/bytedance/stable-diffusion-xl-lightning",

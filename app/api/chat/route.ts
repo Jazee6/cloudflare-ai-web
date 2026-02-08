@@ -1,4 +1,4 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import {
   convertToModelMessages,
   extractReasoningMiddleware,
@@ -20,7 +20,7 @@ interface Data {
 export async function POST(request: Request) {
   const { messages, model, provider, search } = (await request.json()) as Data;
 
-  let providerModel: LanguageModelV2;
+  let providerModel: LanguageModelV3;
   const tools = {};
   switch (provider) {
     case "google":
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: providerModel,
-    messages: convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages),
     maxOutputTokens: provider === "workers-ai" ? 2048 : undefined,
     system:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
