@@ -18,7 +18,9 @@ const ChatList = memo(
   }) => {
     return (
       <ul className={cn("flex flex-col w-full space-y-1", className)}>
-        {messages.map((message) => {
+        {messages.map((message, index) => {
+          const isLastMessage = index === messages.length - 1;
+
           if (message.role === "user") {
             return (
               <li
@@ -33,7 +35,11 @@ const ChatList = memo(
           if (message.role === "assistant") {
             return (
               <li key={message.id} className="ani-slide-top">
-                <AssistantChatItem parts={message.parts} status={status} />
+                <AssistantChatItem
+                  parts={message.parts}
+                  status={status}
+                  isLastMessage={isLastMessage}
+                />
               </li>
             );
           }

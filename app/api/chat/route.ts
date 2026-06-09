@@ -9,6 +9,7 @@ import {
 import { aigateway, google, workersai } from "@/app/api";
 import type { Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
+import { executeCode } from "ai-sdk-tool-code-execution";
 
 interface Data {
   messages: Message[];
@@ -41,18 +42,17 @@ export async function POST(request: Request) {
         }),
       });
 
-      // if (process.env.VERCEL_OIDC_TOKEN) {
-      //   Object.assign(tools, {
-      //     executeCode: executeCode(),
-      //   });
-      // }
+      if (process.env.VERCEL_OIDC_TOKEN) {
+        Object.assign(tools, {
+          executeCode: executeCode(),
+        });
+      }
       break;
   }
 
   const result = streamText({
     model: providerModel,
     messages: await convertToModelMessages(messages),
-    maxOutputTokens: provider === "workers-ai" ? 2048 : undefined,
     system:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
     tools,

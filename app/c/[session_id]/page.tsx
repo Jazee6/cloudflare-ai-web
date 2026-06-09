@@ -80,7 +80,11 @@ const Page = () => {
           setAuthDialogOpen(true);
           return;
         }
-        toast.error("Unknown error occurred. Please try again.");
+        toast.error(
+          error.message.length > 100
+            ? `${error.message.slice(0, 100)}...`
+            : error.message || "Unknown error occurred. Please try again.",
+        );
       },
     });
 

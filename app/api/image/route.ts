@@ -1,9 +1,14 @@
-import type { Model } from "@/lib/models";
+import { z } from "zod";
+import { models } from "@/lib/models";
 
-interface Data {
-  prompt: string;
-  model: Model["id"];
-}
+const imageModels = models
+  .filter((m) => m.type === "Text to Image")
+  .map((m) => m.id) as [string, ...string[]];
+
+const schema = z.object({
+  prompt: z.string(),
+  model: z.enum(imageModels),
+});
 
 const base64ToUint8Array = (base64: string) => {
   const binaryString = atob(base64);
@@ -11,7 +16,14 @@ const base64ToUint8Array = (base64: string) => {
 };
 
 export async function POST(request: Request) {
-  const { prompt, model } = (await request.json()) as Data;
+  const body = await request.json();
+  const parsed = schema.safeParse(body);
+
+  if (!parsed.success) {
+    return new Response("Invalid request data", { status: 400 });
+  }
+
+  const { prompt, model } = parsed.data;
 
   let res: Response;
   // if (model === "@cf/black-forest-labs/flux-2-klein-4b") {

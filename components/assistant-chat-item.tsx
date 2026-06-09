@@ -15,15 +15,18 @@ import type { ChatStatus, ToolUIPart } from "ai";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
+import "streamdown/styles.css";
 
 const AssistantChatItem = ({
   className,
   parts,
   status,
+  isLastMessage,
 }: {
   className?: string;
   parts: Message["parts"];
   status: ChatStatus;
+  isLastMessage?: boolean;
 }) => {
   return (
     <div className={cn("", className)}>
@@ -34,9 +37,11 @@ const AssistantChatItem = ({
           return (
             <Streamdown
               key={key}
-              caret="circle"
-              isAnimating={status === "streaming"}
+              // caret="circle"
+              animated={{ animation: "blurIn" }}
+              isAnimating={status === "streaming" && isLastMessage}
               plugins={{ cjk, code, math }}
+              linkSafety={{ enabled: false }}
             >
               {part.text}
             </Streamdown>
