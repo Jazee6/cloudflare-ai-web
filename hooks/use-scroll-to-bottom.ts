@@ -1,5 +1,11 @@
 import { debounce } from "next/dist/server/utils";
-import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export const useScrollToBottom = () => {
   const chatListRef = useRef<HTMLDivElement>(null);
