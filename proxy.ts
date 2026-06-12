@@ -8,6 +8,7 @@ export function proxy(request: NextRequest) {
   if (password !== process.env.APP_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });
   }
+  return NextResponse.next();
 }
 
 export const config = {

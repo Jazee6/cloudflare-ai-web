@@ -6,10 +6,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const getRandomId = () => {
-  return Math.random().toString(36).slice(2);
-};
-
 export type StoredModelKey = "CF_AI_MODEL" | "CF_AI_MODEL_IMAGE";
 
 export const getStoredModel = (key: StoredModelKey = "CF_AI_MODEL") =>

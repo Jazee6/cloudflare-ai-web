@@ -61,9 +61,9 @@ const ModelList = ({
       <CommandInput placeholder="Filter models..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        {groupedModels.map(({ type, models }) => (
+        {groupedModels.map(({ type, models: groupModels }) => (
           <CommandGroup key={type} heading={type}>
-            {models.map((model) => (
+            {groupModels.map((model) => (
               <CommandItem
                 key={model.id}
                 value={model.id}

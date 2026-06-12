@@ -75,5 +75,9 @@ export async function POST(request: Request) {
       } = await res.json();
       return new Response(base64ToUint8Array(data.result.image));
     }
+    default:
+      return new Response(`Unsupported image model: ${model}`, {
+        status: 400,
+      });
   }
 }

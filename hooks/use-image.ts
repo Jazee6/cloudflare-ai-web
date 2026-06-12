@@ -94,20 +94,6 @@ export const useImage = ({
     }
 
     const images = [await res.blob()];
-    setMessages((prev) => [
-      ...prev,
-      {
-        ...imagesMessage,
-        parts: [
-          {
-            type: "data-images",
-            data: {
-              urls: images.map(URL.createObjectURL),
-            },
-          },
-        ],
-      },
-    ]);
     const imagesMessage: Message = {
       id: generateId(),
       parts: [
@@ -122,6 +108,20 @@ export const useImage = ({
       sessionId: "image",
       createdAt: new Date(),
     };
+    setMessages((prev) => [
+      ...prev,
+      {
+        ...imagesMessage,
+        parts: [
+          {
+            type: "data-images",
+            data: {
+              urls: images.map(URL.createObjectURL),
+            },
+          },
+        ],
+      },
+    ]);
     await db.message.add(imagesMessage);
     setStatus("ready");
   };

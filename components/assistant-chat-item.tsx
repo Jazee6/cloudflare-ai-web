@@ -64,7 +64,7 @@ const AssistantChatItem = ({
                 <AccordionContent>
                   <Streamdown
                     caret="circle"
-                    isAnimating={status === "streaming"}
+                    isAnimating={status === "streaming" && isLastMessage}
                   >
                     {part.text}
                   </Streamdown>

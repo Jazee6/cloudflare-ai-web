@@ -6,20 +6,33 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
+import { z } from "zod";
 import { aigateway, google, workersai } from "@/app/api";
 import type { Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
 import { executeCode } from "ai-sdk-tool-code-execution";
 
-interface Data {
-  messages: Message[];
-  model: Model["id"];
-  provider: Model["provider"];
-  search?: boolean;
-}
+const chatSchema = z.object({
+  messages: z.array(z.any()).min(1),
+  model: z.string().min(1),
+  provider: z.enum(["workers-ai", "google"]),
+  search: z.boolean().optional(),
+});
 
 export async function POST(request: Request) {
-  const { messages, model, provider, search } = (await request.json()) as Data;
+  const body = await request.json();
+  const parsed = chatSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return new Response("Invalid request data", { status: 400 });
+  }
+
+  const { messages, model, provider, search } = parsed.data as {
+    messages: Message[];
+    model: Model["id"];
+    provider: Model["provider"];
+    search?: boolean;
+  };
 
   let providerModel: LanguageModelV3;
   const tools = {};
@@ -48,6 +61,8 @@ export async function POST(request: Request) {
         });
       }
       break;
+    default:
+      return new Response(`Unsupported provider: ${provider}`, { status: 400 });
   }
 
   const result = streamText({

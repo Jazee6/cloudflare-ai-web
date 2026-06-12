@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Cog, ImageIcon, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import LoadingIndicator from "@/components/loading-indicator";
 import {
   AlertDialog,
@@ -54,32 +54,35 @@ const AppSidebar = () => {
     db.session.limit(100).reverse().sortBy("updatedAt"),
   );
 
-  const groupedSessions =
-    sessions?.reduce((groups, session) => {
-      const now = new Date();
-      const updatedAt = new Date(session.updatedAt);
-      const diffTime = now.getTime() - updatedAt.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const groupedSessions = useMemo(
+    () =>
+      sessions?.reduce((groups, session) => {
+        const now = new Date();
+        const updatedAt = new Date(session.updatedAt);
+        const diffTime = now.getTime() - updatedAt.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-      let groupType: GroupedSessions["type"];
-      if (diffDays === 0) {
-        groupType = "today";
-      } else if (diffDays <= 7) {
-        groupType = "last 7 days";
-      } else if (diffDays <= 30) {
-        groupType = "last 30 days";
-      } else {
-        groupType = "earlier";
-      }
+        let groupType: GroupedSessions["type"];
+        if (diffDays === 0) {
+          groupType = "today";
+        } else if (diffDays <= 7) {
+          groupType = "last 7 days";
+        } else if (diffDays <= 30) {
+          groupType = "last 30 days";
+        } else {
+          groupType = "earlier";
+        }
 
-      const group = groups.find((g) => g.type === groupType);
-      if (group) {
-        group.sessions.push(session);
-      } else {
-        groups.push({ type: groupType, sessions: [session] });
-      }
-      return groups;
-    }, [] as GroupedSessions[]) ?? [];
+        const group = groups.find((g) => g.type === groupType);
+        if (group) {
+          group.sessions.push(session);
+        } else {
+          groups.push({ type: groupType, sessions: [session] });
+        }
+        return groups;
+      }, [] as GroupedSessions[]) ?? [],
+    [sessions],
+  );
 
   const handleDelete = async () => {
     await db.transaction("rw", db.session, db.message, async () => {
