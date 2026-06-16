@@ -62,3 +62,13 @@ docker run -d --name cloudflare-ai-web \
 ## 赞助
 
 [Click Me](https://jaze.top/sponsor)
+
+<div style="text-align: center">
+
+<img src="https://github.com/user-attachments/assets/c194ff8a-7d86-43bf-912e-f35bb5f9d1a0" alt="赞助位1" width="300">
+
+[Doloffer--站式数字订阅充值平台](https://doloffer.com)
+
+主营 GPT、Claude 等 AI多类数字服务会员正版订阅，9 折优惠码 AI8888，极速发货，售后无忧
+
+</div>
