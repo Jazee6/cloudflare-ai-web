@@ -63,7 +63,7 @@ docker run -d --name cloudflare-ai-web \
 
 [Click Me](https://jaze.top/sponsor)
 
-<div style="text-align: center">
+<div align="center">
 
 <img src="https://github.com/user-attachments/assets/c194ff8a-7d86-43bf-912e-f35bb5f9d1a0" alt="赞助位1" width="300">
 
