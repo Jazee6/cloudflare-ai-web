@@ -171,9 +171,19 @@ const fetchTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
 
   const type: ModelType = task === "Text Generation" ? "Text Generation" : "Text to Image";
   const expectedTask = normalizeTask(task);
+  // Inpainting models are listed under Text-to-Image but require a mask input,
+  // so they cannot serve plain text-to-image requests. Moderation models are
+  // safety classifiers, not conversational chat models.
+  const isChatModel = (model: CloudflareModel) =>
+    !hasSignal(model, ["moderation", "safety", "content-filtering", "guardrails"]);
+  const supportsPromptOnly = (model: CloudflareModel) => !model.name.includes("inpainting");
   const uniqueModels = new Map(
     models
-      .filter((model) => normalizeTask(model.task.name) === expectedTask)
+      .filter(
+        (model) =>
+          normalizeTask(model.task.name) === expectedTask &&
+          (type === "Text to Image" ? supportsPromptOnly(model) : isChatModel(model)),
+      )
       .map((model) => [model.name, model]),
   );
 

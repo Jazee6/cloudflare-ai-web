@@ -30,7 +30,8 @@ test("loads catalog models with structured property values", async () => {
   globalThis.fetch = mock(async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
     const task = url.searchParams.get("task") ?? "Text Generation";
-    const name = task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
+    const name =
+      task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
 
     return Response.json({
       success: true,
@@ -54,6 +55,29 @@ test("loads catalog models with structured property values", async () => {
             { property_id: "reasoning", value: "true" },
           ],
         },
+        ...(task === "Text Generation"
+          ? [
+              {
+                id: "@cf/meta/llama-guard-3-8b",
+                source: 1,
+                name: "@cf/meta/llama-guard-3-8b",
+                description: "Moderation model",
+                task: { id: task, name: task, description: "Test task" },
+                tags: ["moderation", "safety"],
+                properties: [],
+              },
+            ]
+          : [
+              {
+                id: "@cf/test/sd-inpainting",
+                source: 1,
+                name: "@cf/test/sd-inpainting",
+                description: "Inpainting model",
+                task: { id: task, name: task, description: "Test task" },
+                tags: [],
+                properties: [],
+              },
+            ]),
       ],
       result_info: {
         page: 1,
@@ -70,9 +94,11 @@ test("loads catalog models with structured property values", async () => {
       reasoning: true,
       type: "Text Generation",
     });
+    expect(catalog.find((model) => model.id === "@cf/meta/llama-guard-3-8b")).toBeUndefined();
     expect(catalog.find((model) => model.id === "@cf/test/image")).toMatchObject({
       type: "Text to Image",
     });
+    expect(catalog.find((model) => model.id === "@cf/test/sd-inpainting")).toBeUndefined();
   } finally {
     globalThis.fetch = originalFetch;
     process.env.CF_ACCOUNT_ID = originalAccountId;

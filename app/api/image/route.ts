@@ -18,6 +18,21 @@ const imageResponseSchema = v.object({
   result: v.object({ image: v.string() }),
 });
 
+// FLUX.2 models only accept multipart/form-data requests with the prompt as a form
+// field; every other image model accepts a JSON body.
+const requiresMultipartFormData = (model: string) =>
+  model.startsWith("@cf/black-forest-labs/flux-2");
+
+const createPromptBody = (model: string, prompt: string) => {
+  if (!requiresMultipartFormData(model)) {
+    return JSON.stringify({ prompt });
+  }
+
+  const form = new FormData();
+  form.append("prompt", prompt);
+  return form;
+};
+
 const decodeImage = (image: string) => {
   const dataUrl = /^data:(image\/[^;,]+);base64,([\s\S]+)$/.exec(image);
   const mediaType = dataUrl?.[1] ?? "image/png";
@@ -83,10 +98,10 @@ export async function POST(request: Request) {
       ...(gatewayCredentials
         ? { "cf-aig-authorization": `Bearer ${gatewayCredentials.gatewayToken}` }
         : {}),
-      "Content-Type": "application/json",
+      ...(requiresMultipartFormData(model) ? {} : { "Content-Type": "application/json" }),
     },
     method: "POST",
-    body: JSON.stringify({ prompt }),
+    body: createPromptBody(model, prompt),
   });
 
   if (!response.ok) {
