@@ -1,13 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { isRequestAuthorized } from "@/lib/auth";
 
-export function proxy(request: NextRequest) {
-  if (!process.env.APP_PASSWORD) {
+export async function proxy(request: NextRequest) {
+  const password = process.env.APP_PASSWORD;
+  if (!password) {
     return NextResponse.next();
   }
-  const password = request.headers.get("Authorization");
-  if (password !== process.env.APP_PASSWORD) {
+
+  // Allow the auth endpoint through
+  if (request.nextUrl.pathname === "/api/auth") {
+    return NextResponse.next();
+  }
+
+  const authorized = await isRequestAuthorized(request);
+  if (!authorized) {
     return new Response("Unauthorized", { status: 401 });
   }
+
   return NextResponse.next();
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ViewTransition } from "react";
+import { useEffect, useState, ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ChatList from "@/components/chat-list";
@@ -11,20 +11,21 @@ import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 const Page = () => {
   const { chatListRef, showToBottom, scrollToBottom } = useScrollToBottom();
   const models = useModelCatalog("Text to Image");
-  const { status, sendPrompt, messages, regenerate } = useImage({
+  const { status, sendPrompt, messages, regenerate, retryAfterAuth } = useImage({
     models,
     onUnauthorized: () => setAuthDialogOpen(true),
   });
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length, scrollToBottom]);
+
   const onSendMessage = async ({ text }: onSendMessageProps) => {
     scrollToBottom();
-
     await sendPrompt(text);
-
-    setTimeout(() => {
-      scrollToBottom();
-    }, 200);
   };
 
   return (
@@ -34,6 +35,10 @@ const Page = () => {
       scrollToBottom={scrollToBottom}
       authDialogOpen={authDialogOpen}
       setAuthDialogOpen={setAuthDialogOpen}
+      onAuthenticated={() => {
+        setAuthDialogOpen(false);
+        void retryAfterAuth();
+      }}
       bottomBar={
         <ViewTransition name="chat-input">
           <ChatInput
@@ -41,7 +46,7 @@ const Page = () => {
             className="mx-auto max-w-3xl bg-background shadow-xl"
             onSendMessage={onSendMessage}
             status={status}
-            modalKey="CF_AI_MODEL_IMAGE"
+            modelKey="CF_AI_MODEL_IMAGE"
             onRetry={regenerate}
           />
         </ViewTransition>

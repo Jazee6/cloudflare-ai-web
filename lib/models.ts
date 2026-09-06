@@ -12,7 +12,6 @@ export interface Model {
   source: ModelSource;
   input?: ModelInput[];
   reasoning?: boolean;
-  tools?: boolean;
   tag?: string[];
 }
 
@@ -33,8 +32,8 @@ const BRAND_NAMES: Record<string, string> = {
 
 export const externalModels: Model[] = [
   {
-    id: "gemini-3.5-flash",
-    name: "gemini-3.5-flash",
+    id: "gemini-3.6-flash",
+    name: "gemini-3.6-flash",
     brand: "Google",
     type: "Text Generation",
     input: ["image", "search"],

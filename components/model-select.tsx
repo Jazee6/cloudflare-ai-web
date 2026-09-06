@@ -1,9 +1,8 @@
 "use client";
 
 import { ChevronsUpDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ModelLogo } from "@/components/model-logo";
-import { useModelPreferences } from "@/components/model-catalog-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/command";
 import type { Model } from "@/lib/models";
 import { getModelGroup } from "@/lib/models";
-import { deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
 
 const getGroupedModels = (models: Model[]) => {
   const groups = new Map<string, Model[]>();
@@ -35,29 +33,15 @@ const getGroupedModels = (models: Model[]) => {
 
 const ModelSelect = ({
   models,
-  modalKey,
   selectedModel,
-  setSelectedModel,
+  onSelectModel,
 }: {
   models: Model[];
-  modalKey: StoredModelKey;
   selectedModel?: Model;
-  setSelectedModel: (model: Model | undefined) => void;
+  onSelectModel: (model: Model) => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const preferences = useModelPreferences();
   const groupedModels = useMemo(() => getGroupedModels(models), [models]);
-
-  useEffect(() => {
-    const nextModel = models.find((model) => model.id === preferences[modalKey]) ?? models[0];
-    setSelectedModel(nextModel);
-
-    if (nextModel) {
-      setCookie(modalKey, nextModel.id);
-    } else {
-      deleteCookie(modalKey);
-    }
-  }, [models, modalKey, preferences, setSelectedModel]);
 
   return (
     <>
@@ -101,8 +85,7 @@ const ModelSelect = ({
                     value={`${name} ${model.name} ${model.id}`}
                     data-checked={selectedModel?.id === model.id}
                     onSelect={() => {
-                      setSelectedModel(model);
-                      setCookie(modalKey, model.id);
+                      onSelectModel(model);
                       setOpen(false);
                     }}
                   >

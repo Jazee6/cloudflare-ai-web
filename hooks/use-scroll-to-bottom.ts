@@ -1,5 +1,15 @@
-import { debounce } from "next/dist/server/utils";
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+
+const debounce = (callback: () => void, delay: number) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return {
+    run: () => {
+      clearTimeout(timer);
+      timer = setTimeout(callback, delay);
+    },
+    cancel: () => clearTimeout(timer),
+  };
+};
 
 export const useScrollToBottom = () => {
   const chatListRef = useRef<HTMLDivElement>(null);
@@ -13,7 +23,7 @@ export const useScrollToBottom = () => {
   }, []);
 
   useEffect(() => {
-    const onScroll = debounce(() => {
+    const debouncedScroll = debounce(() => {
       if (chatListRef.current) {
         if (
           chatListRef.current.scrollTop + chatListRef.current.clientHeight <
@@ -25,9 +35,13 @@ export const useScrollToBottom = () => {
         }
       }
     }, 100);
-    chatListRef.current?.addEventListener("scroll", onScroll);
+    const scrollContainer = chatListRef.current;
+    scrollContainer?.addEventListener("scroll", debouncedScroll.run);
 
-    return () => chatListRef.current?.removeEventListener("scroll", onScroll);
+    return () => {
+      debouncedScroll.cancel();
+      scrollContainer?.removeEventListener("scroll", debouncedScroll.run);
+    };
   }, []);
 
   return { chatListRef, showToBottom, scrollToBottom };

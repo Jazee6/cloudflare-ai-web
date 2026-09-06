@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLinkStatus } from "next/dist/client/app-dir/link";
+import { useLinkStatus } from "next/link";
 
 const LoadingIndicator = ({ className }: { className?: string }) => {
   const { pending } = useLinkStatus();

@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState, ViewTransition } from "react";
+import { useCallback, useEffect, useRef, useState, ViewTransition } from "react";
 import { toast } from "@/components/ui/toast";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
@@ -12,6 +12,7 @@ import ChatList from "@/components/chat-list";
 import { useModelCatalog } from "@/components/model-catalog-provider";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { db, type Message } from "@/lib/db";
+import { buildModelContext } from "@/lib/model-context";
 import { getCookie, getStoredModel } from "@/lib/utils";
 
 const Page = () => {
@@ -21,6 +22,8 @@ const Page = () => {
   const [loaded, setLoaded] = useState(isNew);
   const { chatListRef, showToBottom, scrollToBottom } = useScrollToBottom();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const authRetryAttempted = useRef(false);
+  const initialSendStarted = useRef(false);
   const models = useModelCatalog("Text Generation");
 
   const initMessages = useLiveQuery(
@@ -38,12 +41,14 @@ const Page = () => {
         }
         const { id, provider } = selectedModel;
 
+        const modelContext = buildModelContext(messages);
+        if (!modelContext) {
+          throw new Error("The latest message exceeds the 64,000-character context limit.");
+        }
+
         return {
-          headers: {
-            Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
-          },
           body: {
-            messages: messages.slice(-10),
+            messages: modelContext,
             model: id,
             provider,
             search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
@@ -53,6 +58,7 @@ const Page = () => {
     }),
     onFinish: ({ message, isError }) => {
       if (!isError) {
+        authRetryAttempted.current = false;
         db.message.add({
           ...message,
           sessionId: session_id,
@@ -65,7 +71,12 @@ const Page = () => {
     },
     onError: async (error) => {
       if (error.message === "Unauthorized") {
-        setAuthDialogOpen(true);
+        if (authRetryAttempted.current) {
+          authRetryAttempted.current = false;
+          toast.add({ title: "Authentication failed. Please try again.", type: "error" });
+        } else {
+          setAuthDialogOpen(true);
+        }
         return;
       }
       toast.add({
@@ -78,6 +89,12 @@ const Page = () => {
     },
   });
 
+  const onAuthenticated = useCallback(() => {
+    setAuthDialogOpen(false);
+    authRetryAttempted.current = true;
+    void regenerate();
+  }, [regenerate]);
+
   useEffect(() => {
     if (initMessages && !loaded) {
       setMessages(initMessages);
@@ -86,21 +103,20 @@ const Page = () => {
   }, [initMessages, setMessages, loaded]);
 
   useEffect(() => {
-    if (isNew && initMessages) {
-      const text = initMessages[0].parts.find((i) => i.type === "text")?.text;
-      const files = initMessages[0].parts.filter((i) => i.type === "file");
-      if (text) {
-        sendMessage({
-          text,
-          files,
-        });
-        history.replaceState(null, "", location.pathname);
-      }
+    if (!isNew || !initMessages || initialSendStarted.current) {
+      return;
+    }
+
+    initialSendStarted.current = true;
+    history.replaceState(null, "", location.pathname);
+    const firstMessage = initMessages[0];
+    const text = firstMessage?.parts.find((part) => part.type === "text")?.text;
+    const files = firstMessage?.parts.filter((part) => part.type === "file");
+    if (text) {
+      void sendMessage({ text, files });
     }
   }, [isNew, initMessages, sendMessage]);
 
-  // The mutable scroll container is sampled whenever stream state changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refs are not reactive dependencies
   useEffect(() => {
     if (status === "streaming" && chatListRef.current && messages.length) {
       if (
@@ -115,6 +131,7 @@ const Page = () => {
   }, [status, messages, scrollToBottom]);
 
   const onSendMessage = async (data: onSendMessageProps) => {
+    authRetryAttempted.current = false;
     const { text, files } = data;
 
     await db.message.add({
@@ -149,6 +166,7 @@ const Page = () => {
       scrollToBottom={scrollToBottom}
       authDialogOpen={authDialogOpen}
       setAuthDialogOpen={setAuthDialogOpen}
+      onAuthenticated={onAuthenticated}
       bottomBar={
         <ViewTransition name="chat-input">
           <ChatInput

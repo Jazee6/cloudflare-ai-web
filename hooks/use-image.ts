@@ -1,5 +1,5 @@
 import { type ChatStatus, generateId } from "ai";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { db, type ImagesDataPart, type Message } from "@/lib/db";
 import type { Model } from "@/lib/models";
@@ -14,31 +14,69 @@ export const useImage = ({
 }) => {
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [messages, setMessages] = useState<Message[]>([]);
+  const retriedRef = useRef(false);
+  const lastPromptRef = useRef<string | null>(null);
+  const objectUrlsRef = useRef(new Set<string>());
+  const loadGenerationRef = useRef(0);
 
-  useEffect(() => {
-    db.message
-      .where("sessionId")
-      .equals("image")
-      .limit(50)
-      .sortBy("createdAt")
-      .then((messages) =>
+  const createObjectUrl = useCallback((blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    objectUrlsRef.current.add(url);
+    return url;
+  }, []);
+
+  const revokeObjectUrls = useCallback(() => {
+    for (const url of objectUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    objectUrlsRef.current.clear();
+  }, []);
+
+  const loadMessages = useCallback(
+    async (generation: number) => {
+      try {
+        const stored = await db.message
+          .where("sessionId")
+          .equals("image")
+          .limit(50)
+          .sortBy("createdAt");
+
+        if (generation !== loadGenerationRef.current) {
+          return;
+        }
+        revokeObjectUrls();
         setMessages(
-          messages.map((m) => ({
-            ...m,
-            parts: m.parts.map((p) =>
-              p.type === "data-images"
+          stored.map((message) => ({
+            ...message,
+            parts: message.parts.map((part) =>
+              part.type === "data-images"
                 ? {
                     type: "data-images",
                     data: {
-                      urls: (p.data as ImagesDataPart).images.map(URL.createObjectURL),
+                      urls: (part.data as ImagesDataPart).images.map(createObjectUrl),
                     },
                   }
-                : p,
+                : part,
             ),
           })),
-        ),
-      );
-  }, []);
+        );
+      } catch {
+        if (generation === loadGenerationRef.current) {
+          toast.add({ title: "Unable to load image history.", type: "error" });
+        }
+      }
+    },
+    [createObjectUrl, revokeObjectUrls],
+  );
+
+  useEffect(() => {
+    const generation = ++loadGenerationRef.current;
+    void loadMessages(generation);
+    return () => {
+      loadGenerationRef.current++;
+      revokeObjectUrls();
+    };
+  }, [loadMessages, revokeObjectUrls]);
 
   const sendPrompt = async (
     prompt: string,
@@ -49,6 +87,7 @@ export const useImage = ({
     setStatus("submitted");
     const { isRegenerate } = options ?? {};
     if (!isRegenerate) {
+      retriedRef.current = false;
       const promptMessage: Message = {
         id: generateId(),
         parts: [
@@ -64,6 +103,7 @@ export const useImage = ({
       setMessages((prev) => [...prev, promptMessage]);
       await db.message.add(promptMessage);
     }
+    lastPromptRef.current = prompt;
 
     const selectedModel = getStoredModel(models, "CF_AI_MODEL_IMAGE");
     if (!selectedModel) {
@@ -78,7 +118,6 @@ export const useImage = ({
     const res = await fetch("/api/image", {
       method: "POST",
       headers: {
-        Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -95,9 +134,18 @@ export const useImage = ({
       return;
     }
     if (res.status === 401) {
+      if (retriedRef.current) {
+        setStatus("error");
+        toast.add({ title: "Authentication failed. Please try again.", type: "error" });
+        retriedRef.current = false;
+        return;
+      }
+      retriedRef.current = true;
+      setStatus("error");
       onUnauthorized?.();
       return;
     }
+    retriedRef.current = false;
     if (!res.ok) {
       setStatus("error");
       toast.add({ title: await res.text(), type: "error" });
@@ -119,6 +167,7 @@ export const useImage = ({
       sessionId: "image",
       createdAt: new Date(),
     };
+    const urls = images.map(createObjectUrl);
     setMessages((prev) => [
       ...prev,
       {
@@ -126,9 +175,7 @@ export const useImage = ({
         parts: [
           {
             type: "data-images",
-            data: {
-              urls: images.map(URL.createObjectURL),
-            },
+            data: { urls },
           },
         ],
       },
@@ -138,17 +185,30 @@ export const useImage = ({
   };
 
   const regenerate = async () => {
-    const m = messages.at(-1);
-    if (m) {
-      if (m.parts[0].type === "text") {
-        setStatus("submitted");
-        await sendPrompt(m.parts[0].text, { isRegenerate: true });
-        return;
+    // Find the most recent text prompt in the conversation
+    let prompt: string | undefined;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const textPart = messages[i].parts.find((p) => p.type === "text");
+      if (textPart && textPart.type === "text") {
+        prompt = textPart.text;
+        break;
       }
+    }
+
+    if (prompt) {
+      retriedRef.current = false;
+      await sendPrompt(prompt, { isRegenerate: true });
+      return;
     }
 
     toast.add({ title: "No prompt to regenerate", type: "error" });
     setStatus("ready");
+  };
+
+  const retryAfterAuth = async () => {
+    if (lastPromptRef.current) {
+      await sendPrompt(lastPromptRef.current, { isRegenerate: true });
+    }
   };
 
   return {
@@ -156,5 +216,6 @@ export const useImage = ({
     sendPrompt,
     messages,
     regenerate,
+    retryAfterAuth,
   };
 };

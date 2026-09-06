@@ -31,3 +31,15 @@ _Avoid_: Capability guarantee, local override
 **Experimental Model**:
 A Cloudflare Model marked experimental by the remote catalog and presented with that status visible to users.
 _Avoid_: Beta model, community model
+
+**Conversation History**:
+The locally retained sequence of messages belonging to a chat session, preserved across application upgrades.
+_Avoid_: Chat records, message cache, chat log
+
+**Model Context**:
+The bounded subset of a Conversation History supplied to a model for one inference request.
+_Avoid_: Full history, chat records, request history
+
+**Access Session**:
+A time-bounded proof that a visitor supplied the deployment access password and may use protected inference APIs.
+_Avoid_: Password cookie, user account, login session

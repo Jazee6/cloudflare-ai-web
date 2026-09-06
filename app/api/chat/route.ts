@@ -1,37 +1,68 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import {
   convertToModelMessages,
+  createUIMessageStreamResponse,
   extractReasoningMiddleware,
-  stepCountIs,
+  isStepCount,
+  safeValidateUIMessages,
   streamText,
+  toUIMessageStream,
   wrapLanguageModel,
 } from "ai";
-import { executeCode } from "ai-sdk-tool-code-execution";
 import * as v from "valibot";
-import { aigateway, google, workersai } from "@/app/api";
-import type { Message } from "@/lib/db";
+import {
+  getGoogleGatewayProviders,
+  getWorkersAIProvider,
+  ProviderConfigurationError,
+} from "@/app/api";
+import { buildModelContext, MODEL_CONTEXT_MAX_MESSAGES } from "@/lib/model-context";
 import { getCatalogModel } from "@/lib/model-catalog";
-import type { Model } from "@/lib/models";
+import { readRequestBody, validateImageParts } from "@/lib/request-limits";
 
 const chatSchema = v.object({
-  messages: v.pipe(v.array(v.unknown()), v.minLength(1)),
+  messages: v.pipe(v.array(v.unknown()), v.minLength(1), v.maxLength(MODEL_CONTEXT_MAX_MESSAGES)),
   model: v.pipe(v.string(), v.minLength(1)),
   provider: v.picklist(["workers-ai", "google"]),
   search: v.optional(v.boolean()),
 });
 
 export async function POST(request: Request) {
-  const parsed = v.safeParse(chatSchema, await request.json().catch(() => undefined));
+  const bodyResult = await readRequestBody(request);
+  if (!bodyResult.ok) {
+    return new Response(bodyResult.message, { status: bodyResult.status });
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyResult.text);
+  } catch {
+    return new Response("Invalid request data", { status: 400 });
+  }
+
+  const parsed = v.safeParse(chatSchema, body);
   if (!parsed.success) {
     return new Response("Invalid request data", { status: 400 });
   }
 
-  const { messages, model, provider, search } = parsed.output as {
-    messages: Message[];
-    model: Model["id"];
-    provider: Model["provider"];
-    search?: boolean;
-  };
+  const validatedMessages = await safeValidateUIMessages({ messages: parsed.output.messages });
+  if (
+    !validatedMessages.success ||
+    validatedMessages.data.some((message) => !["user", "assistant"].includes(message.role))
+  ) {
+    return new Response("Invalid request data", { status: 400 });
+  }
+
+  const imageValidation = validateImageParts(validatedMessages.data);
+  if (!imageValidation.ok) {
+    return new Response(imageValidation.message, { status: imageValidation.status });
+  }
+
+  const modelContext = buildModelContext(validatedMessages.data);
+  if (!modelContext) {
+    return new Response("The latest message is too long to process.", { status: 413 });
+  }
+
+  const { model, provider, search } = parsed.output;
   const catalogModel = await getCatalogModel(model, "Text Generation", provider);
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
@@ -39,44 +70,48 @@ export async function POST(request: Request) {
     });
   }
 
-  let providerModel: LanguageModelV3;
-  const tools = {};
-  switch (provider) {
-    case "google":
-      providerModel = aigateway([google.chat(model)]);
-
-      if (search) {
-        Object.assign(tools, {
-          google_search: google.tools.googleSearch({}),
-        });
+  type GoogleSearchTool = ReturnType<
+    ReturnType<typeof getGoogleGatewayProviders>["google"]["tools"]["googleSearch"]
+  >;
+  let providerModel: LanguageModelV4;
+  let googleSearchTool: GoogleSearchTool | undefined;
+  try {
+    switch (provider) {
+      case "google": {
+        const { gateway, google } = getGoogleGatewayProviders();
+        providerModel = gateway([google.chat(model)]);
+        googleSearchTool = search ? google.tools.googleSearch({}) : undefined;
+        break;
       }
-      break;
-    case "workers-ai": {
-      const workerModel = workersai.chat(model);
-      providerModel = catalogModel.reasoning
-        ? wrapLanguageModel({
-            model: workerModel,
-            middleware: extractReasoningMiddleware({ tagName: "think" }),
-          })
-        : workerModel;
-
-      if (catalogModel.tools && process.env.VERCEL_OIDC_TOKEN) {
-        Object.assign(tools, {
-          executeCode: executeCode(),
-        });
+      case "workers-ai": {
+        const workerModel = getWorkersAIProvider().chat(model);
+        providerModel = catalogModel.reasoning
+          ? wrapLanguageModel({
+              model: workerModel,
+              middleware: extractReasoningMiddleware({ tagName: "think" }),
+            })
+          : workerModel;
+        break;
       }
-      break;
     }
+  } catch (error) {
+    if (error instanceof ProviderConfigurationError) {
+      console.error(error.message);
+      return new Response("The selected provider is not configured.", { status: 503 });
+    }
+    throw error;
   }
 
+  const tools = googleSearchTool ? { google_search: googleSearchTool } : undefined;
   const result = streamText({
     model: providerModel,
-    messages: await convertToModelMessages(messages),
-    system:
+    messages: await convertToModelMessages(modelContext),
+    instructions:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
     tools,
-    stopWhen: stepCountIs(5),
+    stopWhen: isStepCount(5),
   });
+  const stream = toUIMessageStream({ stream: result.stream, originalMessages: modelContext });
 
-  return result.toUIMessageStreamResponse();
+  return createUIMessageStreamResponse({ stream });
 }

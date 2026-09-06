@@ -65,7 +65,7 @@ const normalizeSignal = (value: string) => value.trim().toLowerCase();
 const normalizeTask = (value: string) =>
   normalizeSignal(value).replaceAll("-", " ").replaceAll(/\s+/g, " ");
 
-const hasSignal = (
+export const hasSignal = (
   model: CloudflareModel,
   names: string[],
   acceptedValues = ["true", "1", "yes", "supported"],
@@ -73,9 +73,8 @@ const hasSignal = (
   const normalizedNames = names.map(normalizeSignal);
   const normalizedAcceptedValues = acceptedValues.map(normalizeSignal);
 
-  if (
-    model.tags.some((tag) => normalizedNames.some((name) => normalizeSignal(tag).includes(name)))
-  ) {
+  // Tags must match exactly (after normalization); no substring matching.
+  if (model.tags.some((tag) => normalizedNames.includes(normalizeSignal(tag)))) {
     return true;
   }
 
@@ -84,12 +83,11 @@ const hasSignal = (
       return false;
     }
 
+    // Property name must match exactly; value must be one of the accepted values.
     const propertyName = normalizeSignal(property.property_id);
     const propertyValue = normalizeSignal(property.value);
     return (
-      normalizedNames.some((name) => propertyName.includes(name)) &&
-      (normalizedAcceptedValues.includes(propertyValue) ||
-        normalizedNames.some((name) => propertyValue.includes(name)))
+      normalizedNames.includes(propertyName) && normalizedAcceptedValues.includes(propertyValue)
     );
   });
 };
@@ -105,9 +103,6 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
 
   const reasoning =
     type === "Text Generation" && hasSignal(model, ["reasoning", "reasoning model"]);
-  const tools =
-    type === "Text Generation" &&
-    hasSignal(model, ["function calling", "function-calling", "tool use"]);
   const experimental = hasSignal(model, ["experimental", "beta"]);
 
   return {
@@ -119,7 +114,6 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
     source: "cloudflare",
     ...(input.length > 0 ? { input } : {}),
     ...(reasoning ? { reasoning: true } : {}),
-    ...(tools ? { tools: true } : {}),
     ...(experimental ? { tag: ["experimental"] } : {}),
   };
 };

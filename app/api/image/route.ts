@@ -1,21 +1,18 @@
 import * as v from "valibot";
+import { getCloudflareCredentials, ProviderConfigurationError } from "@/app/api";
 import { getCatalogModel } from "@/lib/model-catalog";
+import { readRequestBody } from "@/lib/request-limits";
+
+const MAX_PROMPT_LENGTH = 8_000;
 
 const schema = v.object({
-  prompt: v.pipe(v.string(), v.trim(), v.minLength(1)),
+  prompt: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(MAX_PROMPT_LENGTH)),
   model: v.pipe(v.string(), v.minLength(1)),
 });
 
 const imageResponseSchema = v.object({
-  result: v.object({
-    image: v.string(),
-  }),
+  result: v.object({ image: v.string() }),
 });
-
-const base64ToUint8Array = (base64: string) => {
-  const binaryString = atob(base64);
-  return Uint8Array.from(binaryString, (character) => character.charCodeAt(0));
-};
 
 const decodeImage = (image: string) => {
   const dataUrl = /^data:(image\/[^;,]+);base64,([\s\S]+)$/.exec(image);
@@ -23,8 +20,9 @@ const decodeImage = (image: string) => {
   const base64 = dataUrl?.[2] ?? image;
 
   try {
+    const binary = atob(base64);
     return {
-      bytes: base64ToUint8Array(base64),
+      bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0)),
       mediaType,
     };
   } catch {
@@ -32,19 +30,20 @@ const decodeImage = (image: string) => {
   }
 };
 
-const getCloudflareError = async (response: Response) => {
-  try {
-    const body = (await response.json()) as {
-      errors?: Array<{ message?: string }>;
-    };
-    return body.errors?.find((error) => error.message)?.message;
-  } catch {
-    return undefined;
-  }
-};
-
 export async function POST(request: Request) {
-  const parsed = v.safeParse(schema, await request.json().catch(() => undefined));
+  const bodyResult = await readRequestBody(request);
+  if (!bodyResult.ok) {
+    return new Response(bodyResult.message, { status: bodyResult.status });
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyResult.text);
+  } catch {
+    return new Response("Invalid request data", { status: 400 });
+  }
+
+  const parsed = v.safeParse(schema, body);
   if (!parsed.success) {
     return new Response("Invalid request data", { status: 400 });
   }
@@ -57,11 +56,23 @@ export async function POST(request: Request) {
     });
   }
 
+  let accountId: string;
+  let apiKey: string;
+  try {
+    ({ accountId, apiKey } = getCloudflareCredentials());
+  } catch (error) {
+    if (error instanceof ProviderConfigurationError) {
+      console.error(error.message);
+      return new Response("Image generation is not configured.", { status: 503 });
+    }
+    throw error;
+  }
+
   const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
     {
       headers: {
-        Authorization: `Bearer ${process.env.CF_WORKERS_AI_TOKEN}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       method: "POST",
@@ -70,9 +81,8 @@ export async function POST(request: Request) {
   );
 
   if (!response.ok) {
-    const message = await getCloudflareError(response);
     console.error(`Image generation failed for ${model}: ${response.status}`);
-    return new Response(message ?? `Cloudflare image generation failed (${response.status})`, {
+    return new Response("Image generation failed. Please try again.", {
       status: response.status >= 400 && response.status < 500 ? 400 : 502,
     });
   }
@@ -88,23 +98,17 @@ export async function POST(request: Request) {
   try {
     json = await response.json();
   } catch {
-    return new Response(
-      `Unsupported image response from ${catalogModel.name}: expected an image or JSON result.image`,
-      { status: 502 },
-    );
+    return new Response("The image provider returned an unsupported response.", { status: 502 });
   }
 
   const imageResult = v.safeParse(imageResponseSchema, json);
   if (!imageResult.success) {
-    return new Response(
-      `Unsupported image response from ${catalogModel.name}: expected a single result.image`,
-      { status: 502 },
-    );
+    return new Response("The image provider returned an unsupported response.", { status: 502 });
   }
 
   const image = decodeImage(imageResult.output.result.image);
   if (!image) {
-    return new Response(`Invalid base64 image returned by ${catalogModel.name}`, { status: 502 });
+    return new Response("The image provider returned invalid image data.", { status: 502 });
   }
 
   return new Response(image.bytes, {

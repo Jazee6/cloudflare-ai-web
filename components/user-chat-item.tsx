@@ -21,7 +21,6 @@ const UserChatItem = ({ className, parts }: { className?: string; parts: Message
           if (part.mediaType.startsWith("image/")) {
             return (
               <ZoomableImage key={`${part.type}-${index}`} className="self-end max-w-[50%]">
-                {/* biome-ignore lint/performance/noImgElement: <data_url> */}
                 <img
                   src={part.url}
                   alt={part.filename}

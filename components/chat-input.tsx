@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
-import { cn, setCookie, type StoredModelKey } from "@/lib/utils";
+import { MAX_IMAGE_BYTES, MAX_IMAGE_PARTS } from "@/lib/request-limits";
+import { cn, deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 
 export interface onSendMessageProps {
@@ -45,7 +46,7 @@ const ChatInput = ({
   onRetry,
   status = "ready",
   models,
-  modalKey,
+  modelKey,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -53,10 +54,10 @@ const ChatInput = ({
   onRetry?: () => void;
   status?: ChatStatus;
   models: Model[];
-  modalKey?: StoredModelKey;
+  modelKey?: StoredModelKey;
 }) => {
   const preferences = useModelPreferences();
-  const selectedModelKey = modalKey ?? "CF_AI_MODEL";
+  const selectedModelKey = modelKey ?? "CF_AI_MODEL";
   const form = useForm<FormData>({
     resolver: valibotResolver(formSchema),
     defaultValues: {
@@ -71,6 +72,22 @@ const ChatInput = ({
   const [searchEnabled, setSearchEnabled] = useState(
     () => preferences.CF_AI_SEARCH_ENABLED === "true",
   );
+
+  useEffect(() => {
+    setSelectedModel((currentModel) => {
+      const nextModel =
+        models.find((model) => model.id === currentModel?.id) ??
+        models.find((model) => model.id === preferences[selectedModelKey]) ??
+        models[0];
+
+      if (nextModel) {
+        setCookie(selectedModelKey, nextModel.id);
+      } else {
+        deleteCookie(selectedModelKey);
+      }
+      return nextModel;
+    });
+  }, [models, preferences, selectedModelKey]);
 
   useEffect(() => {
     if (!selectedModel?.input?.includes("image")) {
@@ -102,32 +119,40 @@ const ChatInput = ({
     }
   };
 
+  const appendFiles = (newFiles: FileUIPart[]) => {
+    setFiles((currentFiles) => {
+      const combinedFiles = [...currentFiles, ...newFiles];
+      if (combinedFiles.length > MAX_IMAGE_PARTS) {
+        toast.add({
+          title: `You can only attach up to ${MAX_IMAGE_PARTS} images.`,
+          type: "warning",
+        });
+      }
+      return combinedFiles.slice(0, MAX_IMAGE_PARTS);
+    });
+  };
+
+  const toFilePart = async (file: File): Promise<FileUIPart | null> => {
+    if (!file.type.startsWith("image/") || file.size > MAX_IMAGE_BYTES) {
+      toast.add({ title: "Images must be 5 MiB or smaller.", type: "warning" });
+      return null;
+    }
+    return {
+      type: "file",
+      filename: file.name,
+      mediaType: file.type,
+      url: await fileToBase64(file),
+    };
+  };
+
   const onAddFiles = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
     input.multiple = true;
     input.onchange = async () => {
-      const newFiles = await Promise.all(
-        Array.from(input.files ?? []).map(async (file) => ({
-          type: "file" as const,
-          filename: file.name,
-          mediaType: file.type,
-          url: await fileToBase64(file),
-        })),
-      );
-
-      setFiles((prevState) => {
-        const combinedFiles = [...prevState, ...newFiles];
-        if (combinedFiles.length > 5) {
-          toast.add({
-            title: "You can only attach up to 5 images.",
-            type: "warning",
-          });
-          return combinedFiles.slice(0, 5);
-        }
-        return combinedFiles;
-      });
+      const fileParts = await Promise.all(Array.from(input.files ?? []).map(toFilePart));
+      appendFiles(fileParts.filter((file): file is FileUIPart => file !== null));
     };
     input.click();
   };
@@ -141,30 +166,17 @@ const ChatInput = ({
       if (item.kind === "file") {
         event.preventDefault();
         const file = item.getAsFile();
-        if (file?.type.startsWith("image/")) {
-          const base64 = await fileToBase64(file);
-          newFiles.push({
-            type: "file",
-            filename: file.name,
-            mediaType: file.type,
-            url: base64,
-          });
+        if (file) {
+          const filePart = await toFilePart(file);
+          if (filePart) {
+            newFiles.push(filePart);
+          }
         }
       }
     }
 
     if (newFiles.length > 0) {
-      setFiles((prevState) => {
-        const combinedFiles = [...prevState, ...newFiles];
-        if (combinedFiles.length > 5) {
-          toast.add({
-            title: "You can only attach up to 5 images.",
-            type: "warning",
-          });
-          return combinedFiles.slice(0, 5);
-        }
-        return combinedFiles;
-      });
+      appendFiles(newFiles);
     }
   };
 
@@ -217,7 +229,6 @@ const ChatInput = ({
                   >
                     <X className="size-4 text-white" />
                   </button>
-                  {/** biome-ignore lint/performance/noImgElement: <data_url> */}
                   <img
                     src={file.url}
                     alt={file.filename}
@@ -234,9 +245,11 @@ const ChatInput = ({
         <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
           <ModelSelect
             selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
             models={models}
-            modalKey={selectedModelKey}
+            onSelectModel={(model) => {
+              setSelectedModel(model);
+              setCookie(selectedModelKey, model.id);
+            }}
           />
 
           {selectedModel?.input?.includes("search") && (

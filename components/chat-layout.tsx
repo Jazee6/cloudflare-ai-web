@@ -10,6 +10,7 @@ const ChatLayout = ({
   scrollToBottom,
   authDialogOpen,
   setAuthDialogOpen,
+  onAuthenticated,
   children,
   bottomBar,
 }: {
@@ -18,6 +19,7 @@ const ChatLayout = ({
   scrollToBottom: () => void;
   authDialogOpen: boolean;
   setAuthDialogOpen: (open: boolean) => void;
+  onAuthenticated: () => void;
   children: React.ReactNode;
   bottomBar: React.ReactNode;
 }) => {
@@ -49,7 +51,11 @@ const ChatLayout = ({
         <Footer />
       </div>
 
-      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+      <AuthDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+        onAuthenticated={onAuthenticated}
+      />
     </div>
   );
 };

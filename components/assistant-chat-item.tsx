@@ -26,7 +26,6 @@ const MarkdownImage = (imageProps: ComponentProps<"img"> & { node?: unknown }) =
 
   return (
     <ZoomableImage>
-      {/* biome-ignore lint/performance/noImgElement: Markdown images can use arbitrary URLs. */}
       <img {...props} className={cn("h-auto max-w-full rounded-md", className)} />
     </ZoomableImage>
   );
