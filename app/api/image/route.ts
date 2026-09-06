@@ -1,5 +1,9 @@
 import * as v from "valibot";
-import { getCloudflareCredentials, ProviderConfigurationError } from "@/app/api";
+import {
+  getCloudflareCredentials,
+  getCloudflareGatewayCredentials,
+  ProviderConfigurationError,
+} from "@/app/api";
 import { getCatalogModel } from "@/lib/model-catalog";
 import { readRequestBody } from "@/lib/request-limits";
 
@@ -58,8 +62,10 @@ export async function POST(request: Request) {
 
   let accountId: string;
   let apiKey: string;
+  let gatewayCredentials: ReturnType<typeof getCloudflareGatewayCredentials>;
   try {
     ({ accountId, apiKey } = getCloudflareCredentials());
+    gatewayCredentials = getCloudflareGatewayCredentials();
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
@@ -68,17 +74,20 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      body: JSON.stringify({ prompt }),
+  const url = gatewayCredentials
+    ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayCredentials.gatewayId}/workers-ai/run/${model}`
+    : `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      ...(gatewayCredentials
+        ? { "cf-aig-authorization": `Bearer ${gatewayCredentials.gatewayToken}` }
+        : {}),
+      "Content-Type": "application/json",
     },
-  );
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  });
 
   if (!response.ok) {
     console.error(`Image generation failed for ${model}: ${response.status}`);

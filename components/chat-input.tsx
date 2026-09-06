@@ -191,10 +191,9 @@ const ChatInput = ({
         <Controller
           control={form.control}
           name="input"
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+          render={({ field }) => (
+            <Field>
               <Textarea
-                aria-invalid={fieldState.invalid}
                 autoFocus
                 className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent rounded-b-none rounded-t"
                 placeholder="Text here..."

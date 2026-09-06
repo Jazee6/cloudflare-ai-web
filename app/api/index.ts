@@ -22,7 +22,41 @@ export const getCloudflareCredentials = () => ({
   apiKey: requireEnvironmentVariable("CF_WORKERS_AI_TOKEN"),
 });
 
-export const getWorkersAIProvider = () => createWorkersAI(getCloudflareCredentials());
+export const getCloudflareGatewayCredentials = () => {
+  const gatewayId = process.env.CF_AI_GATEWAY_NAME;
+  if (!gatewayId) {
+    return undefined;
+  }
+
+  return {
+    gatewayId,
+    gatewayToken: requireEnvironmentVariable("CF_AI_GATEWAY_TOKEN"),
+  };
+};
+
+export const getWorkersAIProvider = () => {
+  const credentials = getCloudflareCredentials();
+  const gatewayCredentials = getCloudflareGatewayCredentials();
+  if (!gatewayCredentials) {
+    return createWorkersAI(credentials);
+  }
+
+  const { gatewayId, gatewayToken } = gatewayCredentials;
+  const gatewayFetch: typeof globalThis.fetch = Object.assign(
+    (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      headers.set("cf-aig-authorization", `Bearer ${gatewayToken}`);
+      return globalThis.fetch(input, { ...init, headers });
+    },
+    { preconnect: globalThis.fetch.preconnect },
+  );
+
+  return createWorkersAI({
+    ...credentials,
+    gateway: { id: gatewayId },
+    fetch: gatewayFetch,
+  });
+};
 
 export const getGoogleGatewayProviders = () => {
   const google = createGoogleGenerativeAI({
@@ -31,7 +65,7 @@ export const getGoogleGatewayProviders = () => {
   const gateway = createAiGateway({
     accountId: requireEnvironmentVariable("CF_ACCOUNT_ID"),
     gateway: requireEnvironmentVariable("CF_AI_GATEWAY_NAME"),
-    apiKey: process.env.CF_AI_GATEWAY_TOKEN,
+    apiKey: requireEnvironmentVariable("CF_AI_GATEWAY_TOKEN"),
   });
 
   return { gateway, google };

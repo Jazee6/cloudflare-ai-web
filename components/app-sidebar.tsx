@@ -98,7 +98,10 @@ const AppSidebar = () => {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton render={<Link href="/image" />} isActive={pathname === "/image"}>
+              <SidebarMenuButton
+                render={<Link href="/image" prefetch={false} />}
+                isActive={pathname === "/image"}
+              >
                 <ImageIcon />
                 Image
                 <LoadingIndicator className="ml-auto" />
@@ -133,7 +136,7 @@ const AppSidebar = () => {
                   {sessions.map(({ id, name }) => (
                     <SidebarMenuItem key={id}>
                       <SidebarMenuButton
-                        render={<Link href={`/c/${id}`} />}
+                        render={<Link href={`/c/${id}`} prefetch={false} />}
                         isActive={session_id === id}
                       >
                         {name}
@@ -169,7 +172,7 @@ const AppSidebar = () => {
             <SidebarMenuItem className="flex items-center">
               <ThemeSwitcher />
 
-              <Link href="/" className="ml-auto">
+              <Link href="/" prefetch={false} className="ml-auto">
                 <Button variant="ghost">
                   New Chat
                   <Plus />
