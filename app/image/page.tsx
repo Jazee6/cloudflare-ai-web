@@ -47,11 +47,7 @@ const Page = () => {
         </ViewTransition>
       }
     >
-      <ChatList
-        status={status}
-        messages={messages}
-        className="pt-16 pb-60 max-w-3xl mx-auto"
-      />
+      <ChatList status={status} messages={messages} className="pt-16 pb-60 max-w-3xl mx-auto" />
     </ChatLayout>
   );
 };

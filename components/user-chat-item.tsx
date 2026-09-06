@@ -1,13 +1,7 @@
 import type { Message } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
-const UserChatItem = ({
-  className,
-  parts,
-}: {
-  className?: string;
-  parts: Message["parts"];
-}) => {
+const UserChatItem = ({ className, parts }: { className?: string; parts: Message["parts"] }) => {
   return (
     <div className={cn("space-y-1 flex flex-col", className)}>
       {parts.map((part, index) => {

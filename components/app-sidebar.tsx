@@ -1,11 +1,12 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cog, ImageIcon, MoreHorizontal, Plus } from "lucide-react";
+import { ImageIcon, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import LoadingIndicator from "@/components/loading-indicator";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,9 +167,7 @@ const AppSidebar = () => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center">
-              <Button size="icon" variant="ghost" className="size-8" disabled>
-                <Cog />
-              </Button>
+              <ThemeSwitcher />
 
               <Link href="/" className="ml-auto">
                 <Button variant="ghost">

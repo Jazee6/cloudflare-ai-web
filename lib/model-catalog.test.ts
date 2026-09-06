@@ -12,8 +12,7 @@ test("loads catalog models with structured property values", async () => {
   globalThis.fetch = mock(async (input) => {
     const url = new URL(String(input));
     const task = url.searchParams.get("task") ?? "Text Generation";
-    const name =
-      task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
+    const name = task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
 
     return Response.json({
       success: true,
@@ -49,15 +48,13 @@ test("loads catalog models with structured property values", async () => {
 
   try {
     const catalog = await getModelCatalog();
-    expect(catalog.find((model) => model.id === "@cf/test/chat")).toMatchObject(
-      {
-        reasoning: true,
-        type: "Text Generation",
-      },
-    );
-    expect(
-      catalog.find((model) => model.id === "@cf/test/image"),
-    ).toMatchObject({ type: "Text to Image" });
+    expect(catalog.find((model) => model.id === "@cf/test/chat")).toMatchObject({
+      reasoning: true,
+      type: "Text Generation",
+    });
+    expect(catalog.find((model) => model.id === "@cf/test/image")).toMatchObject({
+      type: "Text to Image",
+    });
   } finally {
     globalThis.fetch = originalFetch;
     process.env.CF_ACCOUNT_ID = originalAccountId;

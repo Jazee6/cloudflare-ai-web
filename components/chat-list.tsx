@@ -23,10 +23,7 @@ const ChatList = memo(
 
           if (message.role === "user") {
             return (
-              <li
-                key={message.id}
-                className="self-end max-w-[90%] ani-slide-top"
-              >
+              <li key={message.id} className="self-end max-w-[90%] ani-slide-top">
                 <UserChatItem parts={message.parts} />
               </li>
             );

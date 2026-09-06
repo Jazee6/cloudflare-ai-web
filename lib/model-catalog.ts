@@ -58,8 +58,7 @@ const globalCatalog = globalThis as typeof globalThis & {
   cloudflareModelCatalogCache?: Map<CloudflareTask, CatalogCacheEntry>;
 };
 const taskCache =
-  globalCatalog.cloudflareModelCatalogCache ??
-  new Map<CloudflareTask, CatalogCacheEntry>();
+  globalCatalog.cloudflareModelCatalogCache ?? new Map<CloudflareTask, CatalogCacheEntry>();
 globalCatalog.cloudflareModelCatalogCache = taskCache;
 
 const normalizeSignal = (value: string) => value.trim().toLowerCase();
@@ -75,9 +74,7 @@ const hasSignal = (
   const normalizedAcceptedValues = acceptedValues.map(normalizeSignal);
 
   if (
-    model.tags.some((tag) =>
-      normalizedNames.some((name) => normalizeSignal(tag).includes(name)),
-    )
+    model.tags.some((tag) => normalizedNames.some((name) => normalizeSignal(tag).includes(name)))
   ) {
     return true;
   }
@@ -107,8 +104,7 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
   }
 
   const reasoning =
-    type === "Text Generation" &&
-    hasSignal(model, ["reasoning", "reasoning model"]);
+    type === "Text Generation" && hasSignal(model, ["reasoning", "reasoning model"]);
   const tools =
     type === "Text Generation" &&
     hasSignal(model, ["function calling", "function-calling", "tool use"]);
@@ -162,10 +158,7 @@ const fetchTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
       throw new Error(`Cloudflare models API returned ${response.status}`);
     }
 
-    const parsed = v.safeParse(
-      cloudflareCatalogResponseSchema,
-      await response.json(),
-    );
+    const parsed = v.safeParse(cloudflareCatalogResponseSchema, await response.json());
     if (!parsed.success) {
       throw new Error("Cloudflare models API returned an invalid response");
     }
@@ -182,8 +175,7 @@ const fetchTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
     page += 1;
   }
 
-  const type: ModelType =
-    task === "Text Generation" ? "Text Generation" : "Text to Image";
+  const type: ModelType = task === "Text Generation" ? "Text Generation" : "Text to Image";
   const expectedTask = normalizeTask(task);
   const uniqueModels = new Map(
     models
@@ -247,19 +239,12 @@ export const getModelCatalog = async (): Promise<Model[]> => {
   return [...chatModels, ...imageModels, ...getExternalModels()];
 };
 
-export const getCatalogModel = async (
-  id: string,
-  type: ModelType,
-  provider: Model["provider"],
-) => {
+export const getCatalogModel = async (id: string, type: ModelType, provider: Model["provider"]) => {
   if (provider === "google") {
-    return getExternalModels().find(
-      (model) => model.id === id && model.type === type,
-    );
+    return getExternalModels().find((model) => model.id === id && model.type === type);
   }
 
-  const task: CloudflareTask =
-    type === "Text Generation" ? "Text Generation" : "Text-to-Image";
+  const task: CloudflareTask = type === "Text Generation" ? "Text Generation" : "Text-to-Image";
   const models = await getTaskModels(task);
   return models.find((model) => model.id === id);
 };

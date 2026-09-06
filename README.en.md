@@ -38,9 +38,9 @@ docker run -d --name cloudflare-ai-web \
 ### Environment Variables
 
 | Name                                | Description                      | Required |
-|-------------------------------------|----------------------------------|----------|
-| CF_ACCOUNT_ID                       | Cloudflare Account ID            | ✅        |  
-| CF_WORKERS_AI_TOKEN                 | Cloudflare Workers AI Token      | ✅        |
+| ----------------------------------- | -------------------------------- | -------- |
+| CF_ACCOUNT_ID                       | Cloudflare Account ID            | ✅       |
+| CF_WORKERS_AI_TOKEN                 | Cloudflare Workers AI Token      | ✅       |
 | APP_PASSWORD                        | Access Password                  |          |
 | CF_AI_GATEWAY_NAME                  | Cloudflare AI Gateway Name       |          |
 | CF_AI_GATEWAY_TOKEN                 | Cloudflare AI Gateway Auth Token |          |

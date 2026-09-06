@@ -18,22 +18,13 @@ const CopyButton = ({ id, className }: { id: string; className?: string }) => {
   };
 
   return (
-    <Button
-      size="icon"
-      variant="ghost"
-      onClick={onCopy}
-      className={cn(className)}
-    >
+    <Button size="icon" variant="ghost" onClick={onCopy} className={cn(className)}>
       <Copy
         className={`transition-all
         ${copied ? "scale-0" : "scale-100"}
       `}
       />
-      <Check
-        className={`absolute transition-all ${
-          copied ? "scale-100" : "scale-0"
-        }`}
-      />
+      <Check className={`absolute transition-all ${copied ? "scale-100" : "scale-0"}`} />
     </Button>
   );
 };

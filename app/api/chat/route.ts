@@ -21,10 +21,7 @@ const chatSchema = v.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = v.safeParse(
-    chatSchema,
-    await request.json().catch(() => undefined),
-  );
+  const parsed = v.safeParse(chatSchema, await request.json().catch(() => undefined));
   if (!parsed.success) {
     return new Response("Invalid request data", { status: 400 });
   }
@@ -35,16 +32,11 @@ export async function POST(request: Request) {
     provider: Model["provider"];
     search?: boolean;
   };
-  const catalogModel = await getCatalogModel(
-    model,
-    "Text Generation",
-    provider,
-  );
+  const catalogModel = await getCatalogModel(model, "Text Generation", provider);
   if (!catalogModel) {
-    return new Response(
-      "The model catalog has changed. Refresh and select another model.",
-      { status: 409 },
-    );
+    return new Response("The model catalog has changed. Refresh and select another model.", {
+      status: 409,
+    });
   }
 
   let providerModel: LanguageModelV3;

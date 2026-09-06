@@ -44,25 +44,17 @@ const getCloudflareError = async (response: Response) => {
 };
 
 export async function POST(request: Request) {
-  const parsed = v.safeParse(
-    schema,
-    await request.json().catch(() => undefined),
-  );
+  const parsed = v.safeParse(schema, await request.json().catch(() => undefined));
   if (!parsed.success) {
     return new Response("Invalid request data", { status: 400 });
   }
 
   const { prompt, model } = parsed.output;
-  const catalogModel = await getCatalogModel(
-    model,
-    "Text to Image",
-    "workers-ai",
-  );
+  const catalogModel = await getCatalogModel(model, "Text to Image", "workers-ai");
   if (!catalogModel) {
-    return new Response(
-      "The model catalog has changed. Refresh and select another model.",
-      { status: 409 },
-    );
+    return new Response("The model catalog has changed. Refresh and select another model.", {
+      status: 409,
+    });
   }
 
   const response = await fetch(
@@ -80,10 +72,9 @@ export async function POST(request: Request) {
   if (!response.ok) {
     const message = await getCloudflareError(response);
     console.error(`Image generation failed for ${model}: ${response.status}`);
-    return new Response(
-      message ?? `Cloudflare image generation failed (${response.status})`,
-      { status: response.status >= 400 && response.status < 500 ? 400 : 502 },
-    );
+    return new Response(message ?? `Cloudflare image generation failed (${response.status})`, {
+      status: response.status >= 400 && response.status < 500 ? 400 : 502,
+    });
   }
 
   const contentType = response.headers.get("content-type") ?? "";
@@ -113,10 +104,7 @@ export async function POST(request: Request) {
 
   const image = decodeImage(imageResult.output.result.image);
   if (!image) {
-    return new Response(
-      `Invalid base64 image returned by ${catalogModel.name}`,
-      { status: 502 },
-    );
+    return new Response(`Invalid base64 image returned by ${catalogModel.name}`, { status: 502 });
   }
 
   return new Response(image.bytes, {

@@ -11,9 +11,10 @@ import {
 import { getModelCatalog } from "@/lib/model-catalog";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Inter } from "next/font/google";
+import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
+  const themePreference = parseThemePreference(cookieStore.get(THEME_COOKIE)?.value);
   const preferences = Object.fromEntries(
     ["CF_AI_MODEL", "CF_AI_MODEL_IMAGE", "CF_AI_SEARCH_ENABLED"].flatMap((key) => {
       const value = cookieStore.get(key)?.value;
@@ -39,7 +41,12 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
       <body className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme={themePreference}
+          enableSystem
+          storageKey={THEME_COOKIE}
+        >
           <Toaster />
 
           <ModelCatalogProvider models={models}>

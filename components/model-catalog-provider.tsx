@@ -12,15 +12,9 @@ export const ModelPreferencesProvider = ({
 }: {
   children: ReactNode;
   preferences: Partial<Record<StoredPreferenceKey, string>>;
-}) => (
-  <ModelPreferencesContext value={preferences}>
-    {children}
-  </ModelPreferencesContext>
-);
+}) => <ModelPreferencesContext value={preferences}>{children}</ModelPreferencesContext>;
 
-const ModelPreferencesContext = createContext<
-  Partial<Record<StoredPreferenceKey, string>>
->({});
+const ModelPreferencesContext = createContext<Partial<Record<StoredPreferenceKey, string>>>({});
 
 export const ModelCatalogProvider = ({
   children,

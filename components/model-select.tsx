@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ModelLogo } from "@/components/model-logo";
 import { useModelPreferences } from "@/components/model-catalog-provider";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/command";
 import type { Model } from "@/lib/models";
 import { getModelGroup } from "@/lib/models";
-import { cn, deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
+import { deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
 
 const getGroupedModels = (models: Model[]) => {
   const groups = new Map<string, Model[]>();
@@ -49,8 +49,7 @@ const ModelSelect = ({
   const groupedModels = useMemo(() => getGroupedModels(models), [models]);
 
   useEffect(() => {
-    const nextModel =
-      models.find((model) => model.id === preferences[modalKey]) ?? models[0];
+    const nextModel = models.find((model) => model.id === preferences[modalKey]) ?? models[0];
     setSelectedModel(nextModel);
 
     if (nextModel) {
@@ -100,6 +99,7 @@ const ModelSelect = ({
                   <CommandItem
                     key={`${model.provider}:${model.id}`}
                     value={`${name} ${model.name} ${model.id}`}
+                    data-checked={selectedModel?.id === model.id}
                     onSelect={() => {
                       setSelectedModel(model);
                       setCookie(modalKey, model.id);
@@ -120,14 +120,6 @@ const ModelSelect = ({
                         Google API
                       </Badge>
                     )}
-                    <Check
-                      className={cn(
-                        "ml-auto",
-                        selectedModel?.id === model.id
-                          ? "opacity-100"
-                          : "opacity-0",
-                      )}
-                    />
                   </CommandItem>
                 ))}
               </CommandGroup>
