@@ -25,11 +25,6 @@ docker run -d --name cloudflare-ai-web \
   jazee6/cloudflare-ai-web
 ```
 
-## Requirements
-
-- Node.js >= 22
-- Bun 1.4.1 (package manager)
-
 ## Features
 
 - Quickly build a multimodel AI platform using Cloudflare Workers AI
@@ -37,8 +32,6 @@ docker run -d --name cloudflare-ai-web \
 - Support fast deployment with Serverless
 - Chat history is stored locally
 - Access Session protection via deployment password
-- Request body size limits (chat/image 25 MiB, 5 MiB per image, max 5 images)
-- Model Context policy bounding the context window (max 64,000 characters, 100 messages)
 
 > **Note:** In public mode anyone can use your inference APIs. Set `APP_PASSWORD` to enable Access Session.
 
@@ -59,31 +52,6 @@ docker run -d --name cloudflare-ai-web \
 #### CF_WORKERS_AI_TOKEN
 
 - Manage Account - Account API Tokens - Create Token - Create with Workers AI template
-
-#### APP_PASSWORD
-
-When configured, enables Access Session:
-
-- Without configuration the app is fully public.
-- When configured: submit password via `/api/auth`; on success a 30-day HttpOnly HMAC cookie is issued (no raw password stored).
-- Cookies expire after 30 days or immediately when `APP_PASSWORD` changes.
-- The client no longer stores the raw password; on 401 the auth dialog appears, retries once after success.
-
-#### Request Limits
-
-- Chat and image API request bodies are limited to 25 MiB.
-- Max 5 image attachments per request.
-- Max 5 MiB decoded size per image.
-- Image generation prompt max 8,000 characters.
-
-#### Model Context
-
-The client uses a Model Context policy instead of simple slicing:
-
-- Fills from the latest message backward, up to 64,000 characters.
-- At most 100 messages.
-- Rejects (not truncates) if the latest message alone exceeds the limit.
-- Keeps only the 5 most recent image file parts.
 
 #### NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS
 
