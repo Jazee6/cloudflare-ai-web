@@ -45,9 +45,11 @@ export async function POST(request: Request) {
     case "google":
       providerModel = aigateway([google.chat(model)]);
 
-      Object.assign(tools, {
-        ...(search ? { google_search: google.tools.googleSearch({}) } : {}),
-      });
+      if (search) {
+        Object.assign(tools, {
+          google_search: google.tools.googleSearch({}),
+        });
+      }
       break;
     case "workers-ai": {
       const workerModel = workersai.chat(model);

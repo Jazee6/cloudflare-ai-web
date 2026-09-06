@@ -1,6 +1,6 @@
 import { Brain, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { Fragment } from "react";
+import { Fragment, type ComponentProps } from "react";
 import { Streamdown } from "streamdown";
 import {
   Accordion,
@@ -16,6 +16,23 @@ import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import "streamdown/styles.css";
+import ZoomableImage from "@/components/zoomable-image";
+
+const MarkdownImage = (imageProps: ComponentProps<"img"> & { node?: unknown }) => {
+  const { className } = imageProps;
+  const props = { ...imageProps };
+  delete props.className;
+  delete props.node;
+
+  return (
+    <ZoomableImage>
+      {/* biome-ignore lint/performance/noImgElement: Markdown images can use arbitrary URLs. */}
+      <img {...props} className={cn("h-auto max-w-full rounded-md", className)} />
+    </ZoomableImage>
+  );
+};
+
+const streamdownComponents = { img: MarkdownImage };
 
 const AssistantChatItem = ({
   className,
@@ -41,6 +58,7 @@ const AssistantChatItem = ({
               animated={{ animation: "blurIn" }}
               isAnimating={status === "streaming" && isLastMessage}
               plugins={{ cjk, code, math }}
+              components={streamdownComponents}
               linkSafety={{ enabled: false }}
             >
               {part.text}
@@ -60,7 +78,11 @@ const AssistantChatItem = ({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Streamdown caret="circle" isAnimating={status === "streaming" && isLastMessage}>
+                  <Streamdown
+                    caret="circle"
+                    components={streamdownComponents}
+                    isAnimating={status === "streaming" && isLastMessage}
+                  >
                     {part.text}
                   </Streamdown>
                 </AccordionContent>
@@ -76,14 +98,15 @@ const AssistantChatItem = ({
                 const key = `image-${index}`;
 
                 return (
-                  <Image
-                    src={url}
-                    alt={key}
-                    key={key}
-                    width={512}
-                    height={512}
-                    className="rounded-md hover:brightness-75 transition-all"
-                  />
+                  <ZoomableImage key={key}>
+                    <Image
+                      src={url}
+                      alt={key}
+                      width={512}
+                      height={512}
+                      className="rounded-md hover:brightness-75 transition-all"
+                    />
+                  </ZoomableImage>
                 );
               })}
             </Fragment>

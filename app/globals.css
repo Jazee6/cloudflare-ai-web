@@ -145,3 +145,37 @@
 .ani-slide-top {
   animation: slide-top 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
+
+[data-rmiz-modal]::backdrop {
+  background-color: transparent;
+  backdrop-filter: blur(0);
+  display: block;
+  transition:
+    background-color 0.3s,
+    backdrop-filter 0.3s;
+}
+
+[data-rmiz-modal]:has([data-rmiz-modal-overlay="visible"])::backdrop {
+  @apply bg-background/80 backdrop-blur-md;
+}
+
+@starting-style {
+  [data-rmiz-modal]:has([data-rmiz-modal-overlay="visible"])::backdrop {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+
+[data-rmiz-modal-overlay="visible"] {
+  background-color: transparent;
+}
+
+[data-rmiz-modal-img] {
+  border-radius: calc(var(--radius) - 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-rmiz-modal]::backdrop {
+    transition-duration: 0.01ms !important;
+  }
+}
