@@ -5,22 +5,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
+import { Controller, useForm } from "react-hook-form";
+import * as v from "valibot";
+import { valibotResolver } from "@hookform/resolvers/valibot";
+import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const formSchema = z.object({
-  password: z.string().min(1),
+const formSchema = v.object({
+  password: v.pipe(v.string(), v.minLength(1)),
 });
+
+type FormData = v.InferOutput<typeof formSchema>;
 
 const AuthDialog = ({
   open,
@@ -29,14 +25,14 @@ const AuthDialog = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormData>({
+    resolver: valibotResolver(formSchema),
     defaultValues: {
       password: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: FormData) {
     localStorage.setItem("CF_AI_PASSWORD", values.password);
     onOpenChange(false);
   }
@@ -48,25 +44,21 @@ const AuthDialog = ({
           <DialogTitle>Please enter your password to continue</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input placeholder="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter className="mt-4">
-              <Button type="submit">Submit</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <Controller
+            control={form.control}
+            name="password"
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <Input aria-invalid={fieldState.invalid} placeholder="password" {...field} />
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+          <DialogFooter className="mt-4">
+            <Button type="submit">Submit</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

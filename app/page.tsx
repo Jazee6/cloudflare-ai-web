@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
+import { useModelCatalog } from "@/components/model-catalog-provider";
 import { TextEffect } from "@/components/ui/text-effect";
 import { db } from "@/lib/db";
-import { models } from "@/lib/models";
 
 export default function Home() {
   const router = useRouter();
+  const models = useModelCatalog("Text Generation");
 
   const onSendMessage = useCallback(
     async (data: onSendMessageProps) => {
@@ -51,7 +52,7 @@ export default function Home() {
         </div>
         <ViewTransition name="chat-input">
           <ChatInput
-            models={models.filter((i) => i.type === "Text Generation")}
+            models={models}
             className="mx-auto max-w-3xl"
             onSendMessage={onSendMessage}
           />

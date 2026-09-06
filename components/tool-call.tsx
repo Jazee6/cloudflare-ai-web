@@ -20,17 +20,16 @@ import { Badge } from "@/components/ui/badge";
 
 const ToolCall = ({ part }: { part: ToolUIPart }) => {
   return (
-    <Accordion type="single" collapsible>
+    <Accordion>
       <AccordionItem value={part.toolCallId}>
         <AccordionTrigger>
           <div className="flex items-center w-full">
             <Wrench className="size-4 mr-2" />
             {part.type.split("-").slice(1).join(" ")}
 
-            {part.state !== "output-available" &&
-              part.state !== "output-error" && (
-                <Loader2 className="size-4 ml-2 animate-spin" />
-              )}
+            {part.state !== "output-available" && part.state !== "output-error" && (
+              <Loader2 className="size-4 ml-2 animate-spin" />
+            )}
 
             {part.state === "input-streaming" && (
               <Badge variant="outline" className="ml-auto">

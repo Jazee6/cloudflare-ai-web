@@ -50,9 +50,7 @@ const AppSidebar = () => {
   const [sessionId, setSessionId] = useState("");
   const pathname = usePathname();
 
-  const sessions = useLiveQuery(() =>
-    db.session.limit(100).reverse().sortBy("updatedAt"),
-  );
+  const sessions = useLiveQuery(() => db.session.limit(100).reverse().sortBy("updatedAt"));
 
   const groupedSessions = useMemo(
     () =>
@@ -99,20 +97,16 @@ const AppSidebar = () => {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/image"}>
-                <Link href="/image">
-                  <ImageIcon />
-                  Image
-                  <LoadingIndicator className="ml-auto" />
-                </Link>
+              <SidebarMenuButton render={<Link href="/image" />} isActive={pathname === "/image"}>
+                <ImageIcon />
+                Image
+                <LoadingIndicator className="ml-auto" />
               </SidebarMenuButton>
 
               {pathname === "/image" && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuAction>
-                      <MoreHorizontal />
-                    </SidebarMenuAction>
+                  <DropdownMenuTrigger render={<SidebarMenuAction />}>
+                    <MoreHorizontal />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="right" align="start">
                     <DropdownMenuItem
@@ -129,7 +123,7 @@ const AppSidebar = () => {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-        <SidebarContent className="scrollbar">
+        <SidebarContent className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
               <SidebarGroupLabel>{type}</SidebarGroupLabel>
@@ -137,19 +131,18 @@ const AppSidebar = () => {
                 <SidebarMenu>
                   {sessions.map(({ id, name }) => (
                     <SidebarMenuItem key={id}>
-                      <SidebarMenuButton asChild isActive={session_id === id}>
-                        <Link href={`/c/${id}`}>
-                          {name}
-                          <LoadingIndicator className="ml-auto" />
-                        </Link>
+                      <SidebarMenuButton
+                        render={<Link href={`/c/${id}`} />}
+                        isActive={session_id === id}
+                      >
+                        {name}
+                        <LoadingIndicator className="ml-auto" />
                       </SidebarMenuButton>
 
                       {session_id === id && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction>
-                              <MoreHorizontal />
-                            </SidebarMenuAction>
+                          <DropdownMenuTrigger render={<SidebarMenuAction />}>
+                            <MoreHorizontal />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent side="right" align="start">
                             <DropdownMenuItem
@@ -191,12 +184,8 @@ const AppSidebar = () => {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure you want to delete this session?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Are you sure you want to delete this session?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/toast";
 import AppSidebar from "@/components/app-sidebar";
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+  ModelCatalogProvider,
+  ModelPreferencesProvider,
+} from "@/components/model-catalog-provider";
+import { getModelCatalog } from "@/lib/model-catalog";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Inter } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Cloudflare AI Web",
@@ -19,26 +27,36 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // const cookieStore = await cookies();
-  // const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+  const cookieStore = await cookies();
+  const preferences = Object.fromEntries(
+    ["CF_AI_MODEL", "CF_AI_MODEL_IMAGE", "CF_AI_SEARCH_ENABLED"].flatMap((key) => {
+      const value = cookieStore.get(key)?.value;
+      return value ? [[key, value]] : [];
+    }),
+  ) as Partial<Record<"CF_AI_MODEL" | "CF_AI_MODEL_IMAGE" | "CF_AI_SEARCH_ENABLED", string>>;
+  const models = await getModelCatalog();
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="scrollbar-thumb-border scrollbar-track-transparent">
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
+      <body className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Toaster position="top-center" richColors />
+          <Toaster />
 
-          <SidebarProvider>
-            <AppSidebar />
+          <ModelCatalogProvider models={models}>
+            <ModelPreferencesProvider preferences={preferences}>
+              <SidebarProvider>
+                <AppSidebar />
 
-            <SidebarInset>
-              <header className="h-16 flex items-center px-4 absolute">
-                <SidebarTrigger className="-ml-1 z-10" />
-              </header>
+                <SidebarInset>
+                  <header className="h-16 flex items-center px-4 absolute">
+                    <SidebarTrigger className="-ml-1 z-10" />
+                  </header>
 
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
+                  {children}
+                </SidebarInset>
+              </SidebarProvider>
+            </ModelPreferencesProvider>
+          </ModelCatalogProvider>
         </ThemeProvider>
       </body>
     </html>

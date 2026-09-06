@@ -1,26 +1,19 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { valibotResolver } from "@hookform/resolvers/valibot";
 import type { ChatStatus, FileUIPart } from "ai";
-import {
-  ArrowUp,
-  Earth,
-  Loader2,
-  Paperclip,
-  RefreshCw,
-  Square,
-  X,
-} from "lucide-react";
+import { ArrowUp, Earth, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "@/components/ui/toast";
+import * as v from "valibot";
+import { useModelPreferences } from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
-import { cn, type StoredModelKey } from "@/lib/utils";
+import { cn, setCookie, type StoredModelKey } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 
 export interface onSendMessageProps {
@@ -28,9 +21,11 @@ export interface onSendMessageProps {
   files?: FileUIPart[];
 }
 
-const formSchema = z.object({
-  input: z.string().trim().min(1),
+const formSchema = v.object({
+  input: v.pipe(v.string(), v.trim(), v.minLength(1)),
 });
+
+type FormData = v.InferOutput<typeof formSchema>;
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -60,20 +55,22 @@ const ChatInput = ({
   models: Model[];
   modalKey?: StoredModelKey;
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const preferences = useModelPreferences();
+  const selectedModelKey = modalKey ?? "CF_AI_MODEL";
+  const form = useForm<FormData>({
+    resolver: valibotResolver(formSchema),
     defaultValues: {
       input: "",
     },
   });
   const input = form.watch("input");
-  const [selectedModel, setSelectedModel] = useState<Model>();
+  const [selectedModel, setSelectedModel] = useState<Model | undefined>(
+    () => models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0],
+  );
   const [files, setFiles] = useState<FileUIPart[]>([]);
-  const [searchEnabled, setSearchEnabled] = useState(false);
-
-  useEffect(() => {
-    setSearchEnabled(localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true");
-  }, []);
+  const [searchEnabled, setSearchEnabled] = useState(
+    () => preferences.CF_AI_SEARCH_ENABLED === "true",
+  );
 
   useEffect(() => {
     if (!selectedModel?.input?.includes("image")) {
@@ -81,7 +78,11 @@ const ChatInput = ({
     }
   }, [selectedModel]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: FormData) {
+    if (models.length === 0) {
+      return;
+    }
+
     form.resetField("input");
     setFiles([]);
     onSendMessage({
@@ -119,7 +120,10 @@ const ChatInput = ({
       setFiles((prevState) => {
         const combinedFiles = [...prevState, ...newFiles];
         if (combinedFiles.length > 5) {
-          toast.warning("You can only attach up to 5 images.");
+          toast.add({
+            title: "You can only attach up to 5 images.",
+            type: "warning",
+          });
           return combinedFiles.slice(0, 5);
         }
         return combinedFiles;
@@ -153,7 +157,10 @@ const ChatInput = ({
       setFiles((prevState) => {
         const combinedFiles = [...prevState, ...newFiles];
         if (combinedFiles.length > 5) {
-          toast.warning("You can only attach up to 5 images.");
+          toast.add({
+            title: "You can only attach up to 5 images.",
+            type: "warning",
+          });
           return combinedFiles.slice(0, 5);
         }
         return combinedFiles;
@@ -162,134 +169,116 @@ const ChatInput = ({
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div
-          className={cn(
-            "w-full border-3 rounded-md focus-within:border-primary transition-all",
-            className,
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <div
+        className={cn(
+          "w-full border-3 rounded-md focus-within:border-primary transition-all",
+          className,
+        )}
+      >
+        <Controller
+          control={form.control}
+          name="input"
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <Textarea
+                aria-invalid={fieldState.invalid}
+                autoFocus
+                className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent rounded-b-none rounded-t"
+                placeholder="Text here..."
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    form.handleSubmit(onSubmit)();
+                  }
+                }}
+                onPaste={onPaste}
+                {...field}
+              />
+            </Field>
           )}
-        >
-          <FormField
-            control={form.control}
-            name="input"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    autoFocus
-                    className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar rounded-b-none rounded-t"
-                    placeholder="Text here..."
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        !event.shiftKey &&
-                        !event.nativeEvent.isComposing
-                      ) {
-                        event.preventDefault();
-                        form.handleSubmit(onSubmit)();
-                      }
+        />
+
+        <ul className="flex px-3 gap-1">
+          {files.map((file, index) => {
+            if (file.mediaType.startsWith("image/")) {
+              return (
+                <li
+                  key={`${file.filename}-${file.url}`}
+                  className="size-12 overflow-hidden rounded-md relative group hover:shadow transition-all"
+                >
+                  <button
+                    type="button"
+                    className="absolute group-hover:opacity-100 transition-opacity opacity-0
+                     top-0 right-0 bg-black rounded-full cursor-pointer z-10"
+                    onClick={() => {
+                      setFiles((prevState) => prevState.filter((_, i) => i !== index));
                     }}
-                    onPaste={onPaste}
-                    {...field}
+                  >
+                    <X className="size-4 text-white" />
+                  </button>
+                  {/** biome-ignore lint/performance/noImgElement: <data_url> */}
+                  <img
+                    src={file.url}
+                    alt={file.filename}
+                    className="hover:brightness-75 object-cover size-full"
                   />
-                </FormControl>
-              </FormItem>
-            )}
+                </li>
+              );
+            }
+
+            return null;
+          })}
+        </ul>
+
+        <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
+          <ModelSelect
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            models={models}
+            modalKey={selectedModelKey}
           />
 
-          <ul className="flex px-3 gap-1">
-            {files.map((file, index) => {
-              if (file.mediaType.startsWith("image/")) {
-                return (
-                  <li
-                    key={`file-${file.filename}-${index}`}
-                    className="size-12 overflow-hidden rounded-md relative group hover:shadow transition-all"
-                  >
-                    <button
-                      type="button"
-                      className="absolute group-hover:opacity-100 transition-opacity opacity-0
-                     top-0 right-0 bg-black rounded-full cursor-pointer z-10"
-                      onClick={() => {
-                        setFiles((prevState) =>
-                          prevState.filter((_, i) => i !== index),
-                        );
-                      }}
-                    >
-                      <X className="size-4 text-white" />
-                    </button>
-                    {/** biome-ignore lint/performance/noImgElement: <data_url> */}
-                    <img
-                      src={file.url}
-                      alt={file.filename}
-                      className="hover:brightness-75 object-cover size-full"
-                    />
-                  </li>
-                );
-              }
-
-              return null;
-            })}
-          </ul>
-
-          <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-            <ModelSelect
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              models={models}
-              modalKey={modalKey ?? "CF_AI_MODEL"}
-            />
-
-            {selectedModel?.input?.includes("search") && (
-              <Toggle
-                aria-label="Toggle web search"
-                className="data-[state=on]:border"
-                pressed={searchEnabled}
-                onPressedChange={(pressed) => {
-                  localStorage.setItem(
-                    "CF_AI_SEARCH_ENABLED",
-                    pressed ? "true" : "false",
-                  );
-                  setSearchEnabled(pressed);
-                }}
-              >
-                <Earth />
-                Search
-              </Toggle>
-            )}
-
-            {selectedModel?.input?.includes("image") && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative"
-                onClick={onAddFiles}
-              >
-                <Paperclip />
-              </Button>
-            )}
-
-            <Button
-              size="icon"
-              className="ml-auto"
-              disabled={
-                status === "submitted" ||
-                (input.trim().length === 0 && status === "ready")
-              }
-              type={status === "ready" ? "submit" : "button"}
-              onClick={onSendClick}
+          {selectedModel?.input?.includes("search") && (
+            <Toggle
+              aria-label="Toggle web search"
+              className="data-[state=on]:border"
+              pressed={searchEnabled}
+              onPressedChange={(pressed) => {
+                setCookie("CF_AI_SEARCH_ENABLED", pressed ? "true" : "false");
+                setSearchEnabled(pressed);
+              }}
             >
-              {status === "ready" && <ArrowUp />}
-              {status === "submitted" && <Loader2 className="animate-spin" />}
-              {status === "streaming" && (
-                <Square className="fill-primary-foreground" />
-              )}
-              {status === "error" && <RefreshCw />}
+              <Earth />
+              Search
+            </Toggle>
+          )}
+
+          {selectedModel?.input?.includes("image") && (
+            <Button size="icon" variant="ghost" className="relative" onClick={onAddFiles}>
+              <Paperclip />
             </Button>
-          </div>
+          )}
+
+          <Button
+            size="icon"
+            className="ml-auto"
+            disabled={
+              models.length === 0 ||
+              status === "submitted" ||
+              (input.trim().length === 0 && status === "ready")
+            }
+            type={status === "ready" ? "submit" : "button"}
+            onClick={onSendClick}
+          >
+            {status === "ready" && <ArrowUp />}
+            {status === "submitted" && <Loader2 className="animate-spin" />}
+            {status === "streaming" && <Square className="fill-primary-foreground" />}
+            {status === "error" && <RefreshCw />}
+          </Button>
         </div>
-      </form>
-    </Form>
+      </div>
+    </form>
   );
 };
 

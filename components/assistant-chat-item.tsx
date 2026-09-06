@@ -50,22 +50,17 @@ const AssistantChatItem = ({
 
         if (part.type === "reasoning") {
           return (
-            <Accordion key={key} type="single" collapsible>
+            <Accordion key={key}>
               <AccordionItem value={key}>
                 <AccordionTrigger>
                   <div className="flex items-center">
                     <Brain className="size-4 mr-2" />
                     Reasoning
-                    {part.state === "streaming" && (
-                      <Loader2 className="size-4 ml-2 animate-spin" />
-                    )}
+                    {part.state === "streaming" && <Loader2 className="size-4 ml-2 animate-spin" />}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Streamdown
-                    caret="circle"
-                    isAnimating={status === "streaming" && isLastMessage}
-                  >
+                  <Streamdown caret="circle" isAnimating={status === "streaming" && isLastMessage}>
                     {part.text}
                   </Streamdown>
                 </AccordionContent>

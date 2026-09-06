@@ -6,33 +6,46 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
-import { z } from "zod";
+import { executeCode } from "ai-sdk-tool-code-execution";
+import * as v from "valibot";
 import { aigateway, google, workersai } from "@/app/api";
 import type { Message } from "@/lib/db";
+import { getCatalogModel } from "@/lib/model-catalog";
 import type { Model } from "@/lib/models";
-import { executeCode } from "ai-sdk-tool-code-execution";
 
-const chatSchema = z.object({
-  messages: z.array(z.any()).min(1),
-  model: z.string().min(1),
-  provider: z.enum(["workers-ai", "google"]),
-  search: z.boolean().optional(),
+const chatSchema = v.object({
+  messages: v.pipe(v.array(v.unknown()), v.minLength(1)),
+  model: v.pipe(v.string(), v.minLength(1)),
+  provider: v.picklist(["workers-ai", "google"]),
+  search: v.optional(v.boolean()),
 });
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const parsed = chatSchema.safeParse(body);
-
+  const parsed = v.safeParse(
+    chatSchema,
+    await request.json().catch(() => undefined),
+  );
   if (!parsed.success) {
     return new Response("Invalid request data", { status: 400 });
   }
 
-  const { messages, model, provider, search } = parsed.data as {
+  const { messages, model, provider, search } = parsed.output as {
     messages: Message[];
     model: Model["id"];
     provider: Model["provider"];
     search?: boolean;
   };
+  const catalogModel = await getCatalogModel(
+    model,
+    "Text Generation",
+    provider,
+  );
+  if (!catalogModel) {
+    return new Response(
+      "The model catalog has changed. Refresh and select another model.",
+      { status: 409 },
+    );
+  }
 
   let providerModel: LanguageModelV3;
   const tools = {};
@@ -41,28 +54,25 @@ export async function POST(request: Request) {
       providerModel = aigateway([google.chat(model)]);
 
       Object.assign(tools, {
-        // code_execution: google.tools.codeExecution({}),
-        // url_context: google.tools.urlContext({}),
         ...(search ? { google_search: google.tools.googleSearch({}) } : {}),
       });
       break;
-    case "workers-ai":
-      providerModel = wrapLanguageModel({
-        model: workersai.chat(model),
-        middleware: extractReasoningMiddleware({
-          tagName: "think",
-          startWithReasoning: model === "@cf/qwen/qwq-32b",
-        }),
-      });
+    case "workers-ai": {
+      const workerModel = workersai.chat(model);
+      providerModel = catalogModel.reasoning
+        ? wrapLanguageModel({
+            model: workerModel,
+            middleware: extractReasoningMiddleware({ tagName: "think" }),
+          })
+        : workerModel;
 
-      if (process.env.VERCEL_OIDC_TOKEN) {
+      if (catalogModel.tools && process.env.VERCEL_OIDC_TOKEN) {
         Object.assign(tools, {
           executeCode: executeCode(),
         });
       }
       break;
-    default:
-      return new Response(`Unsupported provider: ${provider}`, { status: 400 });
+    }
   }
 
   const result = streamText({

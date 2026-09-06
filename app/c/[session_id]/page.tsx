@@ -5,14 +5,14 @@ import { DefaultChatTransport, generateId } from "ai";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState, ViewTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ChatList from "@/components/chat-list";
+import { useModelCatalog } from "@/components/model-catalog-provider";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { db, type Message } from "@/lib/db";
-import { models } from "@/lib/models";
-import { getStoredModel } from "@/lib/utils";
+import { getCookie, getStoredModel } from "@/lib/utils";
 
 const Page = () => {
   const { session_id } = useParams() as { session_id: string };
@@ -21,61 +21,62 @@ const Page = () => {
   const [loaded, setLoaded] = useState(isNew);
   const { chatListRef, showToBottom, scrollToBottom } = useScrollToBottom();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const models = useModelCatalog("Text Generation");
 
   const initMessages = useLiveQuery(
-    () =>
-      db.message
-        .where("sessionId")
-        .equals(session_id)
-        .limit(100)
-        .sortBy("createdAt"),
+    () => db.message.where("sessionId").equals(session_id).limit(100).sortBy("createdAt"),
     [session_id],
   );
 
-  const { messages, sendMessage, status, setMessages, stop, regenerate } =
-    useChat<Message>({
-      transport: new DefaultChatTransport({
-        api: "/api/chat",
-        prepareSendMessagesRequest: ({ messages }) => {
-          const { id, provider } = getStoredModel("CF_AI_MODEL");
+  const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat<Message>({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      prepareSendMessagesRequest: ({ messages }) => {
+        const selectedModel = getStoredModel(models, "CF_AI_MODEL");
+        if (!selectedModel) {
+          throw new Error("No chat models are currently available");
+        }
+        const { id, provider } = selectedModel;
 
-          return {
-            headers: {
-              Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
-            },
-            body: {
-              messages: messages.slice(-10),
-              model: id,
-              provider,
-              search: localStorage.getItem("CF_AI_SEARCH_ENABLED") === "true",
-            },
-          };
-        },
-      }),
-      onFinish: ({ message, isError }) => {
-        if (!isError) {
-          db.message.add({
-            ...message,
-            sessionId: session_id,
-            createdAt: new Date(),
-          });
-          db.session.update(session_id, {
-            updatedAt: new Date(),
-          });
-        }
+        return {
+          headers: {
+            Authorization: localStorage.getItem("CF_AI_PASSWORD") ?? "",
+          },
+          body: {
+            messages: messages.slice(-10),
+            model: id,
+            provider,
+            search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
+          },
+        };
       },
-      onError: async (error) => {
-        if (error.message === "Unauthorized") {
-          setAuthDialogOpen(true);
-          return;
-        }
-        toast.error(
+    }),
+    onFinish: ({ message, isError }) => {
+      if (!isError) {
+        db.message.add({
+          ...message,
+          sessionId: session_id,
+          createdAt: new Date(),
+        });
+        db.session.update(session_id, {
+          updatedAt: new Date(),
+        });
+      }
+    },
+    onError: async (error) => {
+      if (error.message === "Unauthorized") {
+        setAuthDialogOpen(true);
+        return;
+      }
+      toast.add({
+        title:
           error.message.length > 100
             ? `${error.message.slice(0, 100)}...`
             : error.message || "Unknown error occurred. Please try again.",
-        );
-      },
-    });
+        type: "error",
+      });
+    },
+  });
 
   useEffect(() => {
     if (initMessages && !loaded) {
@@ -98,6 +99,8 @@ const Page = () => {
     }
   }, [isNew, initMessages, sendMessage]);
 
+  // The mutable scroll container is sampled whenever stream state changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refs are not reactive dependencies
   useEffect(() => {
     if (status === "streaming" && chatListRef.current && messages.length) {
       if (
@@ -149,7 +152,7 @@ const Page = () => {
       bottomBar={
         <ViewTransition name="chat-input">
           <ChatInput
-            models={models.filter((i) => i.type === "Text Generation")}
+            models={models}
             className="mx-auto max-w-3xl bg-background shadow-xl"
             onSendMessage={onSendMessage}
             status={status}
@@ -159,11 +162,7 @@ const Page = () => {
         </ViewTransition>
       }
     >
-      <ChatList
-        status={status}
-        messages={messages}
-        className="pt-16 pb-60 max-w-3xl mx-auto"
-      />
+      <ChatList status={status} messages={messages} className="pt-16 pb-60 max-w-3xl mx-auto" />
     </ChatLayout>
   );
 };

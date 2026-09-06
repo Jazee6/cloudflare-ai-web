@@ -1,12 +1,15 @@
 import { type ChatStatus, generateId } from "ai";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { db, type ImagesDataPart, type Message } from "@/lib/db";
+import type { Model } from "@/lib/models";
 import { getStoredModel } from "@/lib/utils";
 
 export const useImage = ({
+  models,
   onUnauthorized,
 }: {
+  models: Model[];
   onUnauthorized?: () => void;
 }) => {
   const [status, setStatus] = useState<ChatStatus>("ready");
@@ -27,9 +30,7 @@ export const useImage = ({
                 ? {
                     type: "data-images",
                     data: {
-                      urls: (p.data as ImagesDataPart).images.map(
-                        URL.createObjectURL,
-                      ),
+                      urls: (p.data as ImagesDataPart).images.map(URL.createObjectURL),
                     },
                   }
                 : p,
@@ -64,6 +65,16 @@ export const useImage = ({
       await db.message.add(promptMessage);
     }
 
+    const selectedModel = getStoredModel(models, "CF_AI_MODEL_IMAGE");
+    if (!selectedModel) {
+      setStatus("error");
+      toast.add({
+        title: "No image models are currently available",
+        type: "error",
+      });
+      return;
+    }
+
     const res = await fetch("/api/image", {
       method: "POST",
       headers: {
@@ -72,11 +83,11 @@ export const useImage = ({
       },
       body: JSON.stringify({
         prompt,
-        model: getStoredModel("CF_AI_MODEL_IMAGE").id,
+        model: selectedModel.id,
       }),
     }).catch((error: Error) => {
       setStatus("error");
-      toast.error(error.message);
+      toast.add({ title: error.message, type: "error" });
       return null;
     });
 
@@ -89,7 +100,7 @@ export const useImage = ({
     }
     if (!res.ok) {
       setStatus("error");
-      toast.error(await res.text());
+      toast.add({ title: await res.text(), type: "error" });
       return;
     }
 
@@ -136,7 +147,7 @@ export const useImage = ({
       }
     }
 
-    toast.error("No prompt to regenerate");
+    toast.add({ title: "No prompt to regenerate", type: "error" });
     setStatus("ready");
   };
 

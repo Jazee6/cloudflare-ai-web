@@ -1,15 +1,31 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { type Model, models } from "@/lib/models";
+export { cn } from "cn";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import type { Model } from "@/lib/models";
 
 export type StoredModelKey = "CF_AI_MODEL" | "CF_AI_MODEL_IMAGE";
+export type StoredPreferenceKey = StoredModelKey | "CF_AI_SEARCH_ENABLED";
 
-export const getStoredModel = (key: StoredModelKey = "CF_AI_MODEL") =>
-  models.find((m) => m.id === getStoredModelId(key)) ?? models[0];
+export const getCookie = (name: string) => {
+  if (typeof document === "undefined") {
+    return undefined;
+  }
 
-export const getStoredModelId = (key: StoredModelKey = "CF_AI_MODEL") =>
-  (localStorage.getItem(key) ?? models[0].id) as Model["id"];
+  const cookie = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${encodeURIComponent(name)}=`));
+
+  return cookie ? decodeURIComponent(cookie.slice(cookie.indexOf("=") + 1)) : undefined;
+};
+
+export const setCookie = (name: StoredPreferenceKey, value: string) => {
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}`;
+};
+
+export const deleteCookie = (name: StoredModelKey) => {
+  document.cookie = `${encodeURIComponent(name)}=; path=/; max-age=0`;
+};
+
+export const getStoredModel = (models: Model[], key: StoredModelKey) => {
+  const storedModelId = getCookie(key);
+  return models.find((model) => model.id === storedModelId) ?? models[0];
+};

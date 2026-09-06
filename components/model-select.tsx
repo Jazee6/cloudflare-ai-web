@@ -1,175 +1,37 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ModelLogo } from "@/components/model-logo";
+import { useModelPreferences } from "@/components/model-catalog-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import type { Model } from "@/lib/models";
-import { getStoredModelId, type StoredModelKey } from "@/lib/utils";
+import { getModelGroup } from "@/lib/models";
+import { cn, deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
 
 const getGroupedModels = (models: Model[]) => {
-  const groupedModels: {
-    type: Model["type"];
-    models: Model[];
-  }[] = [];
+  const groups = new Map<string, Model[]>();
 
   for (const model of models) {
-    let group = groupedModels.find((g) => g.type === model.type);
-    if (!group) {
-      group = { type: model.type, models: [] as Model[] };
-      groupedModels.push(group);
-    }
-    group.models.push(model);
+    const group = getModelGroup(model);
+    groups.set(group, [...(groups.get(group) ?? []), model]);
   }
 
-  return groupedModels;
+  return Array.from(groups, ([name, groupModels]) => ({
+    name,
+    models: groupModels,
+  }));
 };
-
-const ModelList = ({
-  models,
-  setOpen,
-  setSelectedModel,
-}: {
-  models: Model[];
-  setOpen: (open: boolean) => void;
-  setSelectedModel: (models: Model) => void;
-}) => {
-  const groupedModels = getGroupedModels(models);
-
-  return (
-    <Command>
-      <CommandInput placeholder="Filter models..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        {groupedModels.map(({ type, models: groupModels }) => (
-          <CommandGroup key={type} heading={type}>
-            {groupModels.map((model) => (
-              <CommandItem
-                key={model.id}
-                value={model.id}
-                onSelect={(value) => {
-                  setSelectedModel(
-                    models.find((m) => m.id === value) ?? models[0],
-                  );
-                  setOpen(false);
-                }}
-              >
-                <span className="size-4 flex items-center justify-center">
-                  {model.logo}
-                </span>
-                {model.name}
-                {model.tag?.map((item) => (
-                  <Badge key={item} variant="outline" className="ml-auto">
-                    {item}
-                  </Badge>
-                ))}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
-      </CommandList>
-    </Command>
-  );
-};
-
-function ComboBoxResponsive({
-  models,
-  modalKey,
-  selectedModel,
-  setSelectedModel,
-}: {
-  models: Model[];
-  modalKey: StoredModelKey;
-  selectedModel?: Model;
-  setSelectedModel: (model: Model) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-
-  useEffect(() => {
-    setSelectedModel(
-      models.find((item) => item.id === getStoredModelId(modalKey)) ??
-        models[0],
-    );
-  }, [models, modalKey, setSelectedModel]);
-
-  useEffect(() => {
-    if (selectedModel) {
-      localStorage.setItem(modalKey, selectedModel.id);
-    }
-  }, [selectedModel, modalKey]);
-
-  if (isDesktop) {
-    return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          {selectedModel && (
-            <Button variant="ghost">
-              <span className="size-4 flex items-center justify-center">
-                {selectedModel.logo}
-              </span>
-              {selectedModel.name}
-              <ChevronDown />
-            </Button>
-          )}
-        </PopoverTrigger>
-        <PopoverContent className="p-0" align="start">
-          <ModelList
-            setOpen={setOpen}
-            setSelectedModel={setSelectedModel}
-            models={models}
-          />
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        {selectedModel && (
-          <Button variant="ghost">
-            <span className="size-4 flex items-center justify-center">
-              {selectedModel.logo}
-            </span>
-            {selectedModel.name}
-            <ChevronDown />
-          </Button>
-        )}
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerTitle></DrawerTitle>
-        <div className="mt-4 border-t">
-          <ModelList
-            setOpen={setOpen}
-            setSelectedModel={setSelectedModel}
-            models={models}
-          />
-        </div>
-      </DrawerContent>
-    </Drawer>
-  );
-}
 
 const ModelSelect = ({
   models,
@@ -180,15 +42,100 @@ const ModelSelect = ({
   models: Model[];
   modalKey: StoredModelKey;
   selectedModel?: Model;
-  setSelectedModel: (model: Model) => void;
+  setSelectedModel: (model: Model | undefined) => void;
 }) => {
+  const [open, setOpen] = useState(false);
+  const preferences = useModelPreferences();
+  const groupedModels = useMemo(() => getGroupedModels(models), [models]);
+
+  useEffect(() => {
+    const nextModel =
+      models.find((model) => model.id === preferences[modalKey]) ?? models[0];
+    setSelectedModel(nextModel);
+
+    if (nextModel) {
+      setCookie(modalKey, nextModel.id);
+    } else {
+      deleteCookie(modalKey);
+    }
+  }, [models, modalKey, preferences, setSelectedModel]);
+
   return (
-    <ComboBoxResponsive
-      models={models}
-      modalKey={modalKey}
-      selectedModel={selectedModel}
-      setSelectedModel={setSelectedModel}
-    ></ComboBoxResponsive>
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={models.length === 0}
+        onClick={() => setOpen(true)}
+      >
+        {selectedModel ? (
+          <>
+            <span className="flex size-4 items-center justify-center">
+              <ModelLogo model={selectedModel} />
+            </span>
+            {selectedModel.name}
+          </>
+        ) : models.length > 0 ? (
+          "Select a model"
+        ) : (
+          "No models available"
+        )}
+        <ChevronsUpDown />
+      </Button>
+
+      <CommandDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Select a model"
+        description="Search models by name or brand"
+        className="max-w-xl"
+      >
+        <Command>
+          <CommandInput placeholder="Filter models..." />
+          <CommandList className="max-h-[60vh]">
+            <CommandEmpty>No models found.</CommandEmpty>
+            {groupedModels.map(({ name, models: groupModels }) => (
+              <CommandGroup key={name} heading={name}>
+                {groupModels.map((model) => (
+                  <CommandItem
+                    key={`${model.provider}:${model.id}`}
+                    value={`${name} ${model.name} ${model.id}`}
+                    onSelect={() => {
+                      setSelectedModel(model);
+                      setCookie(modalKey, model.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="flex size-4 items-center justify-center">
+                      <ModelLogo model={model} />
+                    </span>
+                    <span className="truncate">{model.name}</span>
+                    {model.tag?.map((tag) => (
+                      <Badge key={tag} variant="outline" className="ml-auto">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {model.source === "external" && (
+                      <Badge variant="secondary" className="ml-auto">
+                        Google API
+                      </Badge>
+                    )}
+                    <Check
+                      className={cn(
+                        "ml-auto",
+                        selectedModel?.id === model.id
+                          ? "opacity-100"
+                          : "opacity-0",
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </CommandDialog>
+    </>
   );
 };
 

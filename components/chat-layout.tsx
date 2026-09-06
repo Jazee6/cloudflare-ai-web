@@ -25,7 +25,7 @@ const ChatLayout = ({
     <div className="flex flex-col h-screen">
       <div
         ref={chatListRef}
-        className="overflow-y-auto scrollbar px-2"
+        className="overflow-y-auto scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent px-2"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
         {children}
