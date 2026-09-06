@@ -15,10 +15,10 @@ export const useScrollToBottom = () => {
   const chatListRef = useRef<HTMLDivElement>(null);
   const [showToBottom, setShowToBottom] = useState(false);
 
-  const scrollToBottom = useCallback((behavior: "smooth" | "instant" = "smooth") => {
+  const scrollToBottom = useCallback(() => {
     chatListRef.current?.scrollTo({
       top: chatListRef.current.scrollHeight,
-      behavior,
+      behavior: "smooth",
     });
   }, []);
 
