@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import { buildCookieHeader, constantTimeCompare, createSessionToken } from "@/lib/auth";
-import { readRequestBody } from "@/lib/request-limits";
+import { parseJsonRequest } from "@/lib/request-limits";
 
 const MAX_AUTH_BODY_BYTES = 1024;
 
@@ -27,24 +27,12 @@ export async function POST(request: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const bodyResult = await readRequestBody(request, MAX_AUTH_BODY_BYTES);
-  if (!bodyResult.ok) {
-    return new Response(bodyResult.message, { status: bodyResult.status });
+  const parsed = await parseJsonRequest(request, authSchema, MAX_AUTH_BODY_BYTES);
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
-  let body: unknown;
-  try {
-    body = JSON.parse(bodyResult.text);
-  } catch {
-    return new Response("Invalid request data", { status: 400 });
-  }
-
-  const parsed = v.safeParse(authSchema, body);
-  if (!parsed.success) {
-    return new Response("Invalid request data", { status: 400 });
-  }
-
-  if (!(await constantTimeCompare(parsed.output.password, password))) {
+  if (!(await constantTimeCompare(parsed.data.password, password))) {
     return new Response("Invalid password.", { status: 401 });
   }
 

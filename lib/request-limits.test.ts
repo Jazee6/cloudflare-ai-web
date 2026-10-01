@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import type { UIMessage } from "ai";
+import * as v from "valibot";
 import {
   getImageDataUrlSize,
   MAX_IMAGE_BYTES,
+  parseJsonRequest,
   readRequestBody,
   validateImageParts,
 } from "@/lib/request-limits";
@@ -55,5 +57,25 @@ test("validateImageParts rejects oversized and excessive image attachments", () 
   ).toMatchObject({
     ok: false,
     status: 400,
+  });
+});
+
+test("parseJsonRequest maps malformed and invalid bodies to 400", async () => {
+  const schema = v.object({ name: v.string() });
+  const request = (body: string) =>
+    new Request("https://example.com/api", { method: "POST", body });
+
+  const malformed = await parseJsonRequest(request("{"), schema);
+  expect(malformed.ok ? 200 : malformed.response.status).toBe(400);
+
+  const invalid = await parseJsonRequest(request(JSON.stringify({ name: 1 })), schema);
+  expect(invalid.ok ? 200 : invalid.response.status).toBe(400);
+
+  const oversized = await parseJsonRequest(request(JSON.stringify({ name: "x" })), schema, 4);
+  expect(oversized.ok ? 200 : oversized.response.status).toBe(413);
+
+  expect(await parseJsonRequest(request(JSON.stringify({ name: "x" })), schema)).toEqual({
+    ok: true,
+    data: { name: "x" },
   });
 });

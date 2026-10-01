@@ -1,4 +1,5 @@
 import type { UIMessage } from "ai";
+import * as v from "valibot";
 
 export const MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -57,6 +58,37 @@ export const readRequestBody = async (
   const text =
     chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join("") + decoder.decode();
   return { ok: true, text };
+};
+
+export type ParsedJsonRequest<T> = { ok: true; data: T } | { ok: false; response: Response };
+
+/** Reads, parses, and validates a JSON request body, mapping each failure to an HTTP response. */
+export const parseJsonRequest = async <Schema extends v.GenericSchema>(
+  request: Request,
+  schema: Schema,
+  maxBytes = MAX_REQUEST_BODY_BYTES,
+): Promise<ParsedJsonRequest<v.InferOutput<Schema>>> => {
+  const bodyResult = await readRequestBody(request, maxBytes);
+  if (!bodyResult.ok) {
+    return {
+      ok: false,
+      response: new Response(bodyResult.message, { status: bodyResult.status }),
+    };
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyResult.text);
+  } catch {
+    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+  }
+
+  const parsed = v.safeParse(schema, body);
+  if (!parsed.success) {
+    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+  }
+
+  return { ok: true, data: parsed.output };
 };
 
 /** Returns the decoded image size, or null when the part is not a valid matching image data URL. */

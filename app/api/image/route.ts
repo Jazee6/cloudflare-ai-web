@@ -1,73 +1,30 @@
 import * as v from "valibot";
 import {
+  createImageRunRequest,
+  getImageFailureStatus,
+  MAX_IMAGE_PROMPT_LENGTH,
+  toImageResponse,
+} from "@/lib/image-generation";
+import { getCatalogModel } from "@/lib/model-catalog";
+import {
   getCloudflareCredentials,
   getCloudflareGatewayCredentials,
   ProviderConfigurationError,
-} from "@/app/api";
-import { getCatalogModel } from "@/lib/model-catalog";
-import { readRequestBody } from "@/lib/request-limits";
-
-const MAX_PROMPT_LENGTH = 8_000;
+} from "@/lib/providers";
+import { parseJsonRequest } from "@/lib/request-limits";
 
 const schema = v.object({
-  prompt: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(MAX_PROMPT_LENGTH)),
+  prompt: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(MAX_IMAGE_PROMPT_LENGTH)),
   model: v.pipe(v.string(), v.minLength(1)),
 });
 
-const imageResponseSchema = v.object({
-  result: v.object({ image: v.string() }),
-});
-
-// FLUX.2 models only accept multipart/form-data requests with the prompt as a form
-// field; every other image model accepts a JSON body.
-const requiresMultipartFormData = (model: string) =>
-  model.startsWith("@cf/black-forest-labs/flux-2");
-
-const createPromptBody = (model: string, prompt: string) => {
-  if (!requiresMultipartFormData(model)) {
-    return JSON.stringify({ prompt });
-  }
-
-  const form = new FormData();
-  form.append("prompt", prompt);
-  return form;
-};
-
-const decodeImage = (image: string) => {
-  const dataUrl = /^data:(image\/[^;,]+);base64,([\s\S]+)$/.exec(image);
-  const mediaType = dataUrl?.[1] ?? "image/png";
-  const base64 = dataUrl?.[2] ?? image;
-
-  try {
-    const binary = atob(base64);
-    return {
-      bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0)),
-      mediaType,
-    };
-  } catch {
-    return null;
-  }
-};
-
 export async function POST(request: Request) {
-  const bodyResult = await readRequestBody(request);
-  if (!bodyResult.ok) {
-    return new Response(bodyResult.message, { status: bodyResult.status });
+  const parsed = await parseJsonRequest(request, schema);
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
-  let body: unknown;
-  try {
-    body = JSON.parse(bodyResult.text);
-  } catch {
-    return new Response("Invalid request data", { status: 400 });
-  }
-
-  const parsed = v.safeParse(schema, body);
-  if (!parsed.success) {
-    return new Response("Invalid request data", { status: 400 });
-  }
-
-  const { prompt, model } = parsed.output;
+  const { prompt, model } = parsed.data;
   const catalogModel = await getCatalogModel(model, "Text to Image", "workers-ai");
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
@@ -75,12 +32,14 @@ export async function POST(request: Request) {
     });
   }
 
-  let accountId: string;
-  let apiKey: string;
-  let gatewayCredentials: ReturnType<typeof getCloudflareGatewayCredentials>;
+  let runRequest: ReturnType<typeof createImageRunRequest>;
   try {
-    ({ accountId, apiKey } = getCloudflareCredentials());
-    gatewayCredentials = getCloudflareGatewayCredentials();
+    runRequest = createImageRunRequest({
+      ...getCloudflareCredentials(),
+      gateway: getCloudflareGatewayCredentials(),
+      model,
+      prompt,
+    });
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
@@ -89,53 +48,19 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const url = gatewayCredentials
-    ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayCredentials.gatewayId}/workers-ai/run/${model}`
-    : `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      ...(gatewayCredentials
-        ? { "cf-aig-authorization": `Bearer ${gatewayCredentials.gatewayToken}` }
-        : {}),
-      ...(requiresMultipartFormData(model) ? {} : { "Content-Type": "application/json" }),
-    },
-    method: "POST",
-    body: createPromptBody(model, prompt),
-  });
-
+  let response: Response;
+  try {
+    response = await fetch(runRequest.url, runRequest.init);
+  } catch (error) {
+    console.error(`Image generation request failed for ${model}`, error);
+    return new Response("Image generation failed. Please try again.", { status: 502 });
+  }
   if (!response.ok) {
     console.error(`Image generation failed for ${model}: ${response.status}`);
     return new Response("Image generation failed. Please try again.", {
-      status: response.status >= 400 && response.status < 500 ? 400 : 502,
+      status: getImageFailureStatus(response.status),
     });
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.toLowerCase().startsWith("image/")) {
-    return new Response(response.body, {
-      headers: { "Content-Type": contentType },
-    });
-  }
-
-  let json: unknown;
-  try {
-    json = await response.json();
-  } catch {
-    return new Response("The image provider returned an unsupported response.", { status: 502 });
-  }
-
-  const imageResult = v.safeParse(imageResponseSchema, json);
-  if (!imageResult.success) {
-    return new Response("The image provider returned an unsupported response.", { status: 502 });
-  }
-
-  const image = decodeImage(imageResult.output.result.image);
-  if (!image) {
-    return new Response("The image provider returned invalid image data.", { status: 502 });
-  }
-
-  return new Response(image.bytes, {
-    headers: { "Content-Type": image.mediaType },
-  });
+  return toImageResponse(response);
 }
