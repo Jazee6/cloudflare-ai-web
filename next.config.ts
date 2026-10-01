@@ -6,6 +6,8 @@ export function createNextConfig(isVercel: boolean): NextConfig {
     // with standalone output triggers Next.js issue #96646 during NFT tracing.
     output: isVercel ? undefined : "standalone",
     typedRoutes: true,
+    // Stop `next dev` from writing its agent rules into AGENTS.md / CLAUDE.md.
+    agentRules: false,
     reactCompiler: true,
     experimental: {
       typedEnv: true,

@@ -8,3 +8,7 @@ test("disables standalone output on Vercel", () => {
 test("keeps standalone output for self-hosted deployments", () => {
   expect(createNextConfig(false).output).toBe("standalone");
 });
+
+test("disables generated agent rules files", () => {
+  expect(createNextConfig(false).agentRules).toBe(false);
+});
