@@ -15,6 +15,7 @@
 - Upstream 401/403 from Workers AI image generation is reported as 502 instead of 400.
 - User messages keep their line breaks.
 - Stopping a response before any output no longer stores an empty assistant message.
+- A stopped reasoning response no longer shows a spinner forever.
 
 ## 5.0.0
 

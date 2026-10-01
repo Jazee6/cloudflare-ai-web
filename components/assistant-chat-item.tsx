@@ -44,6 +44,9 @@ const AssistantChatItem = ({
   status: ChatStatus;
   isLastMessage?: boolean;
 }) => {
+  // A stopped response keeps its parts' "streaming" state, so only the live response animates.
+  const isStreaming = status === "streaming" && isLastMessage;
+
   return (
     <div className={cn("", className)}>
       {parts.map((part, index) => {
@@ -55,7 +58,7 @@ const AssistantChatItem = ({
               key={key}
               // caret="circle"
               animated={{ animation: "blurIn" }}
-              isAnimating={status === "streaming" && isLastMessage}
+              isAnimating={isStreaming}
               plugins={{ cjk, code, math }}
               components={streamdownComponents}
               linkSafety={{ enabled: false }}
@@ -73,14 +76,16 @@ const AssistantChatItem = ({
                   <div className="flex items-center">
                     <Brain className="size-4 mr-2" />
                     Reasoning
-                    {part.state === "streaming" && <Loader2 className="size-4 ml-2 animate-spin" />}
+                    {isStreaming && part.state === "streaming" && (
+                      <Loader2 className="size-4 ml-2 animate-spin" />
+                    )}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <Streamdown
                     caret="circle"
                     components={streamdownComponents}
-                    isAnimating={status === "streaming" && isLastMessage}
+                    isAnimating={isStreaming}
                   >
                     {part.text}
                   </Streamdown>
