@@ -64,6 +64,9 @@ test("toImageResponse decodes JSON-wrapped base64 and data URLs", async () => {
   expect(plain.headers.get("content-type")).toBe("image/png");
   expect(new Uint8Array(await plain.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
 
+  const jpeg = await toImageResponse(Response.json({ result: { image: "/9j/4AAQ" } }));
+  expect(jpeg.headers.get("content-type")).toBe("image/jpeg");
+
   const dataUrl = await toImageResponse(
     Response.json({ result: { image: "data:image/webp;base64,AQID" } }),
   );
@@ -73,4 +76,10 @@ test("toImageResponse decodes JSON-wrapped base64 and data URLs", async () => {
 test("toImageResponse rejects unsupported payloads", async () => {
   expect((await toImageResponse(Response.json({ images: [] }))).status).toBe(502);
   expect((await toImageResponse(Response.json({ result: { image: "%%%" } }))).status).toBe(502);
+});
+
+test("toImageResponse accepts the unwrapped AI Gateway payload", async () => {
+  const response = await toImageResponse(Response.json({ image: "AQID" }));
+  expect(response.status).toBe(200);
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
 });

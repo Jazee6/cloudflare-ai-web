@@ -3,9 +3,19 @@ import type { CloudflareGatewayCredentials } from "@/lib/providers";
 
 export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
 
-const imageResponseSchema = v.object({
-  result: v.object({ image: v.string() }),
-});
+// The REST API wraps the payload in `result`; AI Gateway returns it unwrapped.
+const imagePayloadSchema = v.object({ image: v.string() });
+const imageResponseSchema = v.union([v.object({ result: imagePayloadSchema }), imagePayloadSchema]);
+
+const sniffImageMediaType = (bytes: Uint8Array) => {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    return "image/jpeg";
+  }
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57 && bytes[9] === 0x45) {
+    return "image/webp";
+  }
+  return "image/png";
+};
 
 // FLUX.2 models only accept multipart/form-data requests with the prompt as a form
 // field; every other image model accepts a JSON body.
@@ -60,15 +70,11 @@ export const getImageFailureStatus = (upstreamStatus: number) => {
 
 const decodeImage = (image: string) => {
   const dataUrl = /^data:(image\/[^;,]+);base64,([\s\S]+)$/.exec(image);
-  const mediaType = dataUrl?.[1] ?? "image/png";
   const base64 = dataUrl?.[2] ?? image;
 
   try {
-    const binary = atob(base64);
-    return {
-      bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0)),
-      mediaType,
-    };
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+    return { bytes, mediaType: dataUrl?.[1] ?? sniffImageMediaType(bytes) };
   } catch {
     return null;
   }
@@ -95,7 +101,8 @@ export const toImageResponse = async (response: Response): Promise<Response> => 
     return new Response("The image provider returned an unsupported response.", { status: 502 });
   }
 
-  const image = decodeImage(imageResult.output.result.image);
+  const payload = "result" in imageResult.output ? imageResult.output.result : imageResult.output;
+  const image = decodeImage(payload.image);
   if (!image) {
     return new Response("The image provider returned invalid image data.", { status: 502 });
   }
