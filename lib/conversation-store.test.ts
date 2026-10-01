@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, expect, test } from "bun:test";
+import { afterEach, beforeAll, expect, setSystemTime, test } from "bun:test";
 import Dexie from "dexie";
 import {
   appendConversationMessage,
@@ -39,7 +39,13 @@ beforeAll(async () => {
   legacy.close();
 });
 
+// Entries written within the same millisecond share a timestamp, so tests that write in a
+// row step the clock to keep creation order unambiguous.
+let clock = Date.UTC(2026, 0, 1);
+const tick = () => setSystemTime((clock += 1000));
+
 afterEach(async () => {
+  setSystemTime();
   await Promise.all([db.session.clear(), db.message.clear()]);
 });
 
@@ -74,8 +80,10 @@ test("createConversation stores the first message and names the session from its
 });
 
 test("appendConversationMessage keeps the message id and bumps the session", async () => {
+  tick();
   const sessionId = await createConversation(createUserMessage("hello"));
   await db.session.update(sessionId, { updatedAt: new Date(0) });
+  tick();
 
   const reply = { id: "reply-1", role: "assistant" as const, parts: [] };
   await appendConversationMessage(sessionId, reply);
@@ -115,6 +123,7 @@ test("deleteConversation removes only that session and its messages", async () =
 test("Image History is kept apart from conversations and can be cleared", async () => {
   const conversation = await createConversation(createUserMessage("chat"));
   for (let index = 0; index < IMAGE_HISTORY_LOAD_LIMIT + 1; index++) {
+    tick();
     await appendImageHistoryEntry(createUserMessage(`prompt ${index}`));
   }
 
