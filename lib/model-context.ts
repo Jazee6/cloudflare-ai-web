@@ -1,8 +1,9 @@
 import type { UIMessage } from "ai";
+import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
 
 export const MODEL_CONTEXT_MAX_CHARS = 64_000;
 export const MODEL_CONTEXT_MAX_MESSAGES = 100;
-export const MODEL_CONTEXT_MAX_IMAGES = 5;
+export const MODEL_CONTEXT_MAX_IMAGES = MAX_IMAGE_PARTS;
 
 const messageContentLength = (parts: UIMessage["parts"]): number =>
   parts.reduce((total, part) => {

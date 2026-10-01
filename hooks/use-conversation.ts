@@ -9,6 +9,7 @@ import {
   createUserMessage,
   loadConversationHistory,
 } from "@/lib/conversation-store";
+import { fitImagePartsWithinLimit } from "@/lib/image-compression";
 import { buildModelContext } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
 import { getCookie, getStoredModel } from "@/lib/utils";
@@ -45,7 +46,7 @@ export const useConversation = ({
     id: sessionId,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      prepareSendMessagesRequest: ({ messages }) => {
+      prepareSendMessagesRequest: async ({ messages }) => {
         const selectedModel = getStoredModel(models, "CF_AI_MODEL");
         if (!selectedModel) {
           throw new Error("No chat models are currently available");
@@ -58,7 +59,7 @@ export const useConversation = ({
 
         return {
           body: {
-            messages: modelContext,
+            messages: await fitImagePartsWithinLimit(modelContext),
             model: selectedModel.id,
             provider: selectedModel.provider,
             search: getCookie("CF_AI_SEARCH_ENABLED") === "true",

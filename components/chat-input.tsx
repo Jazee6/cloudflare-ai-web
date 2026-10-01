@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import type { Model } from "@/lib/models";
-import { MAX_IMAGE_BYTES, MAX_IMAGE_PARTS } from "@/lib/request-limits";
+import { compressImage } from "@/lib/image-compression";
+import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
 import { cn, deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -27,17 +28,6 @@ const formSchema = v.object({
 });
 
 type FormData = v.InferOutput<typeof formSchema>;
-
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
 
 const ChatInput = ({
   className,
@@ -133,16 +123,15 @@ const ChatInput = ({
   };
 
   const toFilePart = async (file: File): Promise<FileUIPart | null> => {
-    if (!file.type.startsWith("image/") || file.size > MAX_IMAGE_BYTES) {
-      toast.add({ title: "Images must be 5 MiB or smaller.", type: "warning" });
+    const compressed = await compressImage(file);
+    if (!compressed) {
+      toast.add({
+        title: `Unable to attach ${file.name}: unsupported or too large.`,
+        type: "warning",
+      });
       return null;
     }
-    return {
-      type: "file",
-      filename: file.name,
-      mediaType: file.type,
-      url: await fileToBase64(file),
-    };
+    return { type: "file", filename: file.name, ...compressed };
   };
 
   const onAddFiles = () => {

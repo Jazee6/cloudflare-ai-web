@@ -31,6 +31,7 @@ docker run -d --name cloudflare-ai-web \
 - 支持 Cloudflare AI Gateway 接入Gemini等模型
 - 支持 Serverless 快速部署
 - 聊天记录本地存储
+- 图片附件在浏览器内自动压缩（长边不超过 1568px，单张不超过 512 KiB，每次请求最多 5 张），请求体积满足 Vercel Functions 限制
 - 支持 Access Session（访问密码）保护
 
 > **注意：** 公开模式下任何人都可以使用你的推理 API。建议设置 `APP_PASSWORD` 以启用 Access Session。

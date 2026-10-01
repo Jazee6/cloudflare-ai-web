@@ -1,8 +1,10 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 
-export const MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024;
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// Sized to stay under the ~4.5 MB Vercel Functions request limit: five base64-encoded
+// images (~3.4 MiB) plus a full 64,000-character Model Context fit within the body cap.
+export const MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 512 * 1024;
 export const MAX_IMAGE_PARTS = 5;
 
 export interface ReadBodyResult {

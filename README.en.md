@@ -31,6 +31,7 @@ docker run -d --name cloudflare-ai-web \
 - Support Cloudflare AI Gateway to access models such as Gemini
 - Support fast deployment with Serverless
 - Chat history is stored locally
+- Image attachments are resized in the browser (long edge up to 1568px, at most 512 KiB each, up to 5 per request) so requests fit the Vercel Functions body limit
 - Access Session protection via deployment password
 
 > **Note:** In public mode anyone can use your inference APIs. Set `APP_PASSWORD` to enable Access Session.
