@@ -16,17 +16,18 @@ const installFetchMock = (payload: unknown) => {
     if (url.pathname.endsWith("/ai/models/search")) {
       return Response.json({
         success: true,
-        result: ["@cf/black-forest-labs/flux-2-klein-4b", "@cf/black-forest-labs/flux-1-schnell"].map(
-          (name) => ({
-            id: name,
-            source: 1,
-            name,
-            description: "Test model",
-            task: { id: "t2i", name: "Text-to-Image", description: "" },
-            tags: [],
-            properties: [],
-          }),
-        ),
+        result: [
+          "@cf/black-forest-labs/flux-2-klein-4b",
+          "@cf/black-forest-labs/flux-1-schnell",
+        ].map((name) => ({
+          id: name,
+          source: 1,
+          name,
+          description: "Test model",
+          task: { id: "t2i", name: "Text-to-Image", description: "" },
+          tags: [],
+          properties: [],
+        })),
         result_info: { page: 1, per_page: 100, count: 2, total_count: 2 },
       });
     }

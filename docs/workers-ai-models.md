@@ -6,7 +6,7 @@ REST API（`/client/v4/accounts/{account}/ai/run/{model}`）实测可用性。
 
 - **核查日期**: 2026-09-06
 - **测试方法**: 按应用实际发送的请求格式测试（chat 为 OpenAI 风格 `{messages, max_tokens,
-  temperature, stream, ...}`，image 为 `{prompt}` 或 multipart form-data）
+temperature, stream, ...}`，image 为 `{prompt}` 或 multipart form-data）
 - **测试账号**: 主账号当日免费神经元配额（10k）耗尽后，改用辅助测试账号（Workers Free
   计划）完成 chat 模型测试；image 模型在配额耗尽前已在主账号测完
 - **参数来源**: 官网模型页 Parameters 树（从页面嵌入的 schema 数据解析）
@@ -54,11 +54,11 @@ moderation/safety/content-filtering/guardrails 标签）。
 
 ### 实测结果
 
-| 结果 | 数量 | 模型 |
-|---|---|---|
-| ✅ 可用 | 25 | 上表旧版 prompt 组全部 + OpenAI 兼容组的 glm-4.7-flash、gemma-4-26b-a4b-it、qwen3.8-27b、nemotron-3-120b-a12b + llama-guard-3-8b（功能如上，已过滤） |
-| ⚠️ 需付费计划 | 7 | `kimi-k2.6`、`kimi-k2.7-code`、`glm-5.2`、`glm-5.3`、`glm-5.3-flash`、`deepseek-v4-flash-0731`、`deepseek-v4-pro-0813`（403/5035: not available on the Workers Free plan；主账号可运行 partner 模型，预期可用，未实测） |
-| ⚠️ 需一次性协议 | 1 | `llama-3.2-11b-vision-instruct`（首次 403/5016，POST `{"prompt":"agree"}` 后正常） |
+| 结果            | 数量 | 模型                                                                                                                                                                                                                    |
+| --------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ 可用         | 25   | 上表旧版 prompt 组全部 + OpenAI 兼容组的 glm-4.7-flash、gemma-4-26b-a4b-it、qwen3.8-27b、nemotron-3-120b-a12b + llama-guard-3-8b（功能如上，已过滤）                                                                    |
+| ⚠️ 需付费计划   | 7    | `kimi-k2.6`、`kimi-k2.7-code`、`glm-5.2`、`glm-5.3`、`glm-5.3-flash`、`deepseek-v4-flash-0731`、`deepseek-v4-pro-0813`（403/5035: not available on the Workers Free plan；主账号可运行 partner 模型，预期可用，未实测） |
+| ⚠️ 需一次性协议 | 1    | `llama-3.2-11b-vision-instruct`（首次 403/5016，POST `{"prompt":"agree"}` 后正常）                                                                                                                                      |
 
 补充验证：
 
@@ -96,18 +96,18 @@ moderation/safety/content-filtering/guardrails 标签）。
 
 ### 实测结果
 
-| 模型 | 请求格式 | 响应格式 | 状态 |
-|---|---|---|---|
-| flux-2-klein-9b | multipart | JSON base64 | ✅ |
-| flux-2-klein-4b | multipart | JSON base64 | ✅ |
-| flux-2-dev | multipart | JSON base64 | ✅ |
-| flux-1-schnell | JSON | JSON base64 | ✅ |
-| lucid-origin | JSON（参数实测生效） | JSON base64 | ✅ |
-| phoenix-1.0 | JSON（参数实测生效） | 二进制 JPEG | ✅ |
-| sd-xl-lightning | JSON | 二进制 PNG | ✅ |
-| sd-xl-base-1.0 | JSON | 二进制 PNG | ✅ |
-| dreamshaper-8-lcm | JSON | 二进制 PNG | ✅ |
-| sd-v1-5-inpainting | — | — | ❌ 已过滤 |
+| 模型               | 请求格式             | 响应格式    | 状态      |
+| ------------------ | -------------------- | ----------- | --------- |
+| flux-2-klein-9b    | multipart            | JSON base64 | ✅        |
+| flux-2-klein-4b    | multipart            | JSON base64 | ✅        |
+| flux-2-dev         | multipart            | JSON base64 | ✅        |
+| flux-1-schnell     | JSON                 | JSON base64 | ✅        |
+| lucid-origin       | JSON（参数实测生效） | JSON base64 | ✅        |
+| phoenix-1.0        | JSON（参数实测生效） | 二进制 JPEG | ✅        |
+| sd-xl-lightning    | JSON                 | 二进制 PNG  | ✅        |
+| sd-xl-base-1.0     | JSON                 | 二进制 PNG  | ✅        |
+| dreamshaper-8-lcm  | JSON                 | 二进制 PNG  | ✅        |
+| sd-v1-5-inpainting | —                    | —           | ❌ 已过滤 |
 
 AI Gateway 路径（`gateway.ai.cloudflare.com/v1/{account}/{gateway}/workers-ai/run/{model}`）
 对 multipart 请求转发正常（认证通过；当日返回的是配额 429）。

@@ -37,8 +37,12 @@ The locally retained sequence of messages belonging to a chat session, preserved
 _Avoid_: Chat records, message cache, chat log
 
 **Model Context**:
-The bounded subset of a Conversation History supplied to a model for one inference request.
+The bounded subset of a Conversation History supplied to a model for one inference request. Images in it may be downscaled copies of the stored attachments.
 _Avoid_: Full history, chat records, request history
+
+**Image History**:
+The locally retained sequence of prompts and generated images from the image generation page, preserved across application upgrades. It is not a Conversation History and is never supplied to a model as context.
+_Avoid_: Image session, image chat, gallery
 
 **Access Session**:
 A time-bounded proof that a visitor supplied the deployment access password and may use protected inference APIs.

@@ -30,8 +30,7 @@ test("loads catalog models with structured property values", async () => {
   globalThis.fetch = mock(async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
     const task = url.searchParams.get("task") ?? "Text Generation";
-    const name =
-      task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
+    const name = task === "Text Generation" ? "@cf/test/chat" : "@cf/test/image";
 
     return Response.json({
       success: true,
