@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildModelContext } from "@/lib/model-context";
-import type { Message } from "@/lib/db";
+import type { StoredMessage as Message } from "@/lib/db";
 
 const makeMessage = (id: string, text: string, role: "user" | "assistant" = "user"): Message => ({
   id,

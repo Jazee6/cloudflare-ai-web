@@ -37,7 +37,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { db, type Session } from "@/lib/db";
+import {
+  clearImageHistory,
+  deleteConversation,
+  listRecentSessions,
+} from "@/lib/conversation-store";
+import type { Session } from "@/lib/db";
 
 interface GroupedSessions {
   type: "today" | "last 7 days" | "last 30 days" | "earlier";
@@ -48,10 +53,12 @@ const AppSidebar = () => {
   const { session_id } = useParams();
   const router = useRouter();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [sessionId, setSessionId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<
+    { kind: "conversation"; sessionId: string } | { kind: "image-history" } | null
+  >(null);
   const pathname = usePathname();
 
-  const sessions = useLiveQuery(() => db.session.limit(100).reverse().sortBy("updatedAt"));
+  const sessions = useLiveQuery(listRecentSessions);
 
   const groupedSessions = useMemo(
     () =>
@@ -84,10 +91,15 @@ const AppSidebar = () => {
   );
 
   const handleDelete = async () => {
-    await db.transaction("rw", db.session, db.message, async () => {
-      await db.session.delete(sessionId);
-      await db.message.where("sessionId").equals(sessionId).delete();
-    });
+    if (!deleteTarget) {
+      return;
+    }
+    if (deleteTarget.kind === "image-history") {
+      await clearImageHistory();
+      setDeleteConfirmOpen(false);
+      return;
+    }
+    await deleteConversation(deleteTarget.sessionId);
     setDeleteConfirmOpen(false);
     router.push("/");
   };
@@ -116,7 +128,7 @@ const AppSidebar = () => {
                     <DropdownMenuItem
                       onClick={() => {
                         setDeleteConfirmOpen(true);
-                        setSessionId("image");
+                        setDeleteTarget({ kind: "image-history" });
                       }}
                     >
                       <span className="text-destructive">Delete</span>
@@ -152,7 +164,7 @@ const AppSidebar = () => {
                             <DropdownMenuItem
                               onClick={() => {
                                 setDeleteConfirmOpen(true);
-                                setSessionId(id);
+                                setDeleteTarget({ kind: "conversation", sessionId: id });
                               }}
                             >
                               <span className="text-destructive">Delete</span>

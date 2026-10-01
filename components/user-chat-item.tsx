@@ -1,8 +1,8 @@
-import type { Message } from "@/lib/db";
+import type { UIMessage } from "ai";
 import { cn } from "@/lib/utils";
 import ZoomableImage from "@/components/zoomable-image";
 
-const UserChatItem = ({ className, parts }: { className?: string; parts: Message["parts"] }) => {
+const UserChatItem = ({ className, parts }: { className?: string; parts: UIMessage["parts"] }) => {
   return (
     <div className={cn("space-y-1 flex flex-col", className)}>
       {parts.map((part, index) => {
@@ -10,7 +10,7 @@ const UserChatItem = ({ className, parts }: { className?: string; parts: Message
           return (
             <div
               key={`${part.type}-${index}`}
-              className="bg-secondary px-2 py-1 rounded-md self-end"
+              className="bg-secondary px-2 py-1 rounded-md self-end whitespace-pre-wrap wrap-break-word"
             >
               {part.text}
             </div>

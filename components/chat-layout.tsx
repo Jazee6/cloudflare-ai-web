@@ -1,32 +1,26 @@
 import { ChevronDown } from "lucide-react";
-import { type RefObject, ViewTransition } from "react";
+import { ViewTransition } from "react";
 import AuthDialog from "@/components/auth-dialog";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import type { AuthDialogState } from "@/hooks/use-auth-retry";
+import type { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 
 const ChatLayout = ({
-  chatListRef,
-  showToBottom,
-  scrollToBottom,
-  authDialogOpen,
-  setAuthDialogOpen,
-  onAuthenticated,
+  scroll,
+  authDialog,
   children,
   bottomBar,
 }: {
-  chatListRef: RefObject<HTMLDivElement | null>;
-  showToBottom: boolean;
-  scrollToBottom: () => void;
-  authDialogOpen: boolean;
-  setAuthDialogOpen: (open: boolean) => void;
-  onAuthenticated: () => void;
+  scroll: ReturnType<typeof useScrollToBottom>;
+  authDialog: AuthDialogState;
   children: React.ReactNode;
   bottomBar: React.ReactNode;
 }) => {
   return (
     <div className="flex flex-col h-screen">
       <div
-        ref={chatListRef}
+        ref={scroll.chatListRef}
         className="overflow-y-auto scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent px-2"
         style={{ scrollbarGutter: "stable both-edges" }}
       >
@@ -34,13 +28,13 @@ const ChatLayout = ({
       </div>
 
       <div className="mt-auto pb-1 space-y-1 absolute bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent px-2">
-        {showToBottom && (
+        {scroll.showToBottom && (
           <ViewTransition>
             <Button
               size="icon"
               variant="outline"
               className="rounded-full shadow-xl absolute left-1/2 -translate-x-1/2 -top-10 z-10"
-              onClick={scrollToBottom}
+              onClick={scroll.scrollToBottom}
             >
               <ChevronDown />
             </Button>
@@ -51,11 +45,7 @@ const ChatLayout = ({
         <Footer />
       </div>
 
-      <AuthDialog
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-        onAuthenticated={onAuthenticated}
-      />
+      <AuthDialog {...authDialog} />
     </div>
   );
 };

@@ -1,46 +1,26 @@
 "use client";
 
-import { generateId } from "ai";
 import { useRouter } from "next/navigation";
-import { useCallback, ViewTransition } from "react";
+import { ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
 import { useModelCatalog } from "@/components/model-catalog-provider";
+import { toast } from "@/components/ui/toast";
 import { TextEffect } from "@/components/ui/text-effect";
-import { db } from "@/lib/db";
+import { createConversation, createUserMessage } from "@/lib/conversation-store";
 
 export default function Home() {
   const router = useRouter();
   const models = useModelCatalog("Text Generation");
 
-  const onSendMessage = useCallback(
-    async (data: onSendMessageProps) => {
-      const { text, files } = data;
-
-      const sessionId = crypto.randomUUID();
-      await db.session.add({
-        updatedAt: new Date(),
-        name: text.slice(0, 20),
-        id: sessionId,
-      });
-      await db.message.add({
-        id: generateId(),
-        parts: [
-          ...(files ?? []),
-          {
-            type: "text",
-            text,
-          },
-        ],
-        role: "user",
-        sessionId,
-        createdAt: new Date(),
-      });
-
+  const onSendMessage = async ({ text, files }: onSendMessageProps) => {
+    try {
+      const sessionId = await createConversation(createUserMessage(text, files));
       router.replace(`/c/${sessionId}?new`);
-    },
-    [router],
-  );
+    } catch {
+      toast.add({ title: "Unable to start a new chat.", type: "error" });
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center h-full">

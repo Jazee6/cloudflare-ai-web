@@ -1,9 +1,8 @@
-import type { Message } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import UserChatItem from "@/components/user-chat-item";
 import AssistantChatItem from "@/components/assistant-chat-item";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import type { ChatStatus } from "ai";
+import type { ChatStatus, UIMessage } from "ai";
 import { memo } from "react";
 
 const ChatList = memo(
@@ -12,7 +11,7 @@ const ChatList = memo(
     status,
     className,
   }: {
-    messages: Message[];
+    messages: UIMessage[];
     status: ChatStatus;
     className?: string;
   }) => {

@@ -8,10 +8,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { ImagesDataPart, Message } from "@/lib/db";
+import type { ImageUrlsData } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import ToolCall from "@/components/tool-call";
-import type { ChatStatus, ToolUIPart } from "ai";
+import type { ChatStatus, ToolUIPart, UIMessage } from "ai";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -40,7 +40,7 @@ const AssistantChatItem = ({
   isLastMessage,
 }: {
   className?: string;
-  parts: Message["parts"];
+  parts: UIMessage["parts"];
   status: ChatStatus;
   isLastMessage?: boolean;
 }) => {
@@ -93,7 +93,7 @@ const AssistantChatItem = ({
         if (part.type === "data-images") {
           return (
             <Fragment key={key}>
-              {(part.data as ImagesDataPart).urls?.map((url, index) => {
+              {(part.data as ImageUrlsData).urls.map((url, index) => {
                 const key = `image-${index}`;
 
                 return (

@@ -1,5 +1,7 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 
+const FOLLOW_THRESHOLD_PX = 250;
+
 const debounce = (callback: () => void, delay: number) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return {
@@ -21,6 +23,14 @@ export const useScrollToBottom = () => {
       behavior: "smooth",
     });
   }, []);
+
+  /** Keeps streaming output in view unless the reader has scrolled away from the bottom. */
+  const followIfNearBottom = useCallback(() => {
+    const list = chatListRef.current;
+    if (list && list.scrollHeight - list.scrollTop - list.clientHeight < FOLLOW_THRESHOLD_PX) {
+      scrollToBottom();
+    }
+  }, [scrollToBottom]);
 
   useEffect(() => {
     const debouncedScroll = debounce(() => {
@@ -44,5 +54,5 @@ export const useScrollToBottom = () => {
     };
   }, []);
 
-  return { chatListRef, showToBottom, scrollToBottom };
+  return { chatListRef, showToBottom, scrollToBottom, followIfNearBottom };
 };
