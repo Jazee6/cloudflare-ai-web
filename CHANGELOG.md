@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Request Limits**: chat/image APIs now accept a 4 MiB body and 512 KiB per decoded image (5 image parts) so requests fit the Vercel Functions body limit.
+- **Image attachments**: resized in the browser to JPEG (long edge 1568px, reduced down to 512px when needed, GIFs keep their first frame). Oversized images in older Conversation History are downscaled when building the Model Context.
+- **History loading**: Dexie schema v3 adds a `[sessionId+createdAt]` index; conversations load their newest 100 messages and Image History its newest 50 entries in order. The sidebar lists the 100 most recently updated sessions.
+- Clearing Image History from the sidebar keeps the image page open and refreshes it immediately.
+
+### Fixed
+
+- Image generation through AI Gateway failed with 502 because the unwrapped `{ image }` payload was rejected; JPEG/WebP payloads are no longer labelled as PNG.
+- Upstream 401/403 from Workers AI image generation is reported as 502 instead of 400.
+- User messages keep their line breaks.
+- Stopping a response before any output no longer stores an empty assistant message.
+
 ## 5.0.0
 
 ### Breaking Changes
