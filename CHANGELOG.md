@@ -16,6 +16,7 @@
 - User messages keep their line breaks.
 - Stopping a response before any output no longer stores an empty assistant message.
 - A stopped reasoning response no longer shows a spinner forever.
+- Workers AI responses no longer repeat every token, and reasoning models show one Reasoning block instead of one per token (workaround for workers-ai-provider 4.0.0 reading redundant stream fields).
 
 ## 5.0.0
 

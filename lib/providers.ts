@@ -3,6 +3,7 @@ import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
 import { createAiGateway } from "ai-gateway-provider";
 import { createWorkersAI } from "workers-ai-provider";
+import { createWorkersAIFetch } from "@/lib/workers-ai-fetch";
 import type { Model } from "@/lib/models";
 
 export class ProviderConfigurationError extends Error {
@@ -45,23 +46,18 @@ const getWorkersAIProvider = () => {
   const credentials = getCloudflareCredentials();
   const gatewayCredentials = getCloudflareGatewayCredentials();
   if (!gatewayCredentials) {
-    return createWorkersAI(credentials);
+    return createWorkersAI({ ...credentials, fetch: createWorkersAIFetch() });
   }
 
   const { gatewayId, gatewayToken } = gatewayCredentials;
-  const gatewayFetch: typeof globalThis.fetch = Object.assign(
-    (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
-      const headers = new Headers(init?.headers);
-      headers.set("cf-aig-authorization", `Bearer ${gatewayToken}`);
-      return globalThis.fetch(input, { ...init, headers });
-    },
-    { preconnect: globalThis.fetch.preconnect },
-  );
-
   return createWorkersAI({
     ...credentials,
     gateway: { id: gatewayId },
-    fetch: gatewayFetch,
+    fetch: createWorkersAIFetch((input, init) => {
+      const headers = new Headers(init?.headers);
+      headers.set("cf-aig-authorization", `Bearer ${gatewayToken}`);
+      return globalThis.fetch(input, { ...init, headers });
+    }),
   });
 };
 
