@@ -52,6 +52,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "babel-plugin-react-compiler": "^1.0.0",
+    "fake-indexeddb": "^6.2.5",
     "oxfmt": "^0.66.0",
     "oxlint": "^1.81.0",
     "shadcn": "^4.21.0",
