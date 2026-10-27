@@ -31,7 +31,11 @@ export default function Home() {
           </TextEffect>
         </div>
         <ViewTransition name="chat-input">
-          <ChatInput models={models} className="mx-auto max-w-3xl" onSendMessage={onSendMessage} />
+          <ChatInput
+            models={models}
+            className="mx-auto w-full max-w-3xl"
+            onSendMessage={onSendMessage}
+          />
         </ViewTransition>
       </div>
 

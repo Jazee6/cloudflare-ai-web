@@ -40,6 +40,14 @@ _Avoid_: Chat records, message cache, chat log
 The bounded subset of a Conversation History supplied to a model for one inference request. Images in it may be downscaled copies of the stored attachments.
 _Avoid_: Full history, chat records, request history
 
+**Context Usage**:
+The share of a model's context window occupied by the latest inference request, as reported by the model itself. It is independent of the Model Context, which is selected by the application before the request.
+_Avoid_: Model Context, context budget, token count
+
+**Retry**:
+Producing a new response for the latest prompt that replaces the latest response in its Conversation History or Image History once the new response succeeds. Earlier responses cannot be retried.
+_Avoid_: Regenerate, rerun, redo
+
 **Image History**:
 The locally retained sequence of prompts and generated images from the image generation page, preserved across application upgrades. It is not a Conversation History and is never supplied to a model as context.
 _Avoid_: Image session, image chat, gallery

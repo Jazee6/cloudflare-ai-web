@@ -12,6 +12,8 @@ export interface Model {
   source: ModelSource;
   input?: ModelInput[];
   reasoning?: boolean;
+  /** The most tokens one inference request can occupy, when the provider publishes it. */
+  contextWindow?: number;
   tag?: string[];
 }
 
@@ -37,6 +39,7 @@ export const externalModels: Model[] = [
     brand: "Google",
     type: "Text Generation",
     input: ["image", "search"],
+    contextWindow: 1_048_576,
     provider: "google",
     source: "external",
   },

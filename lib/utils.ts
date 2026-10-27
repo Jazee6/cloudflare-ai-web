@@ -21,7 +21,7 @@ export const setCookie = (name: StoredPreferenceKey, value: string) => {
   document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}`;
 };
 
-export const deleteCookie = (name: StoredModelKey) => {
+export const deleteCookie = (name: StoredPreferenceKey) => {
   document.cookie = `${encodeURIComponent(name)}=; path=/; max-age=0`;
 };
 

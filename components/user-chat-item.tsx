@@ -1,24 +1,22 @@
 import type { UIMessage } from "ai";
-import { cn } from "@/lib/utils";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { Message, MessageContent } from "@/components/ui/message";
 import ZoomableImage from "@/components/zoomable-image";
 
-const UserChatItem = ({ className, parts }: { className?: string; parts: UIMessage["parts"] }) => {
+const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
   return (
-    <div className={cn("space-y-1 flex flex-col", className)}>
-      {parts.map((part, index) => {
-        if (part.type === "text") {
-          return (
-            <div
-              key={`${part.type}-${index}`}
-              className="bg-secondary px-2 py-1 rounded-md self-end whitespace-pre-wrap wrap-break-word"
-            >
-              {part.text}
-            </div>
-          );
-        }
+    <Message align="end">
+      <MessageContent>
+        {parts.map((part, index) => {
+          if (part.type === "text") {
+            return (
+              <Bubble key={`${part.type}-${index}`} align="end" variant="secondary">
+                <BubbleContent className="whitespace-pre-wrap">{part.text}</BubbleContent>
+              </Bubble>
+            );
+          }
 
-        if (part.type === "file") {
-          if (part.mediaType.startsWith("image/")) {
+          if (part.type === "file" && part.mediaType.startsWith("image/")) {
             return (
               <ZoomableImage key={`${part.type}-${index}`} className="self-end max-w-[50%]">
                 <img
@@ -29,11 +27,11 @@ const UserChatItem = ({ className, parts }: { className?: string; parts: UIMessa
               </ZoomableImage>
             );
           }
-        }
 
-        return null;
-      })}
-    </div>
+          return null;
+        })}
+      </MessageContent>
+    </Message>
   );
 };
 

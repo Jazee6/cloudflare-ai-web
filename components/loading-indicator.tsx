@@ -1,14 +1,13 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useLinkStatus } from "next/link";
+import { Spinner } from "@/components/ui/spinner";
 
 const LoadingIndicator = ({ className }: { className?: string }) => {
   const { pending } = useLinkStatus();
 
   if (pending) {
-    return <Loader2 className={cn("animate-spin", className)} />;
+    return <Spinner className={className} />;
   }
 };
 

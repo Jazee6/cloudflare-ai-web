@@ -13,6 +13,8 @@ import {
   loadConversationHistory,
   loadImageHistory,
   RECENT_SESSIONS_LIMIT,
+  replaceConversationResponse,
+  replaceImageHistoryEntry,
 } from "@/lib/conversation-store";
 import { db, type StoredMessage } from "@/lib/db";
 
@@ -135,4 +137,36 @@ test("Image History is kept apart from conversations and can be cleared", async 
   await clearImageHistory();
   expect(await loadImageHistory()).toEqual([]);
   expect(await loadConversationHistory(conversation)).toHaveLength(1);
+});
+
+test("replaceConversationResponse swaps the retried response for the new one", async () => {
+  tick();
+  const sessionId = await createConversation(createUserMessage("hello"));
+  tick();
+  await appendConversationMessage(sessionId, { id: "old", role: "assistant", parts: [] });
+  tick();
+
+  await replaceConversationResponse(sessionId, "old", {
+    id: "new",
+    role: "assistant",
+    parts: [{ type: "text", text: "retried" }],
+  });
+
+  const history = await loadConversationHistory(sessionId);
+  expect(history.map((message) => message.id).slice(1)).toEqual(["new"]);
+  expect(textOf(history[1])).toBe("retried");
+});
+
+test("replaceImageHistoryEntry swaps the retried image entry for the new one", async () => {
+  tick();
+  await appendImageHistoryEntry(createUserMessage("prompt"));
+  tick();
+  await appendImageHistoryEntry({ id: "old", role: "assistant", parts: [] });
+  tick();
+
+  await replaceImageHistoryEntry("old", { id: "new", role: "assistant", parts: [] });
+
+  const history = await loadImageHistory();
+  expect(history.map((entry) => entry.role)).toEqual(["user", "assistant"]);
+  expect(history[1].id).toBe("new");
 });

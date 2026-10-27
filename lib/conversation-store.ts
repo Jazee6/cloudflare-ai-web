@@ -49,6 +49,20 @@ export const appendConversationMessage = async (sessionId: string, message: UIMe
   });
 };
 
+/** Completes a Retry: the new response takes the place of the one it was retried from. */
+export const replaceConversationResponse = async (
+  sessionId: string,
+  replacedId: string,
+  message: UIMessage,
+) => {
+  const now = new Date();
+  await db.transaction("rw", db.session, db.message, async () => {
+    await db.message.delete(replacedId);
+    await db.message.add({ ...message, sessionId, createdAt: now });
+    await db.session.update(sessionId, { updatedAt: now });
+  });
+};
+
 export const loadConversationHistory = (sessionId: string) =>
   loadNewestMessages(sessionId, CONVERSATION_HISTORY_LOAD_LIMIT);
 
@@ -64,6 +78,14 @@ export const deleteConversation = async (sessionId: string) => {
 
 export const appendImageHistoryEntry = async (entry: UIMessage) => {
   await db.message.add({ ...entry, sessionId: IMAGE_HISTORY_SESSION_ID, createdAt: new Date() });
+};
+
+/** Completes a Retry in Image History: the new entry takes the place of the retried one. */
+export const replaceImageHistoryEntry = async (replacedId: string, entry: UIMessage) => {
+  await db.transaction("rw", db.message, async () => {
+    await db.message.delete(replacedId);
+    await db.message.add({ ...entry, sessionId: IMAGE_HISTORY_SESSION_ID, createdAt: new Date() });
+  });
 };
 
 export const loadImageHistory = () =>

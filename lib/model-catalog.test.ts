@@ -52,6 +52,7 @@ test("loads catalog models with structured property values", async () => {
               value: [{ unit: "token", price: 0.01 }],
             },
             { property_id: "reasoning", value: "true" },
+            { property_id: "context_window", value: "128000" },
           ],
         },
         ...(task === "Text Generation"
@@ -91,6 +92,7 @@ test("loads catalog models with structured property values", async () => {
     const catalog = await getModelCatalog();
     expect(catalog.find((model) => model.id === "@cf/test/chat")).toMatchObject({
       reasoning: true,
+      contextWindow: 128000,
       type: "Text Generation",
     });
     expect(catalog.find((model) => model.id === "@cf/meta/llama-guard-3-8b")).toBeUndefined();

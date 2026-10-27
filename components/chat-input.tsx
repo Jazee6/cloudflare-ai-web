@@ -2,20 +2,31 @@
 
 import { valibotResolver } from "@hookform/resolvers/valibot";
 import type { ChatStatus, FileUIPart } from "ai";
-import { ArrowUp, Earth, Loader2, Paperclip, RefreshCw, Square, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowUp, Earth, Paperclip, RefreshCw, Square, X } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "@/components/ui/toast";
 import * as v from "valibot";
 import { useModelPreferences } from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
-import { Button } from "@/components/ui/button";
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentMedia,
+} from "@/components/ui/attachment";
 import { Field } from "@/components/ui/field";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import type { Model } from "@/lib/models";
 import { compressImage } from "@/lib/image-compression";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
-import { cn, deleteCookie, setCookie, type StoredModelKey } from "@/lib/utils";
+import type { StoredModelKey } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 
 export interface onSendMessageProps {
@@ -37,6 +48,7 @@ const ChatInput = ({
   status = "ready",
   models,
   modelKey,
+  addon,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -45,8 +57,10 @@ const ChatInput = ({
   status?: ChatStatus;
   models: Model[];
   modelKey?: StoredModelKey;
+  /** Extra controls shown next to the model selector. */
+  addon?: ReactNode;
 }) => {
-  const preferences = useModelPreferences();
+  const { preferences, setPreference } = useModelPreferences();
   const selectedModelKey = modelKey ?? "CF_AI_MODEL";
   const form = useForm<FormData>({
     resolver: valibotResolver(formSchema),
@@ -55,29 +69,15 @@ const ChatInput = ({
     },
   });
   const input = form.watch("input");
-  const [selectedModel, setSelectedModel] = useState<Model | undefined>(
-    () => models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0],
-  );
+  const selectedModel =
+    models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0];
   const [files, setFiles] = useState<FileUIPart[]>([]);
-  const [searchEnabled, setSearchEnabled] = useState(
-    () => preferences.CF_AI_SEARCH_ENABLED === "true",
-  );
+  const searchEnabled = preferences.CF_AI_SEARCH_ENABLED === "true";
 
+  // Stores the fallback when the remembered model has left the catalog.
   useEffect(() => {
-    setSelectedModel((currentModel) => {
-      const nextModel =
-        models.find((model) => model.id === currentModel?.id) ??
-        models.find((model) => model.id === preferences[selectedModelKey]) ??
-        models[0];
-
-      if (nextModel) {
-        setCookie(selectedModelKey, nextModel.id);
-      } else {
-        deleteCookie(selectedModelKey);
-      }
-      return nextModel;
-    });
-  }, [models, preferences, selectedModelKey]);
+    setPreference(selectedModelKey, selectedModel?.id);
+  }, [selectedModel?.id, selectedModelKey, setPreference]);
 
   useEffect(() => {
     if (!selectedModel?.input?.includes("image")) {
@@ -170,22 +170,46 @@ const ChatInput = ({
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <div
-        className={cn(
-          "w-full border-3 rounded-md focus-within:border-primary transition-all",
-          className,
-        )}
-      >
-        <Controller
-          control={form.control}
-          name="input"
-          render={({ field }) => (
-            <Field>
-              <Textarea
+    <form onSubmit={form.handleSubmit(onSubmit)} className={className}>
+      <Controller
+        control={form.control}
+        name="input"
+        render={({ field }) => (
+          <Field>
+            {/* The empty input disables only the send button, so the group keeps its normal look. */}
+            <InputGroup className="rounded-md border-3 border-border transition-all focus-within:border-primary has-disabled:bg-transparent has-disabled:opacity-100 has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:ring-0 dark:has-disabled:bg-input/30">
+              {files.length > 0 && (
+                <InputGroupAddon align="block-start" className="flex-wrap">
+                  {files.map((file, index) => (
+                    <Attachment
+                      key={`${file.filename}-${file.url}`}
+                      orientation="vertical"
+                      className="w-20"
+                    >
+                      <AttachmentMedia variant="image">
+                        <img src={file.url} alt={file.filename} />
+                      </AttachmentMedia>
+                      <AttachmentActions>
+                        <AttachmentAction
+                          type="button"
+                          aria-label={`Remove ${file.filename ?? "image"}`}
+                          onClick={() => {
+                            setFiles((prevState) => prevState.filter((_, i) => i !== index));
+                          }}
+                        >
+                          <X />
+                        </AttachmentAction>
+                      </AttachmentActions>
+                    </Attachment>
+                  ))}
+                </InputGroupAddon>
+              )}
+
+              <InputGroupTextarea
                 autoFocus
-                className="border-0 shadow-none focus-visible:ring-0 resize-none max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent rounded-b-none rounded-t"
+                className="max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent"
                 placeholder="Text here..."
+                aria-label="Message"
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
@@ -195,90 +219,60 @@ const ChatInput = ({
                 onPaste={onPaste}
                 {...field}
               />
-            </Field>
-          )}
-        />
 
-        <ul className="flex px-3 gap-1">
-          {files.map((file, index) => {
-            if (file.mediaType.startsWith("image/")) {
-              return (
-                <li
-                  key={`${file.filename}-${file.url}`}
-                  className="size-12 overflow-hidden rounded-md relative group hover:shadow transition-all"
-                >
-                  <button
-                    type="button"
-                    className="absolute group-hover:opacity-100 transition-opacity opacity-0
-                     top-0 right-0 bg-black rounded-full cursor-pointer z-10"
-                    onClick={() => {
-                      setFiles((prevState) => prevState.filter((_, i) => i !== index));
-                    }}
+              <InputGroupAddon align="block-end">
+                <ModelSelect
+                  selectedModel={selectedModel}
+                  models={models}
+                  onSelectModel={(model) => setPreference(selectedModelKey, model.id)}
+                />
+
+                {addon}
+
+                {selectedModel?.input?.includes("search") && (
+                  <Toggle
+                    aria-label="Toggle web search"
+                    pressed={searchEnabled}
+                    onPressedChange={(pressed) =>
+                      setPreference("CF_AI_SEARCH_ENABLED", pressed ? "true" : "false")
+                    }
                   >
-                    <X className="size-4 text-white" />
-                  </button>
-                  <img
-                    src={file.url}
-                    alt={file.filename}
-                    className="hover:brightness-75 object-cover size-full"
-                  />
-                </li>
-              );
-            }
+                    <Earth />
+                    Search
+                  </Toggle>
+                )}
 
-            return null;
-          })}
-        </ul>
+                {selectedModel?.input?.includes("image") && (
+                  <InputGroupButton size="icon-sm" aria-label="Attach images" onClick={onAddFiles}>
+                    <Paperclip />
+                  </InputGroupButton>
+                )}
 
-        <div className="flex items-center p-2 space-x-1 dark:bg-input/30 rounded-b">
-          <ModelSelect
-            selectedModel={selectedModel}
-            models={models}
-            onSelectModel={(model) => {
-              setSelectedModel(model);
-              setCookie(selectedModelKey, model.id);
-            }}
-          />
-
-          {selectedModel?.input?.includes("search") && (
-            <Toggle
-              aria-label="Toggle web search"
-              className="data-[state=on]:border"
-              pressed={searchEnabled}
-              onPressedChange={(pressed) => {
-                setCookie("CF_AI_SEARCH_ENABLED", pressed ? "true" : "false");
-                setSearchEnabled(pressed);
-              }}
-            >
-              <Earth />
-              Search
-            </Toggle>
-          )}
-
-          {selectedModel?.input?.includes("image") && (
-            <Button size="icon" variant="ghost" className="relative" onClick={onAddFiles}>
-              <Paperclip />
-            </Button>
-          )}
-
-          <Button
-            size="icon"
-            className="ml-auto"
-            disabled={
-              models.length === 0 ||
-              status === "submitted" ||
-              (input.trim().length === 0 && status === "ready")
-            }
-            type={status === "ready" ? "submit" : "button"}
-            onClick={onSendClick}
-          >
-            {status === "ready" && <ArrowUp />}
-            {status === "submitted" && <Loader2 className="animate-spin" />}
-            {status === "streaming" && <Square className="fill-primary-foreground" />}
-            {status === "error" && <RefreshCw />}
-          </Button>
-        </div>
-      </div>
+                <InputGroupButton
+                  size="icon-sm"
+                  variant="default"
+                  className="ml-auto"
+                  aria-label={
+                    status === "streaming" ? "Stop" : status === "error" ? "Retry" : "Send"
+                  }
+                  disabled={
+                    models.length === 0 ||
+                    status === "submitted" ||
+                    (input.trim().length === 0 && status === "ready")
+                  }
+                  type={status === "ready" ? "submit" : "button"}
+                  onClick={onSendClick}
+                >
+                  {status === "ready" && <ArrowUp />}
+                  {status === "submitted" && <Spinner />}
+                  {status === "streaming" && <Square className="fill-primary-foreground" />}
+                  {status === "error" && <RefreshCw />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+        )}
+      />
     </form>
   );
 };

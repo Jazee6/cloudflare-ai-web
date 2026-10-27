@@ -92,6 +92,15 @@ export const hasSignal = (
   });
 };
 
+const getContextWindow = (model: CloudflareModel) => {
+  const value = model.properties.find(
+    (property) => normalizeSignal(property.property_id) === "context_window",
+  )?.value;
+  const contextWindow =
+    typeof value === "string" || typeof value === "number" ? Number(value) : NaN;
+  return Number.isSafeInteger(contextWindow) && contextWindow > 0 ? contextWindow : undefined;
+};
+
 const toModel = (model: CloudflareModel, type: ModelType): Model => {
   const input: ModelInput[] = [];
   if (
@@ -104,6 +113,7 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
   const reasoning =
     type === "Text Generation" && hasSignal(model, ["reasoning", "reasoning model"]);
   const experimental = hasSignal(model, ["experimental", "beta"]);
+  const contextWindow = type === "Text Generation" ? getContextWindow(model) : undefined;
 
   return {
     id: model.name,
@@ -114,6 +124,7 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
     source: "cloudflare",
     ...(input.length > 0 ? { input } : {}),
     ...(reasoning ? { reasoning: true } : {}),
+    ...(contextWindow ? { contextWindow } : {}),
     ...(experimental ? { tag: ["experimental"] } : {}),
   };
 };

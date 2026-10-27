@@ -9,28 +9,32 @@ import { useImageGeneration } from "@/hooks/use-image-generation";
 
 const Page = () => {
   const models = useModelCatalog("Text to Image");
-  const { messages, status, send, regenerate, authDialog, scroll } = useImageGeneration({
+  const { messages, status, send, retry, authDialog } = useImageGeneration({
     models,
   });
 
   return (
     <ChatLayout
-      scroll={scroll}
       authDialog={authDialog}
       bottomBar={
         <ViewTransition name="chat-input">
           <ChatInput
             models={models}
-            className="mx-auto max-w-3xl bg-background shadow-xl"
+            className="mx-auto w-full max-w-3xl"
             onSendMessage={({ text }: onSendMessageProps) => send(text)}
             status={status}
             modelKey="CF_AI_MODEL_IMAGE"
-            onRetry={regenerate}
+            onRetry={retry}
           />
         </ViewTransition>
       }
     >
-      <ChatList status={status} messages={messages} className="pt-16 pb-60 max-w-3xl mx-auto" />
+      <ChatList
+        status={status}
+        messages={messages}
+        onRetry={retry}
+        className="mx-auto max-w-3xl pt-16 pb-4"
+      />
     </ChatLayout>
   );
 };

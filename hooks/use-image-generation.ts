@@ -3,8 +3,11 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
-import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
-import { appendImageHistoryEntry, loadImageHistory } from "@/lib/conversation-store";
+import {
+  appendImageHistoryEntry,
+  loadImageHistory,
+  replaceImageHistoryEntry,
+} from "@/lib/conversation-store";
 import type { ImageUrlsData, StoredImagesData, StoredMessage } from "@/lib/db";
 import type { Model } from "@/lib/models";
 import { getStoredModel } from "@/lib/utils";
@@ -83,12 +86,12 @@ const useImageHistoryDisplay = (history: StoredMessage[] | undefined) => {
 
 /** Drives the Image History page: prompts and generated images persist locally as they arrive. */
 export const useImageGeneration = ({ models }: { models: Model[] }) => {
-  const scroll = useScrollToBottom();
   const [status, setStatus] = useState<ChatStatus>("ready");
   const history = useLiveQuery(loadImageHistory);
   const messages = useImageHistoryDisplay(history);
 
-  const generate = async (prompt: string) => {
+  /** Generates an image for the prompt; a Retry passes the entry the new image replaces. */
+  const generate = async (prompt: string, replacedId?: string) => {
     const selectedModel = getStoredModel(models, "CF_AI_MODEL_IMAGE");
     if (!selectedModel) {
       setStatus("error");
@@ -109,14 +112,15 @@ export const useImageGeneration = ({ models }: { models: Model[] }) => {
     }
 
     resetAuthRetry();
+    const entry: UIMessage = {
+      id: generateId(),
+      role: "assistant",
+      parts: [{ type: "data-images", data: { images: [result.image] } satisfies StoredImagesData }],
+    };
     try {
-      await appendImageHistoryEntry({
-        id: generateId(),
-        role: "assistant",
-        parts: [
-          { type: "data-images", data: { images: [result.image] } satisfies StoredImagesData },
-        ],
-      });
+      await (replacedId
+        ? replaceImageHistoryEntry(replacedId, entry)
+        : appendImageHistoryEntry(entry));
       setStatus("ready");
     } catch {
       setStatus("error");
@@ -124,17 +128,19 @@ export const useImageGeneration = ({ models }: { models: Model[] }) => {
     }
   };
 
-  const regenerate = async () => {
+  /** Retries the latest prompt, replacing its image if one was already generated. */
+  const retry = async () => {
     const prompt = getLatestPrompt(history);
     if (!prompt) {
-      toast.add({ title: "No prompt to regenerate", type: "error" });
+      toast.add({ title: "No prompt to retry", type: "error" });
       setStatus("ready");
       return;
     }
-    await generate(prompt);
+    const latest = history?.at(-1);
+    await generate(prompt, latest?.role === "assistant" ? latest.id : undefined);
   };
 
-  const { authDialog, handleUnauthorized, resetAuthRetry } = useAuthRetry(regenerate);
+  const { authDialog, handleUnauthorized, resetAuthRetry } = useAuthRetry(retry);
 
   const send = async (prompt: string) => {
     resetAuthRetry();
@@ -148,15 +154,8 @@ export const useImageGeneration = ({ models }: { models: Model[] }) => {
       toast.add({ title: "Unable to save the prompt to image history.", type: "error" });
       return;
     }
-    scroll.scrollToBottom();
     await generate(prompt);
   };
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      scroll.scrollToBottom();
-    }
-  }, [messages.length, scroll.scrollToBottom]);
-
-  return { messages, status, send, regenerate, authDialog, scroll };
+  return { messages, status, send, retry, authDialog };
 };

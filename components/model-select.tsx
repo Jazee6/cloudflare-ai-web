@@ -48,6 +48,7 @@ const ModelSelect = ({
       <Button
         type="button"
         variant="ghost"
+        className="text-primary hover:text-primary aria-expanded:text-primary"
         disabled={models.length === 0}
         onClick={() => setOpen(true)}
       >

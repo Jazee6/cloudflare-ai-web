@@ -1,94 +1,86 @@
-import type { ToolUIPart } from "ai";
+import { type DynamicToolUIPart, getToolName, type ToolUIPart } from "ai";
+import { WrenchIcon } from "lucide-react";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  CodeBlock,
+  CodeBlockContent,
+  CodeBlockHeader,
+  CodeBlockTitle,
+} from "@/components/ui/code-block";
 import {
-  AlertCircleIcon,
-  CheckCircleIcon,
-  CircleIcon,
-  ClockIcon,
-  Loader2,
-  Wrench,
-  XCircleIcon,
-} from "lucide-react";
-import { Streamdown } from "streamdown";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+  TraceCollapsible,
+  TraceCollapsibleContent,
+  TraceCollapsibleTrigger,
+  TraceIcon,
+  TraceLine,
+  TraceTitle,
+} from "@/components/ui/trace";
 
-const ToolCall = ({ part }: { part: ToolUIPart }) => {
-  return (
-    <Accordion>
-      <AccordionItem value={part.toolCallId}>
-        <AccordionTrigger>
-          <div className="flex items-center w-full">
-            <Wrench className="size-4 mr-2" />
-            {part.type.split("-").slice(1).join(" ")}
+const ToolJson = ({ title, value }: { title: string; value: unknown }) => (
+  <CodeBlock size="sm">
+    <CodeBlockHeader>
+      <CodeBlockTitle>{title}</CodeBlockTitle>
+    </CodeBlockHeader>
+    <CodeBlockContent wrap className="max-h-64">
+      {JSON.stringify(value, null, 2)}
+    </CodeBlockContent>
+  </CodeBlock>
+);
 
-            {part.state !== "output-available" && part.state !== "output-error" && (
-              <Loader2 className="size-4 ml-2 animate-spin" />
-            )}
+const ToolLine = ({ title, status }: { title: string; status?: "running" | "error" }) => (
+  <TraceLine status={status}>
+    <TraceIcon>
+      <WrenchIcon />
+    </TraceIcon>
+    <TraceTitle>{title}</TraceTitle>
+  </TraceLine>
+);
 
-            {part.state === "input-streaming" && (
-              <Badge variant="outline" className="ml-auto">
-                <CircleIcon className="size-4" />
-                Pending
-              </Badge>
-            )}
+/** A tool is a plain line while it runs, and opens to its input and output once it settles. */
+const ToolCall = ({
+  part,
+  streaming,
+}: {
+  part: ToolUIPart | DynamicToolUIPart;
+  streaming: boolean;
+}) => {
+  const name = getToolName(part);
 
-            {part.state === "input-streaming" && (
-              <Badge variant="outline" className="ml-auto">
-                <ClockIcon className="size-4" />
-                Running
-              </Badge>
-            )}
+  if (part.state === "output-denied") {
+    return <ToolLine title={`Denied ${name}`} />;
+  }
 
-            {part.state === "output-available" && (
-              <Badge variant="outline" className="ml-auto">
-                <CheckCircleIcon className="size-4 text-green-600" />
-                Completed
-              </Badge>
-            )}
-
-            {part.state === "output-error" && (
-              <Badge variant="outline" className="ml-auto">
-                <XCircleIcon className="size-4 text-destructive" />
-                Error
-              </Badge>
-            )}
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="space-y-2">
-          {part.input ? (
-            <div>
-              <h3 className="font-semibold font-mono mb-2">Input</h3>
-              <Streamdown mode="static">
-                {`\`\`\`json\n${JSON.stringify(part.input, null, 2)}\n\`\`\``}
-              </Streamdown>
-            </div>
-          ) : null}
-
-          {part.output ? (
-            <div>
-              <h3 className="font-semibold font-mono mb-2">Output</h3>
-              <Streamdown mode="static">
-                {`\`\`\`json\n${JSON.stringify(part.output, null, 2)}\n\`\`\``}
-              </Streamdown>
-            </div>
-          ) : null}
-
-          {part.state === "output-error" && (
-            <Alert variant="destructive">
-              <AlertCircleIcon />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{part.errorText}</AlertDescription>
-            </Alert>
+  if (part.state === "output-available" || part.state === "output-error") {
+    const failed = part.state === "output-error";
+    return (
+      <TraceCollapsible>
+        <TraceCollapsibleTrigger>
+          <ToolLine
+            title={`${failed ? "Failed to run" : "Ran"} ${name}`}
+            status={failed ? "error" : undefined}
+          />
+        </TraceCollapsibleTrigger>
+        <TraceCollapsibleContent className="flex flex-col gap-2">
+          {part.input !== undefined && <ToolJson title="Input" value={part.input} />}
+          {failed ? (
+            <CodeBlock size="sm" variant="destructive">
+              <CodeBlockContent wrap className="max-h-64">
+                {part.errorText}
+              </CodeBlockContent>
+            </CodeBlock>
+          ) : (
+            <ToolJson title="Output" value={part.output} />
           )}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+        </TraceCollapsibleContent>
+      </TraceCollapsible>
+    );
+  }
+
+  // A tool still waiting for output after the response ended never finished.
+  return (
+    <ToolLine
+      title={`${streaming ? "Running" : "Failed to run"} ${name}`}
+      status={streaming ? "running" : "error"}
+    />
   );
 };
 

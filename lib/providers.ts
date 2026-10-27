@@ -81,7 +81,12 @@ type GoogleSearchTool = ReturnType<
 export interface ChatModel {
   model: LanguageModelV4;
   tools?: { google_search: GoogleSearchTool };
+  /** Set when the provider's own default would cut responses short. */
+  maxOutputTokens?: number;
 }
+
+/** Workers AI stops at 256 tokens unless asked for more. */
+const WORKERS_AI_MAX_OUTPUT_TOKENS = 8192;
 
 /**
  * Resolves a catalog model to the language model that serves it.
@@ -105,6 +110,10 @@ export const createChatModel = (catalogModel: Model, options: { search?: boolean
               middleware: extractReasoningMiddleware({ tagName: "think" }),
             })
           : workerModel,
+        // A quarter of the window leaves the rest for the Model Context.
+        maxOutputTokens: catalogModel.contextWindow
+          ? Math.min(WORKERS_AI_MAX_OUTPUT_TOKENS, Math.floor(catalogModel.contextWindow / 4))
+          : WORKERS_AI_MAX_OUTPUT_TOKENS,
       };
     }
   }
