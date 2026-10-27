@@ -1,5 +1,25 @@
 # Changelog
 
+## 5.2.0
+
+### Added
+
+- **Context Usage**: the chat input shows how much of the model's context window the latest response used, with input/output tokens and how many messages the next Model Context includes. Workers AI context windows are read from the model catalog.
+- **Retry**: the latest response in a conversation, and the latest image in Image History, can be retried; the new response replaces the old one once it succeeds.
+- Reasoning shows how long the model thought for.
+
+### Changed
+
+- **AI Elements**: messages, bubbles, scrolling, reasoning and tool calls (Trace), attachments, code blocks and spinners now use shadcn AI Elements. Code blocks are highlighted with Shiki and can be copied.
+- Assistant responses have copy and Retry actions.
+- The model selector and context indicator use the primary colour; the chat input no longer looks disabled while empty.
+- Dependencies: added `@shadcn/react` and `shiki`; removed `@streamdown/code`.
+
+### Fixed
+
+- Workers AI responses were cut off at 256 tokens; requests now ask for up to 8,192 output tokens (at most a quarter of the context window).
+- The selected model and search toggle no longer revert after navigating between pages.
+
 ## 5.1.1
 
 ### Fixed
