@@ -36,6 +36,10 @@ docker run -d --name cloudflare-ai-web \
 
 > **Note:** In public mode anyone can use your inference APIs. Set `APP_PASSWORD` to enable Access Session.
 
+## Web search
+
+Enable **Search** for a Workers AI model whose Cloudflare Capability Signals advertise function calling. The chat can search current sources and read HTTP/HTTPS pages with [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp), using Fast mode without a Parallel account or API key. Search stays off until enabled; Google models keep their native Google grounding. Only enabled search calls send the query or requested URLs to Parallel. Anonymous usage has service rate limits.
+
 ## Deployment Instructions
 
 ### Environment Variables

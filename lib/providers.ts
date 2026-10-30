@@ -1,10 +1,11 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
+import { extractReasoningMiddleware, type ToolSet, wrapLanguageModel } from "ai";
 import { createAiGateway } from "ai-gateway-provider";
 import { createWorkersAI } from "workers-ai-provider";
 import { createWorkersAIFetch } from "@/lib/workers-ai-fetch";
 import type { Model } from "@/lib/models";
+import { createParallelSearchTools } from "@/lib/parallel-search";
 
 export class ProviderConfigurationError extends Error {
   constructor(name: string) {
@@ -74,13 +75,9 @@ const getGoogleGatewayProviders = () => {
   return { gateway, google };
 };
 
-type GoogleSearchTool = ReturnType<
-  ReturnType<typeof createGoogleGenerativeAI>["tools"]["googleSearch"]
->;
-
 export interface ChatModel {
   model: LanguageModelV4;
-  tools?: { google_search: GoogleSearchTool };
+  tools?: ToolSet;
   /** Set when the provider's own default would cut responses short. */
   maxOutputTokens?: number;
 }
@@ -92,7 +89,10 @@ const WORKERS_AI_MAX_OUTPUT_TOKENS = 8192;
  * Resolves a catalog model to the language model that serves it.
  * Throws ProviderConfigurationError when the provider's environment is incomplete.
  */
-export const createChatModel = (catalogModel: Model, options: { search?: boolean }): ChatModel => {
+export const createChatModel = (
+  catalogModel: Model,
+  options: { search?: boolean; conversationId?: string },
+): ChatModel => {
   switch (catalogModel.provider) {
     case "google": {
       const { gateway, google } = getGoogleGatewayProviders();
@@ -110,6 +110,13 @@ export const createChatModel = (catalogModel: Model, options: { search?: boolean
               middleware: extractReasoningMiddleware({ tagName: "think" }),
             })
           : workerModel,
+        tools:
+          options.search && catalogModel.input?.includes("search")
+            ? createParallelSearchTools(
+                options.conversationId ?? crypto.randomUUID(),
+                catalogModel.id,
+              )
+            : undefined,
         // A quarter of the window leaves the rest for the Model Context.
         maxOutputTokens: catalogModel.contextWindow
           ? Math.min(WORKERS_AI_MAX_OUTPUT_TOKENS, Math.floor(catalogModel.contextWindow / 4))

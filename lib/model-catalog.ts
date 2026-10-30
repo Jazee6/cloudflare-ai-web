@@ -110,6 +110,20 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
     input.push("image");
   }
 
+  if (
+    type === "Text Generation" &&
+    hasSignal(model, [
+      "function_calling",
+      "function calling",
+      "function-calling",
+      "tool calling",
+      "tool-calling",
+      "tool_calling",
+    ])
+  ) {
+    input.push("search");
+  }
+
   const reasoning =
     type === "Text Generation" && hasSignal(model, ["reasoning", "reasoning model"]);
   const experimental = hasSignal(model, ["experimental", "beta"]);
