@@ -1,5 +1,5 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
+import { type FileUIPart, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
@@ -9,10 +9,8 @@ import {
   loadConversationHistory,
   replaceConversationResponse,
 } from "@/lib/conversation-store";
-import { fitImagePartsWithinLimit } from "@/lib/image-compression";
-import { buildModelContext } from "@/lib/model-context";
+import { createConversationTransport } from "@/lib/chat-transport";
 import type { Model } from "@/lib/models";
-import { getCookie, getStoredModel } from "@/lib/utils";
 
 const MAX_TOAST_LENGTH = 100;
 
@@ -47,29 +45,7 @@ export const useConversation = ({
 
   const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
     id: sessionId,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: async ({ messages }) => {
-        const selectedModel = getStoredModel(models, "CF_AI_MODEL");
-        if (!selectedModel) {
-          throw new Error("No chat models are currently available");
-        }
-
-        const modelContext = buildModelContext(messages);
-        if (!modelContext) {
-          throw new Error("The latest message exceeds the 64,000-character context limit.");
-        }
-
-        return {
-          body: {
-            messages: await fitImagePartsWithinLimit(modelContext),
-            model: selectedModel.id,
-            provider: selectedModel.provider,
-            search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
-          },
-        };
-      },
-    }),
+    transport: createConversationTransport(sessionId, models),
     onFinish: ({ message, messages, isError }) => {
       // An aborted request that produced nothing reports an assistant message that was
       // never added to the list; only persist responses the user actually saw.

@@ -18,6 +18,7 @@ const chatSchema = v.object({
   model: v.pipe(v.string(), v.minLength(1)),
   provider: v.picklist(["workers-ai", "google"]),
   search: v.optional(v.boolean()),
+  conversationId: v.optional(v.pipe(v.string(), v.uuid())),
 });
 
 export async function POST(request: Request) {
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     return new Response("The latest message is too long to process.", { status: 413 });
   }
 
-  const { model, provider, search } = parsed.data;
+  const { model, provider, search, conversationId } = parsed.data;
   const catalogModel = await getCatalogModel(model, "Text Generation", provider);
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
   let chatModel: ChatModel;
   try {
-    chatModel = createChatModel(catalogModel, { search });
+    chatModel = createChatModel(catalogModel, { search, conversationId });
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: chatModel.model,
+    abortSignal: request.signal,
     messages: await convertToModelMessages(modelContext),
     instructions:
       "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",

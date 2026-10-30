@@ -36,6 +36,10 @@ docker run -d --name cloudflare-ai-web \
 
 > **注意：** 公开模式下任何人都可以使用你的推理 API。建议设置 `APP_PASSWORD` 以启用 Access Session。
 
+## 联网搜索
+
+为 Cloudflare Capability Signals 明确支持函数调用的 Workers AI 模型开启 **Search**，即可通过 [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) 搜索最新资料并读取 HTTP/HTTPS 网页。搜索使用 Fast 模式，无需 Parallel 账户或 API 密钥。搜索默认关闭，Google 模型继续使用原生 Google 搜索。仅在开启搜索并调用工具时，查询或指定网址才会发送给 Parallel。匿名使用受服务速率限制。
+
 ## 部署说明
 
 ### 环境变量列表
