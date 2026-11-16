@@ -11,11 +11,7 @@ import {
 } from "@/components/model-catalog-provider";
 import { getModelCatalog } from "@/lib/model-catalog";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Inter } from "next/font/google";
 import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
-import { cn } from "@/lib/utils";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +36,7 @@ export default async function RootLayout({
   const models = await getModelCatalog();
 
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
+    <html lang="en" suppressHydrationWarning className="font-sans">
       <body className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
         <ThemeProvider
           attribute="class"
