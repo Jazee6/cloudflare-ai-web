@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.64",
+    "@ai-sdk/mcp": "2.0.45",
     "@ai-sdk/openai-compatible": "^3.0.44",
     "@ai-sdk/provider": "^4.0.10",
     "@ai-sdk/react": "^4.0.96",
