@@ -34,8 +34,8 @@ const BRAND_NAMES: Record<string, string> = {
 
 export const externalModels: Model[] = [
   {
-    id: "gemini-3.6-flash",
-    name: "gemini-3.6-flash",
+    id: "gemini-4-hydrogen",
+    name: "gemini-4-hydrogen",
     brand: "Google",
     type: "Text Generation",
     input: ["image", "search"],
