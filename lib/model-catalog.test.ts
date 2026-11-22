@@ -1,5 +1,34 @@
-import { expect, mock, test } from "bun:test";
-import { getModelCatalog, hasSignal } from "@/lib/model-catalog";
+import { afterEach, expect, mock, test } from "bun:test";
+import {
+  getAppCapabilities,
+  getCatalogModel,
+  getModelCatalog,
+  hasSignal,
+} from "@/lib/model-catalog";
+
+const ENV_KEYS = [
+  "CF_ACCOUNT_ID",
+  "CF_WORKERS_AI_TOKEN",
+  "CF_AI_GATEWAY_NAME",
+  "CF_AI_GATEWAY_TOKEN",
+  "CF_AI_GATEWAY_MODELS",
+  "CF_BROWSER_RUN_TOKEN",
+  "CF_AI_SEARCH_TOKEN",
+  "CF_AI_SEARCH_INSTANCES",
+] as const;
+
+const savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+
+afterEach(() => {
+  for (const key of ENV_KEYS) {
+    const original = savedEnv[key];
+    if (original === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = original;
+    }
+  }
+});
 
 test("rejects ambiguous capability signal substrings", () => {
   const model = {
@@ -22,8 +51,6 @@ test("rejects ambiguous capability signal substrings", () => {
 
 test("loads catalog models with structured property values", async () => {
   const originalFetch = globalThis.fetch;
-  const originalAccountId = process.env.CF_ACCOUNT_ID;
-  const originalToken = process.env.CF_WORKERS_AI_TOKEN;
 
   process.env.CF_ACCOUNT_ID = "test-account";
   process.env.CF_WORKERS_AI_TOKEN = "test-token";
@@ -102,7 +129,43 @@ test("loads catalog models with structured property values", async () => {
     expect(catalog.find((model) => model.id === "@cf/test/sd-inpainting")).toBeUndefined();
   } finally {
     globalThis.fetch = originalFetch;
-    process.env.CF_ACCOUNT_ID = originalAccountId;
-    process.env.CF_WORKERS_AI_TOKEN = originalToken;
   }
+});
+
+test("getCatalogModel resolves ai-gateway models including server-only byokAlias", async () => {
+  process.env.CF_ACCOUNT_ID = "test-account";
+  process.env.CF_AI_GATEWAY_NAME = "gw";
+  process.env.CF_AI_GATEWAY_TOKEN = "gw-token";
+  process.env.CF_AI_GATEWAY_MODELS = "openai/gpt-5?byokAlias=prod";
+
+  const model = await getCatalogModel("openai/gpt-5", "Text Generation", "ai-gateway");
+  expect(model).toMatchObject({
+    id: "openai/gpt-5",
+    provider: "ai-gateway",
+    byokAlias: "prod",
+  });
+});
+
+test("getAppCapabilities derives feature flags from server configuration", () => {
+  process.env.CF_ACCOUNT_ID = "acc";
+  process.env.CF_WORKERS_AI_TOKEN = "tok";
+  delete process.env.CF_BROWSER_RUN_TOKEN;
+  process.env.CF_AI_SEARCH_TOKEN = "search-tok";
+  process.env.CF_AI_SEARCH_INSTANCES = " , ";
+
+  expect(getAppCapabilities()).toEqual({
+    documents: true,
+    webFetch: true,
+    browserRender: false,
+    knowledgeBase: false,
+  });
+
+  process.env.CF_BROWSER_RUN_TOKEN = "br-tok";
+  process.env.CF_AI_SEARCH_INSTANCES = "docs:Docs";
+  expect(getAppCapabilities()).toEqual({
+    documents: true,
+    webFetch: true,
+    browserRender: true,
+    knowledgeBase: true,
+  });
 });

@@ -1,12 +1,14 @@
 import { after } from "next/server";
 import * as v from "valibot";
 import {
+  type AppCapabilities,
   getExternalModels,
   getModelBrand,
   getModelName,
   type Model,
   type ModelInput,
   type ModelType,
+  toPublicModel,
 } from "@/lib/models";
 
 const CATALOG_TTL_MS = 60 * 60 * 1000;
@@ -60,6 +62,18 @@ const globalCatalog = globalThis as typeof globalThis & {
 const taskCache =
   globalCatalog.cloudflareModelCatalogCache ?? new Map<CloudflareTask, CatalogCacheEntry>();
 globalCatalog.cloudflareModelCatalogCache = taskCache;
+
+const scheduleAfter = (task: () => Promise<void> | void) => {
+  try {
+    after(task);
+  } catch {
+    void Promise.resolve()
+      .then(task)
+      .catch((error) => {
+        console.warn("Background catalog task failed", error);
+      });
+  }
+};
 
 const normalizeSignal = (value: string) => value.trim().toLowerCase();
 const normalizeTask = (value: string) =>
@@ -227,7 +241,7 @@ const getTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
 
   const refresh = refreshTask(task, entry);
   if (entry.models) {
-    after(async () => {
+    scheduleAfter(async () => {
       try {
         await refresh;
       } catch (error) {
@@ -245,6 +259,24 @@ const getTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
   }
 };
 
+export const getAppCapabilities = (): AppCapabilities => {
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const workersAiToken = process.env.CF_WORKERS_AI_TOKEN;
+  const browserRunToken = process.env.CF_BROWSER_RUN_TOKEN;
+  const aiSearchToken = process.env.CF_AI_SEARCH_TOKEN;
+  const aiSearchInstances = (process.env.CF_AI_SEARCH_INSTANCES ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return {
+    documents: Boolean(accountId && workersAiToken),
+    webFetch: true,
+    browserRender: Boolean(accountId && browserRunToken),
+    knowledgeBase: Boolean(accountId && aiSearchToken && aiSearchInstances.length > 0),
+  };
+};
+
 export const getModelCatalog = async (): Promise<Model[]> => {
   const [chatModels, imageModels] = await Promise.all([
     getTaskModels("Text Generation"),
@@ -254,8 +286,11 @@ export const getModelCatalog = async (): Promise<Model[]> => {
   return [...chatModels, ...imageModels, ...getExternalModels()];
 };
 
+export const getPublicModelCatalog = async (): Promise<Model[]> =>
+  (await getModelCatalog()).map(toPublicModel);
+
 export const getCatalogModel = async (id: string, type: ModelType, provider: Model["provider"]) => {
-  if (provider === "google") {
+  if (provider === "ai-gateway") {
     return getExternalModels().find((model) => model.id === id && model.type === type);
   }
 

@@ -14,6 +14,18 @@
 
 > 额度用完时可能无法响应，建议自行部署
 
+### Cloudflare Workers
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Jazee6/cloudflare-ai-web)
+
+或在本地手动构建部署：
+
+```bash
+bun install
+bun run cf:build
+bun run cf:deploy
+```
+
 ### Docker
 
 ```bash
@@ -27,9 +39,9 @@ docker run -d --name cloudflare-ai-web \
 
 ## 特性
 
-- 使用 Cloudflare Workers AI 快速搭建多模型AI平台
-- 支持 Cloudflare AI Gateway 接入Gemini等模型
-- 支持 Serverless 快速部署
+- 使用 Cloudflare Workers AI 快速搭建多模型 AI 平台
+- 支持 Cloudflare AI Gateway（BYOK / Unified Billing / Gateway Route）接入外部模型
+- 支持 Vercel、Docker 与 Cloudflare Workers 三端无状态部署
 - 聊天记录本地存储
 - 图片附件在浏览器内自动压缩（长边不超过 1568px，单张不超过 512 KiB，每次请求最多 5 张），请求体积满足 Vercel Functions 限制
 - 支持 Access Session（访问密码）保护
@@ -40,27 +52,28 @@ docker run -d --name cloudflare-ai-web \
 
 ### 环境变量列表
 
-| 名称                    | 描述                       | 必填         |
-| ----------------------- | -------------------------- | ------------ |
-| CF_ACCOUNT_ID           | Cloudflare 账户ID          | ✅           |
-| CF_WORKERS_AI_TOKEN     | Cloudflare Workers AI令牌  | ✅           |
-| CF_AI_GATEWAY_NAME      | Cloudflare AI网关名称      |              |
-| CF_AI_GATEWAY_TOKEN     | Cloudflare AI网关授权令牌  | 使用网关时   |
-| GOOGLE_API_KEY          | Google AI Studio 令牌      | 使用Google时 |
-| CF_AI_GATEWAY_PROVIDERS | Cloudflare AI网关提供者    |              |
-| APP_PASSWORD            | 访问密码（Access Session） |              |
+| 名称                 | 描述                                          | 必填              |
+| -------------------- | --------------------------------------------- | ----------------- |
+| CF_ACCOUNT_ID        | Cloudflare 账户 ID                            | ✅                |
+| CF_WORKERS_AI_TOKEN  | Cloudflare Workers AI 令牌                    | ✅                |
+| CF_AI_GATEWAY_NAME   | Cloudflare AI 网关名称                        | 使用网关/外部模型 |
+| CF_AI_GATEWAY_TOKEN  | Cloudflare AI 网关授权令牌                    | 使用网关/外部模型 |
+| CF_AI_GATEWAY_MODELS | 声明式外部模型与 Gateway Route（`dynamic/*`） | 使用外部模型时    |
+| APP_PASSWORD         | 访问密码（Access Session）                    |                   |
 
 #### CF_WORKERS_AI_TOKEN
 
-- 管理账户 - 账户API令牌 - 创建令牌 - 使用Workers AI模板创建
+- 管理账户 - 账户 API 令牌 - 创建令牌 - 使用 Workers AI 模板创建
 
-#### CF_AI_GATEWAY_PROVIDERS
+#### CF_AI_GATEWAY_MODELS（BYOK / Unified Billing）
 
-支持的提供者：
+v6.0 移除 `CF_AI_GATEWAY_PROVIDERS`、`NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS` 与 `GOOGLE_API_KEY`。第三方提供方密钥请在 Cloudflare Dashboard → **AI** → **AI Gateway** → **Provider Keys (BYOK)** 中配置，再通过 `CF_AI_GATEWAY_MODELS` 声明模型：
 
-- google
+```bash
+CF_AI_GATEWAY_MODELS="google-ai-studio/gemini-4-hydrogen?name=Gemini+4+Hydrogen&input=image,search&contextWindow=1048576,openai/gpt-5?input=image&reasoning=true&contextWindow=400000,dynamic/smart-chat?name=Smart+Chat"
+```
 
-多个提供者使用逗号分隔
+支持的查询参数：`name`、`input`（`image` / `search`）、`reasoning`（`true` / `false`）、`contextWindow`、`byokAlias`。
 
 ## 赞助
 

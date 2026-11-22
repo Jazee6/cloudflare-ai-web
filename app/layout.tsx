@@ -1,53 +1,39 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import "react-medium-image-zoom/dist/styles.css";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/toast";
 import AppSidebar from "@/components/app-sidebar";
 import {
   ModelCatalogProvider,
   ModelPreferencesProvider,
 } from "@/components/model-catalog-provider";
-import { getModelCatalog } from "@/lib/model-catalog";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
-
-export const dynamic = "force-dynamic";
+import { Toaster } from "@/components/ui/toast";
+import { THEME_COOKIE } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "Cloudflare AI Web",
   description: "Cloudflare AI Platform with one-click deployment.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const themePreference = parseThemePreference(cookieStore.get(THEME_COOKIE)?.value);
-  const preferences = Object.fromEntries(
-    ["CF_AI_MODEL", "CF_AI_MODEL_IMAGE", "CF_AI_SEARCH_ENABLED"].flatMap((key) => {
-      const value = cookieStore.get(key)?.value;
-      return value ? [[key, value]] : [];
-    }),
-  ) as Partial<Record<"CF_AI_MODEL" | "CF_AI_MODEL_IMAGE" | "CF_AI_SEARCH_ENABLED", string>>;
-  const models = await getModelCatalog();
-
   return (
     <html lang="en" suppressHydrationWarning className="font-sans">
       <body className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
         <ThemeProvider
           attribute="class"
-          defaultTheme={themePreference}
+          defaultTheme="system"
           enableSystem
           storageKey={THEME_COOKIE}
         >
           <Toaster />
 
-          <ModelCatalogProvider models={models}>
-            <ModelPreferencesProvider preferences={preferences}>
+          <ModelCatalogProvider>
+            <ModelPreferencesProvider>
               <SidebarProvider>
                 <AppSidebar />
 

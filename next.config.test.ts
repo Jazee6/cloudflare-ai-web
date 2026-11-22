@@ -1,14 +1,22 @@
 import { expect, test } from "bun:test";
-import { createNextConfig } from "./next.config";
+import { createNextConfig, resolveDeploymentTarget } from "./next.config";
 
 test("disables standalone output on Vercel", () => {
-  expect(createNextConfig(true).output).toBeUndefined();
+  expect(resolveDeploymentTarget({ VERCEL: "1" })).toBe("vercel");
+  expect(createNextConfig("vercel").output).toBeUndefined();
+});
+
+test("disables standalone output on Cloudflare Workers", () => {
+  expect(resolveDeploymentTarget({ OPENNEXT_CLOUDFLARE: "1" })).toBe("cloudflare");
+  expect(resolveDeploymentTarget({ CF_PAGES: "1" })).toBe("cloudflare");
+  expect(createNextConfig("cloudflare").output).toBeUndefined();
 });
 
 test("keeps standalone output for self-hosted deployments", () => {
-  expect(createNextConfig(false).output).toBe("standalone");
+  expect(resolveDeploymentTarget({})).toBe("standalone");
+  expect(createNextConfig("standalone").output).toBe("standalone");
 });
 
 test("disables generated agent rules files", () => {
-  expect(createNextConfig(false).agentRules).toBe(false);
+  expect(createNextConfig("standalone").agentRules).toBe(false);
 });

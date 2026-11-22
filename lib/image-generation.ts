@@ -68,6 +68,28 @@ export const getImageFailureStatus = (upstreamStatus: number) => {
   return upstreamStatus >= 400 && upstreamStatus < 500 ? 400 : 502;
 };
 
+export const mapImageFailureResponse = async (response: Response): Promise<Response> => {
+  const body = await response.text().catch(() => "");
+
+  if (response.status === 403 && /\b5035\b|workers paid|paid plan|requires a paid/i.test(body)) {
+    return new Response(
+      "This model requires a Cloudflare Workers Paid plan and is not available on Free accounts.",
+      { status: 403 },
+    );
+  }
+
+  if (response.status === 429) {
+    return new Response(
+      "Daily free quota or gateway rate limit reached. Please try again later or switch models.",
+      { status: 429 },
+    );
+  }
+
+  return new Response("Image generation failed. Please try again.", {
+    status: getImageFailureStatus(response.status),
+  });
+};
+
 const decodeImage = (image: string) => {
   const dataUrl = /^data:(image\/[^;,]+);base64,([\s\S]+)$/.exec(image);
   const base64 = dataUrl?.[2] ?? image;

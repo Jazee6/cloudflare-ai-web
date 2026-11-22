@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import {
   createImageRunRequest,
-  getImageFailureStatus,
+  mapImageFailureResponse,
   MAX_IMAGE_PROMPT_LENGTH,
   toImageResponse,
 } from "@/lib/image-generation";
@@ -57,9 +57,7 @@ export async function POST(request: Request) {
   }
   if (!response.ok) {
     console.error(`Image generation failed for ${model}: ${response.status}`);
-    return new Response("Image generation failed. Please try again.", {
-      status: getImageFailureStatus(response.status),
-    });
+    return mapImageFailureResponse(response);
   }
 
   return toImageResponse(response);

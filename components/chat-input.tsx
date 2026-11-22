@@ -5,9 +5,8 @@ import type { ChatStatus, FileUIPart } from "ai";
 import { ArrowUp, Earth, Paperclip, RefreshCw, Square, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { toast } from "@/components/ui/toast";
 import * as v from "valibot";
-import { useModelPreferences } from "@/components/model-catalog-provider";
+import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
 import {
   Attachment,
@@ -23,11 +22,12 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
-import type { Model } from "@/lib/models";
+import { toast } from "@/components/ui/toast";
+import { Toggle } from "@/components/ui/toggle";
 import { compressImage } from "@/lib/image-compression";
+import type { Model } from "@/lib/models";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
 import type { StoredModelKey } from "@/lib/utils";
-import { Toggle } from "@/components/ui/toggle";
 
 export interface onSendMessageProps {
   text: string;
@@ -60,7 +60,12 @@ const ChatInput = ({
   /** Extra controls shown next to the model selector. */
   addon?: ReactNode;
 }) => {
-  const { preferences, setPreference } = useModelPreferences();
+  const { preferences, ready: preferencesReady, setPreference } = useModelPreferences();
+  const {
+    loading: catalogLoading,
+    error: catalogError,
+    reload: reloadCatalog,
+  } = useModelCatalogState();
   const selectedModelKey = modelKey ?? "CF_AI_MODEL";
   const form = useForm<FormData>({
     resolver: valibotResolver(formSchema),
@@ -74,16 +79,30 @@ const ChatInput = ({
   const [files, setFiles] = useState<FileUIPart[]>([]);
   const searchEnabled = preferences.CF_AI_SEARCH_ENABLED === "true";
 
-  // Stores the fallback when the remembered model has left the catalog.
+  // Stores the fallback only after both preferences and catalog are ready,
+  // avoiding overwriting stored cookies during initial client catalog hydration.
   useEffect(() => {
-    setPreference(selectedModelKey, selectedModel?.id);
-  }, [selectedModel?.id, selectedModelKey, setPreference]);
+    if (!preferencesReady || catalogLoading || models.length === 0 || !selectedModel) {
+      return;
+    }
+    if (preferences[selectedModelKey] !== selectedModel.id) {
+      setPreference(selectedModelKey, selectedModel.id);
+    }
+  }, [
+    preferencesReady,
+    catalogLoading,
+    models.length,
+    preferences,
+    selectedModel,
+    selectedModelKey,
+    setPreference,
+  ]);
 
   useEffect(() => {
-    if (!selectedModel?.input?.includes("image")) {
+    if (!catalogLoading && selectedModel && !selectedModel.input?.includes("image")) {
       setFiles([]);
     }
-  }, [selectedModel]);
+  }, [catalogLoading, selectedModel]);
 
   function onSubmit(values: FormData) {
     if (models.length === 0) {
@@ -224,6 +243,9 @@ const ChatInput = ({
                 <ModelSelect
                   selectedModel={selectedModel}
                   models={models}
+                  loading={catalogLoading}
+                  error={catalogError}
+                  onReload={reloadCatalog}
                   onSelectModel={(model) => setPreference(selectedModelKey, model.id)}
                 />
 

@@ -7,8 +7,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow the auth endpoint through
-  if (request.nextUrl.pathname === "/api/auth") {
+  const { pathname } = request.nextUrl;
+  // Allow the auth endpoint and anonymous read-only catalog discovery through.
+  if (pathname === "/api/auth" || (pathname === "/api/models" && request.method === "GET")) {
     return NextResponse.next();
   }
 

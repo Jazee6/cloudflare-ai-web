@@ -1,6 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
+import { useModelCatalogState } from "@/components/model-catalog-provider";
 import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
 import {
@@ -39,7 +40,14 @@ export const useConversation = ({
   isNew: boolean;
   models: Model[];
 }) => {
-  const [startsWithPendingMessage] = useState(isNew);
+  const { loading: catalogLoading } = useModelCatalogState();
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [hasPendingUserMessage, setHasPendingUserMessage] = useState(false);
+  const startedPendingRef = useRef(false);
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
+  // Marks the next transport request as a Retry so AI Gateway skips cached responses.
+  const retryRequestRef = useRef(false);
   // The stored response a Retry will replace once the new response succeeds.
   const retriedRef = useRef<UIMessage | null>(null);
   // A failed response that is shown but was never saved, so retrying it replaces nothing.
@@ -50,7 +58,10 @@ export const useConversation = ({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       prepareSendMessagesRequest: async ({ messages }) => {
-        const selectedModel = getStoredModel(models, "CF_AI_MODEL");
+        const isRetry = retryRequestRef.current;
+        retryRequestRef.current = false;
+
+        const selectedModel = getStoredModel(modelsRef.current, "CF_AI_MODEL");
         if (!selectedModel) {
           throw new Error("No chat models are currently available");
         }
@@ -66,6 +77,8 @@ export const useConversation = ({
             model: selectedModel.id,
             provider: selectedModel.provider,
             search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
+            skipCache: isRetry,
+            retry: isRetry,
           },
         };
       },
@@ -112,6 +125,7 @@ export const useConversation = ({
     const latest = messages.at(-1);
     retriedRef.current =
       latest?.role === "assistant" && latest.id !== unsavedIdRef.current ? latest : null;
+    retryRequestRef.current = true;
     return regenerate();
   };
 
@@ -119,16 +133,18 @@ export const useConversation = ({
 
   useEffect(() => {
     let cancelled = false;
+    setHistoryLoaded(false);
+    setHasPendingUserMessage(false);
+    startedPendingRef.current = false;
+
     loadConversationHistory(sessionId)
       .then((history) => {
         if (cancelled) {
           return;
         }
         setMessages(history);
-        if (startsWithPendingMessage && history.at(-1)?.role === "user") {
-          window.history.replaceState(null, "", location.pathname);
-          void regenerate();
-        }
+        setHasPendingUserMessage(isNew && history.at(-1)?.role === "user");
+        setHistoryLoaded(true);
       })
       .catch(() => {
         if (!cancelled) {
@@ -139,7 +155,23 @@ export const useConversation = ({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, startsWithPendingMessage, setMessages, regenerate]);
+  }, [sessionId, isNew, setMessages]);
+
+  useEffect(() => {
+    if (
+      !historyLoaded ||
+      !hasPendingUserMessage ||
+      startedPendingRef.current ||
+      catalogLoading ||
+      models.length === 0
+    ) {
+      return;
+    }
+
+    startedPendingRef.current = true;
+    window.history.replaceState(null, "", location.pathname);
+    void regenerate();
+  }, [historyLoaded, hasPendingUserMessage, catalogLoading, models.length, regenerate]);
 
   const send = async (text: string, files?: FileUIPart[]) => {
     resetAuthRetry();

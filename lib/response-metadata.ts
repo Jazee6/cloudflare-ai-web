@@ -8,10 +8,18 @@ const responseMetadataSchema = v.object({
   usage: v.optional(v.object({ inputTokens: v.number(), outputTokens: v.number() })),
   /** The context window of the model that produced the response. */
   contextWindow: v.optional(v.number()),
+  /** Cloudflare AI Gateway response metadata (cache status, DLP action). */
+  gateway: v.optional(
+    v.object({
+      cacheStatus: v.optional(v.picklist(["HIT", "MISS"])),
+      dlpAction: v.optional(v.string()),
+    }),
+  ),
 });
 
 /** Metadata the chat route attaches to each response; stored with the message. */
 export type ResponseMetadata = v.InferOutput<typeof responseMetadataSchema>;
+export type GatewayMetadata = NonNullable<ResponseMetadata["gateway"]>;
 
 /** Reads response metadata, ignoring anything older or malformed in stored history. */
 export const getResponseMetadata = (message: UIMessage): ResponseMetadata | undefined => {

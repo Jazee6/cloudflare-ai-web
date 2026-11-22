@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   createImageRunRequest,
   getImageFailureStatus,
+  mapImageFailureResponse,
   toImageResponse,
 } from "@/lib/image-generation";
 
@@ -82,4 +83,20 @@ test("toImageResponse accepts the unwrapped AI Gateway payload", async () => {
   const response = await toImageResponse(Response.json({ image: "AQID" }));
   expect(response.status).toBe(200);
   expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+});
+
+test("mapImageFailureResponse maps Workers Paid 403/5035 and 429 rate limits", async () => {
+  const paidRes = await mapImageFailureResponse(
+    new Response(JSON.stringify({ errors: [{ code: 5035, message: "Workers Paid required" }] }), {
+      status: 403,
+    }),
+  );
+  expect(paidRes.status).toBe(403);
+  expect(await paidRes.text()).toContain("Workers Paid");
+
+  const rateRes = await mapImageFailureResponse(new Response("rate limited", { status: 429 }));
+  expect(rateRes.status).toBe(429);
+
+  const authRes = await mapImageFailureResponse(new Response("invalid token", { status: 403 }));
+  expect(authRes.status).toBe(502);
 });

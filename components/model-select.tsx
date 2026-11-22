@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ModelLogo } from "@/components/model-logo";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Model } from "@/lib/models";
 import { getModelGroup } from "@/lib/models";
 
@@ -35,13 +36,32 @@ const ModelSelect = ({
   models,
   selectedModel,
   onSelectModel,
+  loading = false,
+  error = null,
+  onReload,
 }: {
   models: Model[];
   selectedModel?: Model;
   onSelectModel: (model: Model) => void;
+  loading?: boolean;
+  error?: string | null;
+  onReload?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
   const groupedModels = useMemo(() => getGroupedModels(models), [models]);
+
+  if (loading && models.length === 0) {
+    return <Skeleton className="h-8 w-36 rounded-md" />;
+  }
+
+  if (!loading && error && models.length === 0 && onReload) {
+    return (
+      <Button type="button" variant="ghost" size="sm" onClick={onReload}>
+        <RefreshCw />
+        Retry
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -83,7 +103,7 @@ const ModelSelect = ({
                 {groupModels.map((model) => (
                   <CommandItem
                     key={`${model.provider}:${model.id}`}
-                    value={`${name} ${model.name} ${model.id}`}
+                    value={`${name} ${model.brand} ${model.name} ${model.id}`}
                     data-checked={selectedModel?.id === model.id}
                     onSelect={() => {
                       onSelectModel(model);
@@ -94,15 +114,19 @@ const ModelSelect = ({
                       <ModelLogo model={model} />
                     </span>
                     <span className="truncate">{model.name}</span>
-                    {model.tag?.map((tag) => (
-                      <Badge key={tag} variant="outline" className="ml-auto">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {model.source === "external" && (
-                      <Badge variant="secondary" className="ml-auto">
-                        Google API
-                      </Badge>
+                    {(model.tag?.length || model.source === "external") && (
+                      <span className="ml-auto flex items-center gap-1">
+                        {model.tag?.map((tag) => (
+                          <Badge key={tag} variant="outline">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {model.isGatewayRoute ? (
+                          <Badge variant="secondary">Route</Badge>
+                        ) : model.source === "external" ? (
+                          <Badge variant="secondary">{model.brand}</Badge>
+                        ) : null}
+                      </span>
                     )}
                   </CommandItem>
                 ))}

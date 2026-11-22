@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Decouple Model Catalog loading from RootLayout SSR

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 import Markdown from "@/components/markdown";
 import ToolCall from "@/components/tool-call";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
 import { Spinner } from "@/components/ui/spinner";
@@ -184,6 +185,9 @@ const AssistantChatItem = ({
     return null;
   };
 
+  const gatewayCacheHit = metadata?.gateway?.cacheStatus === "HIT";
+  const gatewayDlpAction = metadata?.gateway?.dlpAction;
+
   return (
     <Message>
       <MessageContent>
@@ -197,13 +201,27 @@ const AssistantChatItem = ({
           ),
         )}
 
-        {!streaming && (text || onRetry) && (
+        {!streaming && (text || onRetry || gatewayCacheHit || gatewayDlpAction) && (
           <MessageFooter className="px-0">
             {text && <CopyAction text={text} />}
             {onRetry && (
               <ActionButton label="Retry" onClick={onRetry}>
                 <RefreshCcwIcon />
               </ActionButton>
+            )}
+            {gatewayCacheHit && (
+              <Tooltip>
+                <TooltipTrigger render={<Badge variant="secondary">Cached</Badge>} />
+                <TooltipContent>
+                  Served from Cloudflare AI Gateway cache. Retry to bypass cache.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {gatewayDlpAction && (
+              <Tooltip>
+                <TooltipTrigger render={<Badge variant="outline">DLP: {gatewayDlpAction}</Badge>} />
+                <TooltipContent>Cloudflare AI Gateway DLP policy applied.</TooltipContent>
+              </Tooltip>
             )}
           </MessageFooter>
         )}

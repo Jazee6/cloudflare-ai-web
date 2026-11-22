@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Use declarative AI Gateway External Models with BYOK-only credentials
