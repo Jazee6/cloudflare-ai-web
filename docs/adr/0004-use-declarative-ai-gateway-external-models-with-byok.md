@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted (revised by ADR-0007)
 ---
 
 # Use declarative AI Gateway External Models with BYOK-only credentials

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted (implementation revised by ADR-0006)
 ---
 
 # Decouple Model Catalog loading from RootLayout SSR
