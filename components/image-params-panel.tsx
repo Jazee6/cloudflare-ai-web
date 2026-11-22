@@ -493,7 +493,7 @@ export const ImageParamsPanel = ({
       <TooltipTrigger
         render={
           <InputGroupButton
-            size="xs"
+            size="sm"
             variant={hasCustomValues ? "secondary" : "ghost"}
             aria-label="Image parameters"
             onClick={() => setOpen(true)}

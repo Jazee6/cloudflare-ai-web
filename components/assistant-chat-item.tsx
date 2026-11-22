@@ -195,25 +195,15 @@ const AssistantChatItem = ({
 
     if (part.type === "data-images") {
       return (part.data as ImageUrlsData).urls.map((url, imageIndex) => (
-        <div key={`${key}-${imageIndex}`} className="flex flex-col gap-1.5">
-          <ZoomableImage>
-            <Image
-              src={url}
-              alt={`image-${imageIndex}`}
-              width={512}
-              height={512}
-              className="rounded-md transition-all hover:brightness-75"
-            />
-          </ZoomableImage>
-          {onUseAsReference && (
-            <div className="flex items-center gap-1">
-              <Button type="button" variant="ghost" size="xs" onClick={() => onUseAsReference(url)}>
-                <ImagePlusIcon />
-                Use as reference
-              </Button>
-            </div>
-          )}
-        </div>
+        <ZoomableImage key={`${key}-${imageIndex}`}>
+          <Image
+            src={url}
+            alt={`image-${imageIndex}`}
+            width={512}
+            height={512}
+            className="rounded-md transition-all hover:brightness-75"
+          />
+        </ZoomableImage>
       ));
     }
 
@@ -224,11 +214,17 @@ const AssistantChatItem = ({
   const gatewayDlpAction = metadata?.gateway?.dlpAction;
   const citations = metadata?.citations ?? [];
   const imageSeed = imageMeta?.params?.seed;
+  const referenceUrls = onUseAsReference
+    ? message.parts.flatMap((part) =>
+        part.type === "data-images" ? (part.data as ImageUrlsData).urls : [],
+      )
+    : [];
   const showFooter =
     !streaming &&
     Boolean(
       text ||
       onRetry ||
+      referenceUrls.length > 0 ||
       gatewayCacheHit ||
       gatewayDlpAction ||
       imageMeta?.modelName ||
@@ -320,6 +316,19 @@ const AssistantChatItem = ({
                 <RefreshCcwIcon />
               </ActionButton>
             )}
+            {referenceUrls.map((url, index) => (
+              <ActionButton
+                key={url}
+                label={
+                  referenceUrls.length > 1
+                    ? `Use image ${index + 1} as reference`
+                    : "Use as reference"
+                }
+                onClick={() => onUseAsReference?.(url)}
+              >
+                <ImagePlusIcon />
+              </ActionButton>
+            ))}
             {imageMeta?.modelName && <Badge variant="secondary">{imageMeta.modelName}</Badge>}
             {imageSeed !== undefined && (
               <Badge variant="outline" className="tabular-nums">

@@ -1,18 +1,13 @@
 "use client";
 
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import { ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ChatList from "@/components/chat-list";
+import { ImageAttachmentItem } from "@/components/image-attachment-item";
 import { ImageParamsPanel } from "@/components/image-params-panel";
 import { useModelCatalog, useModelPreferences } from "@/components/model-catalog-provider";
-import {
-  Attachment,
-  AttachmentAction,
-  AttachmentActions,
-  AttachmentMedia,
-} from "@/components/ui/attachment";
 import { InputGroupButton } from "@/components/ui/input-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useImageGeneration } from "@/hooks/use-image-generation";
@@ -61,20 +56,12 @@ const Page = () => {
     referenceImages.length > 0 ? (
       <>
         {referenceImages.map((ref) => (
-          <Attachment key={ref.id} orientation="vertical" className="w-20">
-            <AttachmentMedia variant="image">
-              <img src={ref.url} alt={ref.filename} />
-            </AttachmentMedia>
-            <AttachmentActions>
-              <AttachmentAction
-                type="button"
-                aria-label={`Remove ${ref.filename}`}
-                onClick={() => removeReferenceImage(ref.id)}
-              >
-                <X />
-              </AttachmentAction>
-            </AttachmentActions>
-          </Attachment>
+          <ImageAttachmentItem
+            key={ref.id}
+            src={ref.url}
+            alt={ref.filename}
+            onRemove={() => removeReferenceImage(ref.id)}
+          />
         ))}
       </>
     ) : undefined;
@@ -111,7 +98,7 @@ const Page = () => {
                     <TooltipTrigger
                       render={
                         <InputGroupButton
-                          size="xs"
+                          size="sm"
                           variant={referenceImages.length > 0 ? "secondary" : "ghost"}
                           aria-label="Attach reference images"
                           onClick={onPickReferenceImages}

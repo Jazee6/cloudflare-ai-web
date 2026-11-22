@@ -19,7 +19,7 @@ const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
     <Message align="end">
       <MessageContent>
         {attachments.length > 0 && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2 p-px">
             {attachments.map((part, index) => (
               <ContextAttachmentItem key={`${part.data.id}-${index}`} attachment={part.data} />
             ))}

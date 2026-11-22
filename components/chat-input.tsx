@@ -14,19 +14,13 @@ import {
   Paperclip,
   RefreshCw,
   Square,
-  X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import * as v from "valibot";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
+import { ImageAttachmentItem } from "@/components/image-attachment-item";
 import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
-import {
-  Attachment,
-  AttachmentAction,
-  AttachmentActions,
-  AttachmentMedia,
-} from "@/components/ui/attachment";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -464,26 +458,14 @@ const ChatInput = ({
                   {attachmentsPreview}
 
                   {files.map((file, index) => (
-                    <Attachment
+                    <ImageAttachmentItem
                       key={`${file.filename}-${file.url}`}
-                      orientation="vertical"
-                      className="w-20"
-                    >
-                      <AttachmentMedia variant="image">
-                        <img src={file.url} alt={file.filename} />
-                      </AttachmentMedia>
-                      <AttachmentActions>
-                        <AttachmentAction
-                          type="button"
-                          aria-label={`Remove ${file.filename ?? "image"}`}
-                          onClick={() => {
-                            setFiles((prevState) => prevState.filter((_, i) => i !== index));
-                          }}
-                        >
-                          <X />
-                        </AttachmentAction>
-                      </AttachmentActions>
-                    </Attachment>
+                      src={file.url}
+                      alt={file.filename ?? "image"}
+                      onRemove={() => {
+                        setFiles((prevState) => prevState.filter((_, i) => i !== index));
+                      }}
+                    />
                   ))}
 
                   {attachments.map((attachment) => (
@@ -533,6 +515,7 @@ const ChatInput = ({
 
                 {selectedModel?.input?.includes("search") && (
                   <Toggle
+                    variant="primary"
                     aria-label="Toggle web search"
                     pressed={searchEnabled}
                     onPressedChange={(pressed) =>
@@ -547,7 +530,7 @@ const ChatInput = ({
                 {kbFeatureEnabled &&
                   (kbNeedsAuth ? (
                     <InputGroupButton
-                      size="xs"
+                      size="sm"
                       aria-label="Knowledge Base"
                       onClick={async () => {
                         const ok = await reloadKnowledgeBases();
@@ -566,7 +549,7 @@ const ChatInput = ({
                       <DropdownMenuTrigger
                         render={
                           <InputGroupButton
-                            size="xs"
+                            size="sm"
                             variant={selectedKb ? "secondary" : "ghost"}
                             aria-label="Select Knowledge Base"
                           />
@@ -620,7 +603,7 @@ const ChatInput = ({
                       >
                         {uploadingDocument ? <Spinner /> : <Paperclip />}
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" side="top">
+                      <DropdownMenuContent align="start" side="top" className="w-auto">
                         {supportsImage && (
                           <DropdownMenuItem onClick={onAddImages}>
                             <ImagePlus />
