@@ -616,10 +616,16 @@ export const SettingsDialog = () => {
       <Field>
         <FieldLabel>Conversation Backup</FieldLabel>
         <div className="flex flex-col gap-3 rounded-lg border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm">Include attached images in export</span>
-            <Switch checked={includeImages} onCheckedChange={setIncludeImages} />
-          </div>
+          <Field orientation="horizontal" className="justify-between">
+            <FieldLabel htmlFor="settings-export-images">
+              Include attached images in export
+            </FieldLabel>
+            <Switch
+              id="settings-export-images"
+              checked={includeImages}
+              onCheckedChange={setIncludeImages}
+            />
+          </Field>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"

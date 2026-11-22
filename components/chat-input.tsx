@@ -396,7 +396,7 @@ const ChatInput = ({
 
   const onPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboardItems = event.clipboardData.items;
-    const newFiles: FileUIPart[] = [];
+    const imageFiles: File[] = [];
     const customImageFiles: File[] = [];
     const docFiles: File[] = [];
 
@@ -413,10 +413,7 @@ const ChatInput = ({
       if (file.type.startsWith("image/")) {
         if (selectedModel?.input?.includes("image")) {
           event.preventDefault();
-          const filePart = await toFilePart(file);
-          if (filePart) {
-            newFiles.push(filePart);
-          }
+          imageFiles.push(file);
         } else if (onPasteFiles) {
           event.preventDefault();
           customImageFiles.push(file);
@@ -427,8 +424,12 @@ const ChatInput = ({
       }
     }
 
-    if (newFiles.length > 0) {
-      appendFiles(newFiles);
+    if (imageFiles.length > 0) {
+      const fileParts = await Promise.all(imageFiles.map(toFilePart));
+      const newFiles = fileParts.filter((file): file is FileUIPart => file !== null);
+      if (newFiles.length > 0) {
+        appendFiles(newFiles);
+      }
     }
     if (customImageFiles.length > 0 && onPasteFiles) {
       onPasteFiles(customImageFiles);

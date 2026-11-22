@@ -55,7 +55,8 @@ export const useSpeechRecognition = () => {
         return;
       }
 
-      recognitionRef.current?.abort();
+      clearHandlersAndAbort(recognitionRef.current);
+      recognitionRef.current = null;
 
       const recognition = new Recognition();
       recognition.continuous = true;
