@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ViewTransition } from "react";
 import * as v from "valibot";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
@@ -29,20 +28,18 @@ function Page() {
     <ChatLayout
       authDialog={authDialog}
       bottomBar={
-        <ViewTransition name="chat-input">
-          <ChatInput
-            models={models}
-            className="mx-auto w-full max-w-3xl"
-            onSendMessage={({ text, files, attachments }: onSendMessageProps) =>
-              send(text, files, attachments)
-            }
-            onUnauthorized={handleUnauthorized}
-            status={status}
-            onStop={stop}
-            onRetry={retry}
-            addon={<ContextIndicator messages={messages} />}
-          />
-        </ViewTransition>
+        <ChatInput
+          models={models}
+          className="mx-auto w-full max-w-3xl [view-transition-name:chat-input]"
+          onSendMessage={({ text, files, attachments }: onSendMessageProps) =>
+            send(text, files, attachments)
+          }
+          onUnauthorized={handleUnauthorized}
+          status={status}
+          onStop={stop}
+          onRetry={retry}
+          addon={<ContextIndicator messages={messages} />}
+        />
       }
     >
       <ChatList

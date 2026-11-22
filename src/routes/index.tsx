@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ViewTransition } from "react";
 import AuthDialog from "@/components/auth-dialog";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
@@ -39,14 +38,12 @@ function Home() {
             How can I assist you today?
           </TextEffect>
         </div>
-        <ViewTransition name="chat-input">
-          <ChatInput
-            models={models}
-            className="mx-auto w-full max-w-3xl"
-            onSendMessage={onSendMessage}
-            onUnauthorized={handleUnauthorized}
-          />
-        </ViewTransition>
+        <ChatInput
+          models={models}
+          className="mx-auto w-full max-w-3xl [view-transition-name:chat-input]"
+          onSendMessage={onSendMessage}
+          onUnauthorized={handleUnauthorized}
+        />
       </div>
 
       <Footer classname="mt-auto mb-1" />

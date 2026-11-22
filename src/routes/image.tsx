@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ImagePlus } from "lucide-react";
-import { ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ChatList from "@/components/chat-list";
@@ -70,55 +69,53 @@ function Page() {
     <ChatLayout
       authDialog={authDialog}
       bottomBar={
-        <ViewTransition name="chat-input">
-          <ChatInput
-            models={models}
-            className="mx-auto w-full max-w-3xl"
-            onSendMessage={({ text }: onSendMessageProps) => send(text)}
-            status={status}
-            modelKey="imageModelId"
-            enableContextAttachments={false}
-            onRetry={retry}
-            attachmentsPreview={referencePreviews}
-            onPasteFiles={
-              supportsReferenceImages ? (files) => void addReferenceImages(files) : undefined
-            }
-            addon={
-              <>
-                {selectedModel && (
-                  <ImageParamsPanel
-                    modelId={selectedModel.id}
-                    profile={profile}
-                    params={params}
-                    onChangeParams={setParams}
-                  />
-                )}
-                {supportsReferenceImages && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <InputGroupButton
-                          size="sm"
-                          variant={referenceImages.length > 0 ? "secondary" : "ghost"}
-                          aria-label="Attach reference images"
-                          onClick={onPickReferenceImages}
-                        />
-                      }
-                    >
-                      <ImagePlus />
-                      <span className="hidden sm:inline">
-                        Ref{referenceImages.length > 0 ? ` (${referenceImages.length})` : ""}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Attach up to {profile.maxReferenceImages} reference images
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </>
-            }
-          />
-        </ViewTransition>
+        <ChatInput
+          models={models}
+          className="mx-auto w-full max-w-3xl [view-transition-name:chat-input]"
+          onSendMessage={({ text }: onSendMessageProps) => send(text)}
+          status={status}
+          modelKey="imageModelId"
+          enableContextAttachments={false}
+          onRetry={retry}
+          attachmentsPreview={referencePreviews}
+          onPasteFiles={
+            supportsReferenceImages ? (files) => void addReferenceImages(files) : undefined
+          }
+          addon={
+            <>
+              {selectedModel && (
+                <ImageParamsPanel
+                  modelId={selectedModel.id}
+                  profile={profile}
+                  params={params}
+                  onChangeParams={setParams}
+                />
+              )}
+              {supportsReferenceImages && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <InputGroupButton
+                        size="sm"
+                        variant={referenceImages.length > 0 ? "secondary" : "ghost"}
+                        aria-label="Attach reference images"
+                        onClick={onPickReferenceImages}
+                      />
+                    }
+                  >
+                    <ImagePlus />
+                    <span className="hidden sm:inline">
+                      Ref{referenceImages.length > 0 ? ` (${referenceImages.length})` : ""}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Attach up to {profile.maxReferenceImages} reference images
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </>
+          }
+        />
       }
     >
       <ChatList
