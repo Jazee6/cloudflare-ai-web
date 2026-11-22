@@ -31,6 +31,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  adaptImageParamsForModel,
   generateRandomSeed,
   hasAdjustableImageParams,
   IMAGE_ASPECT_RATIOS,
@@ -81,15 +82,22 @@ const parseOptionalInt = (raw: string): number | undefined => {
   return Number.isFinite(num) ? num : Number.NaN;
 };
 
-const getInitialValues = (params: ImageGenerationParams, profile: ImageModelProfile) => ({
-  width: String(params.width ?? profile.dimensions?.defaultWidth ?? 1024),
-  height: String(params.height ?? profile.dimensions?.defaultHeight ?? 1024),
-  steps: params.steps ?? profile.steps?.default ?? 20,
-  guidance: params.guidance ?? profile.guidance?.default ?? 7.5,
-  seed: params.seed !== undefined ? String(params.seed) : "",
-  seedLocked: Boolean(params.seedLocked),
-  negativePrompt: params.negativePrompt ?? "",
-});
+const getInitialValues = (
+  modelId: string,
+  params: ImageGenerationParams,
+  profile: ImageModelProfile,
+) => {
+  const adapted = adaptImageParamsForModel(modelId, params);
+  return {
+    width: String(adapted.width ?? profile.dimensions?.defaultWidth ?? 1024),
+    height: String(adapted.height ?? profile.dimensions?.defaultHeight ?? 1024),
+    steps: adapted.steps ?? profile.steps?.default ?? 20,
+    guidance: adapted.guidance ?? profile.guidance?.default ?? 7.5,
+    seed: adapted.seed !== undefined ? String(adapted.seed) : "",
+    seedLocked: Boolean(params.seedLocked && adapted.seed !== undefined),
+    negativePrompt: adapted.negativePrompt ?? "",
+  };
+};
 
 export const ImageParamsPanel = ({
   modelId,
@@ -131,6 +139,32 @@ export const ImageParamsPanel = ({
       const check = sanitizeImageParams(modelId, { width: w, height: h });
       return check.ok;
     }, "Dimensions must match the model range and step size."),
+    v.check(
+      (values) => {
+        if (!profile.steps) {
+          return true;
+        }
+        return (
+          Number.isInteger(values.steps) &&
+          values.steps >= profile.steps.min &&
+          values.steps <= profile.steps.max
+        );
+      },
+      `Steps must be an integer between ${profile.steps?.min ?? 1} and ${profile.steps?.max ?? 50}.`,
+    ),
+    v.check(
+      (values) => {
+        if (!profile.guidance) {
+          return true;
+        }
+        return (
+          Number.isFinite(values.guidance) &&
+          values.guidance >= profile.guidance.min &&
+          values.guidance <= profile.guidance.max
+        );
+      },
+      `Guidance must be between ${profile.guidance?.min ?? 0} and ${profile.guidance?.max ?? 20}.`,
+    ),
     v.check((values) => {
       if (!profile.supportsSeed || !values.seed.trim()) {
         return true;
@@ -146,8 +180,16 @@ export const ImageParamsPanel = ({
   );
 
   const form = useForm({
-    defaultValues: getInitialValues(params, profile),
-    validators: { onSubmit: formSchema },
+    defaultValues: getInitialValues(modelId, params, profile),
+    validators: {
+      onSubmit: ({ value }) => {
+        const parsed = v.safeParse(formSchema, value);
+        if (parsed.success) {
+          return undefined;
+        }
+        return parsed.issues[0]?.message ?? "Invalid image generation parameters.";
+      },
+    },
     onSubmit: async ({ value }) => {
       const next: ImageGenerationParams = {};
 
@@ -189,25 +231,28 @@ export const ImageParamsPanel = ({
 
   useEffect(() => {
     if (open) {
-      form.reset(getInitialValues(params, profile));
+      form.reset(getInitialValues(modelId, params, profile));
     }
-  }, [open, params, profile, form]);
+  }, [open, modelId, params, profile, form]);
 
   if (!adjustable) {
     return null;
   }
 
+  const adaptedParams = adaptImageParamsForModel(modelId, params);
   const hasCustomValues =
-    Boolean(params.seedLocked && params.seed !== undefined) ||
-    Boolean(params.negativePrompt) ||
-    params.steps !== undefined ||
-    params.guidance !== undefined ||
+    Boolean(params.seedLocked && adaptedParams.seed !== undefined) ||
+    Boolean(adaptedParams.negativePrompt) ||
+    adaptedParams.steps !== undefined ||
+    adaptedParams.guidance !== undefined ||
     (profile.dimensions &&
-      ((params.width !== undefined && params.width !== profile.dimensions.defaultWidth) ||
-        (params.height !== undefined && params.height !== profile.dimensions.defaultHeight)));
+      ((adaptedParams.width !== undefined &&
+        adaptedParams.width !== profile.dimensions.defaultWidth) ||
+        (adaptedParams.height !== undefined &&
+          adaptedParams.height !== profile.dimensions.defaultHeight)));
 
   const handleReset = () => {
-    form.reset(getInitialValues({}, profile));
+    form.reset(getInitialValues(modelId, {}, profile));
   };
 
   const formBody = (

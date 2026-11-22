@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as v from "valibot";
+import { AUTH_SESSION_UPDATED_EVENT } from "@/components/auth-dialog";
 import type { KnowledgeBaseInstance } from "@/lib/ai-search";
 
 const instancesResponseSchema = v.object({
@@ -75,6 +76,23 @@ export const useKnowledgeBases = (enabled: boolean) => {
       controller.abort();
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!enabled || !needsAuth || typeof window === "undefined") {
+      return;
+    }
+
+    const controller = new AbortController();
+    const handleAuthenticated = () => {
+      void load(controller.signal);
+    };
+
+    window.addEventListener(AUTH_SESSION_UPDATED_EVENT, handleAuthenticated);
+    return () => {
+      controller.abort();
+      window.removeEventListener(AUTH_SESSION_UPDATED_EVENT, handleAuthenticated);
+    };
+  }, [enabled, needsAuth, load]);
 
   const reload = useCallback(() => load(), [load]);
 

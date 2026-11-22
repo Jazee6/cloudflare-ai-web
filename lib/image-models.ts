@@ -78,7 +78,7 @@ const FLUX_1_SCHNELL_PROFILE: ImageModelProfile = {
   transport: "json",
   maxReferenceImages: 0,
   steps: { field: "steps", min: 1, max: 8, default: 4 },
-  supportsSeed: true,
+  supportsSeed: false,
   supportsNegativePrompt: false,
 };
 
@@ -99,7 +99,7 @@ const PHOENIX_PROFILE: ImageModelProfile = {
   maxReferenceImages: 0,
   dimensions: { min: 512, max: 1536, step: 16, defaultWidth: 1024, defaultHeight: 1024 },
   steps: { field: "num_steps", min: 1, max: 50, default: 25 },
-  guidance: { min: 1, max: 10, step: 0.5, default: 2 },
+  guidance: { min: 2, max: 10, step: 0.5, default: 2 },
   supportsSeed: true,
   supportsNegativePrompt: true,
 };

@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+export const AUTH_SESSION_UPDATED_EVENT = "cf-ai:authenticated";
+
 const formSchema = v.object({
   password: v.pipe(v.string(), v.minLength(1, "Password is required.")),
 });
@@ -58,6 +60,9 @@ const AuthDialog = ({
         });
         if (res.ok) {
           form.reset({ password: "" });
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+          }
           onAuthenticated();
         } else if (res.status === 401) {
           setError("Incorrect password.");

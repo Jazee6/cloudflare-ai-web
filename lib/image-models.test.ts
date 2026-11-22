@@ -109,7 +109,15 @@ test("adaptImageParamsForModel retains compatible fields when switching models",
       seed: 42,
       negativePrompt: "blurry",
     }),
-  ).toEqual({ seed: 42 });
+  ).toEqual({});
+
+  expect(
+    adaptImageParamsForModel("@cf/black-forest-labs/flux-1-schnell", {
+      width: 1024,
+      steps: 6,
+      seed: 42,
+    }),
+  ).toEqual({ steps: 6 });
 
   expect(
     adaptImageParamsForModel("@cf/stabilityai/stable-diffusion-xl-base-1.0", {
@@ -126,5 +134,18 @@ test("adaptImageParamsForModel retains compatible fields when switching models",
     guidance: 7.5,
     seed: 42,
     negativePrompt: "blurry",
+  });
+
+  expect(
+    adaptImageParamsForModel("@cf/leonardo/phoenix-1.0", {
+      width: 2048,
+      height: 1024,
+      steps: 60,
+      guidance: 1.5,
+      seed: 42,
+    }),
+  ).toEqual({
+    height: 1024,
+    seed: 42,
   });
 });

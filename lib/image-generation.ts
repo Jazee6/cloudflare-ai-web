@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { extractGatewayMetadata } from "@/lib/gateway-errors";
 import { getImageModelProfile, type NormalizedImageParams } from "@/lib/image-models";
 import type { CloudflareGatewayCredentials } from "@/lib/providers";
 
@@ -121,6 +122,25 @@ export const getImageFailureStatus = (upstreamStatus: number) => {
 
 export const mapImageFailureResponse = async (response: Response): Promise<Response> => {
   const body = await response.text().catch(() => "");
+  const gatewayMeta = extractGatewayMetadata(response.headers);
+
+  if (/\b(2001|2009)\b|gateway does not exist|authentication active/i.test(body)) {
+    return new Response(
+      "AI Gateway configuration is invalid or the gateway does not exist. Please check server environment variables.",
+      { status: 502 },
+    );
+  }
+
+  if (
+    (response.status === 400 || response.status === 403 || response.status === 422) &&
+    ((gatewayMeta?.dlpAction && !/^(log|redact|mask|allow)$/i.test(gatewayMeta.dlpAction)) ||
+      /\b(2016|2017)\b|guardrail|cf-aig-dlp|\bdlp\b/i.test(body))
+  ) {
+    return new Response(
+      "The request or response was blocked by Cloudflare AI Gateway security/DLP policy.",
+      { status: 422 },
+    );
+  }
 
   if (response.status === 403 && /\b5035\b|workers paid|paid plan|requires a paid/i.test(body)) {
     return new Response(

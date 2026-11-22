@@ -136,3 +136,37 @@ test("mapImageFailureResponse maps Workers Paid 403/5035 and 429 rate limits", a
   const authRes = await mapImageFailureResponse(new Response("invalid token", { status: 403 }));
   expect(authRes.status).toBe(502);
 });
+
+test("mapImageFailureResponse maps AI Gateway configuration and DLP/Guardrails blocks", async () => {
+  const gatewayNotExist = await mapImageFailureResponse(
+    new Response(JSON.stringify({ success: false, error: [{ code: 2001 }] }), { status: 400 }),
+  );
+  expect(gatewayNotExist.status).toBe(502);
+  expect(await gatewayNotExist.text()).toContain("AI Gateway configuration");
+
+  const gatewayAuth = await mapImageFailureResponse(
+    new Response(
+      JSON.stringify({
+        success: false,
+        error: [{ code: 2009, message: "Your AI Gateway has authentication active" }],
+      }),
+      { status: 401 },
+    ),
+  );
+  expect(gatewayAuth.status).toBe(502);
+  expect(await gatewayAuth.text()).toContain("AI Gateway configuration");
+
+  const dlpHeaderBlock = await mapImageFailureResponse(
+    new Response("blocked", { status: 400, headers: { "cf-aig-dlp": "block" } }),
+  );
+  expect(dlpHeaderBlock.status).toBe(422);
+  expect(await dlpHeaderBlock.text()).toContain("security/DLP");
+
+  const guardrailBodyBlock = await mapImageFailureResponse(
+    new Response(JSON.stringify({ error: [{ code: 2016, message: "Guardrail triggered" }] }), {
+      status: 403,
+    }),
+  );
+  expect(guardrailBodyBlock.status).toBe(422);
+  expect(await guardrailBodyBlock.text()).toContain("security/DLP");
+});

@@ -125,7 +125,7 @@ test("other image models are requested with a JSON body and reject out-of-range 
   if (!runRequest) {
     throw new Error("expected a model run request");
   }
-  expect(runRequest.body).toBe(JSON.stringify({ prompt: "a red apple", steps: 4, seed: 12 }));
+  expect(runRequest.body).toBe(JSON.stringify({ prompt: "a red apple", steps: 4 }));
 
   const badResponse = await postImage(
     imageRequest("@cf/black-forest-labs/flux-1-schnell", { steps: 30 }),
