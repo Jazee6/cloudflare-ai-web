@@ -102,3 +102,16 @@ test("GET /api/models reads and writes Workers caches.default when available", a
   expect(second.status).toBe(200);
   expect(mockCache.match).toHaveBeenCalledTimes(2);
 });
+
+test("GET /api/models sets Cache-Control: no-store when catalog is empty", async () => {
+  delete process.env.CF_AI_GATEWAY_MODELS;
+  globalThis.fetch = mock(async () => {
+    return new Response("upstream error", { status: 500 });
+  }) as unknown as typeof fetch;
+
+  const response = await getModels(new Request("https://example.com/api/models"));
+  expect(response.status).toBe(200);
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  const body = (await response.json()) as ModelCatalogResponse;
+  expect(body.models).toEqual([]);
+});

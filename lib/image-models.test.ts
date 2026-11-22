@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  adaptImageParamsForModel,
   generateRandomSeed,
   getImageEntryMetadata,
   getImageModelProfile,
@@ -28,6 +29,10 @@ test("getImageModelProfile resolves known families and falls back cleanly for un
   expect(unknown.family).toBe("fallback");
   expect(unknown.transport).toBe("json");
   expect(hasAdjustableImageParams(unknown)).toBe(false);
+
+  const unknownFlux2 = getImageModelProfile("@cf/black-forest-labs/flux-2-future");
+  expect(unknownFlux2.family).toBe("fallback");
+  expect(unknownFlux2.transport).toBe("json");
 });
 
 test("sanitizeImageParams keeps supported fields, strips unsupported ones, and rejects invalid supported values", () => {
@@ -92,4 +97,34 @@ test("generateRandomSeed and getImageEntryMetadata handle valid and malformed va
       metadata: { params: "invalid" },
     }),
   ).toBeUndefined();
+});
+
+test("adaptImageParamsForModel retains compatible fields when switching models", () => {
+  expect(
+    adaptImageParamsForModel("@cf/black-forest-labs/flux-1-schnell", {
+      width: 1024,
+      height: 1024,
+      steps: 25,
+      guidance: 7.5,
+      seed: 42,
+      negativePrompt: "blurry",
+    }),
+  ).toEqual({ seed: 42 });
+
+  expect(
+    adaptImageParamsForModel("@cf/stabilityai/stable-diffusion-xl-base-1.0", {
+      width: 1040,
+      height: 1024,
+      steps: 15,
+      guidance: 7.5,
+      seed: 42,
+      negativePrompt: "blurry",
+    }),
+  ).toEqual({
+    height: 1024,
+    steps: 15,
+    guidance: 7.5,
+    seed: 42,
+    negativePrompt: "blurry",
+  });
 });

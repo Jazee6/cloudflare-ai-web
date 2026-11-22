@@ -169,3 +169,55 @@ test("getAppCapabilities derives feature flags from server configuration", () =>
     knowledgeBase: true,
   });
 });
+
+test("getModelCatalog retains stale Catalog Snapshot when background refresh fails", async () => {
+  const originalFetch = globalThis.fetch;
+  const catalogGlobal = globalThis as typeof globalThis & {
+    cloudflareModelCatalogCache?: Map<string, { models?: unknown[]; refreshedAt: number }>;
+  };
+  catalogGlobal.cloudflareModelCatalogCache?.clear();
+
+  process.env.CF_ACCOUNT_ID = "test-account";
+  process.env.CF_WORKERS_AI_TOKEN = "test-token";
+
+  let shouldFail = false;
+  globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+    if (shouldFail) {
+      return new Response("upstream down", { status: 503 });
+    }
+    const task = new URL(String(input)).searchParams.get("task") ?? "Text Generation";
+    return Response.json({
+      success: true,
+      result: [
+        {
+          id: task === "Text Generation" ? "@cf/test/snapshot-chat" : "@cf/test/snapshot-img",
+          source: 1,
+          name: task === "Text Generation" ? "@cf/test/snapshot-chat" : "@cf/test/snapshot-img",
+          description: "Snapshot model",
+          task: { id: task, name: task, description: "" },
+          tags: [],
+          properties: [],
+        },
+      ],
+      result_info: { page: 1, per_page: 100, count: 1, total_count: 1 },
+    });
+  }) as unknown as typeof fetch;
+
+  try {
+    const initial = await getModelCatalog();
+    expect(initial.some((model) => model.id === "@cf/test/snapshot-chat")).toBe(true);
+
+    // Expire TTL in-place to simulate stale snapshot triggering background refresh.
+    for (const entry of catalogGlobal.cloudflareModelCatalogCache?.values() ?? []) {
+      entry.refreshedAt = 0;
+    }
+    shouldFail = true;
+
+    const fallback = await getModelCatalog();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fallback.some((model) => model.id === "@cf/test/snapshot-chat")).toBe(true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    catalogGlobal.cloudflareModelCatalogCache?.clear();
+  }
+});

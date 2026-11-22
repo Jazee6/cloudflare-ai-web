@@ -14,8 +14,16 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getImageModelProfile } from "@/lib/image-models";
 import type { Model } from "@/lib/models";
 import { getModelGroup } from "@/lib/models";
@@ -49,8 +57,73 @@ const ModelSelect = ({
   error?: string | null;
   onReload?: () => void;
 }) => {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const groupedModels = useMemo(() => getGroupedModels(models), [models]);
+
+  const commandPicker = (
+    <Command>
+      <CommandInput placeholder="Filter models..." />
+      <CommandList className="max-h-[60vh]">
+        <CommandEmpty>No models found.</CommandEmpty>
+        {groupedModels.map(({ name, models: groupModels }) => (
+          <CommandGroup key={name} heading={name}>
+            {groupModels.map((model) => (
+              <CommandItem
+                key={`${model.provider}:${model.id}`}
+                value={`${name} ${model.brand} ${model.name} ${model.id}`}
+                data-checked={selectedModel?.id === model.id}
+                onSelect={() => {
+                  onSelectModel(model);
+                  setOpen(false);
+                }}
+              >
+                <span className="flex size-4 items-center justify-center">
+                  <ModelLogo model={model} />
+                </span>
+                <span className="truncate">{model.name}</span>
+                {(() => {
+                  const highCostHint =
+                    model.type === "Text to Image"
+                      ? getImageModelProfile(model.id).highCostHint
+                      : undefined;
+                  if (!model.tag?.length && model.source !== "external" && !highCostHint) {
+                    return null;
+                  }
+                  return (
+                    <span className="ml-auto flex items-center gap-1">
+                      {highCostHint && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <span className="inline-flex items-center text-muted-foreground">
+                                <AlertTriangle className="size-3.5" />
+                              </span>
+                            }
+                          />
+                          <TooltipContent>{highCostHint}</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {model.tag?.map((tag) => (
+                        <Badge key={tag} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {model.isGatewayRoute ? (
+                        <Badge variant="secondary">Route</Badge>
+                      ) : model.source === "external" ? (
+                        <Badge variant="secondary">{model.brand}</Badge>
+                      ) : null}
+                    </span>
+                  );
+                })()}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </Command>
+  );
 
   if (loading && models.length === 0) {
     return <Skeleton className="h-8 w-36 rounded-md" />;
@@ -89,75 +162,27 @@ const ModelSelect = ({
         <ChevronsUpDown className="shrink-0" />
       </Button>
 
-      <CommandDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Select a model"
-        description="Search models by name or brand"
-        className="max-w-xl"
-      >
-        <Command>
-          <CommandInput placeholder="Filter models..." />
-          <CommandList className="max-h-[60vh]">
-            <CommandEmpty>No models found.</CommandEmpty>
-            {groupedModels.map(({ name, models: groupModels }) => (
-              <CommandGroup key={name} heading={name}>
-                {groupModels.map((model) => (
-                  <CommandItem
-                    key={`${model.provider}:${model.id}`}
-                    value={`${name} ${model.brand} ${model.name} ${model.id}`}
-                    data-checked={selectedModel?.id === model.id}
-                    onSelect={() => {
-                      onSelectModel(model);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="flex size-4 items-center justify-center">
-                      <ModelLogo model={model} />
-                    </span>
-                    <span className="truncate">{model.name}</span>
-                    {(() => {
-                      const highCostHint =
-                        model.type === "Text to Image"
-                          ? getImageModelProfile(model.id).highCostHint
-                          : undefined;
-                      if (!model.tag?.length && model.source !== "external" && !highCostHint) {
-                        return null;
-                      }
-                      return (
-                        <span className="ml-auto flex items-center gap-1">
-                          {highCostHint && (
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <span className="inline-flex items-center text-muted-foreground">
-                                    <AlertTriangle className="size-3.5" />
-                                  </span>
-                                }
-                              />
-                              <TooltipContent>{highCostHint}</TooltipContent>
-                            </Tooltip>
-                          )}
-                          {model.tag?.map((tag) => (
-                            <Badge key={tag} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {model.isGatewayRoute ? (
-                            <Badge variant="secondary">Route</Badge>
-                          ) : model.source === "external" ? (
-                            <Badge variant="secondary">{model.brand}</Badge>
-                          ) : null}
-                        </span>
-                      );
-                    })()}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </CommandDialog>
+      {isMobile ? (
+        <Drawer open={open} onOpenChange={setOpen}>
+          <DrawerContent>
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Select a model</DrawerTitle>
+              <DrawerDescription>Search models by name or brand</DrawerDescription>
+            </DrawerHeader>
+            <div className="p-2 pb-4">{commandPicker}</div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <CommandDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Select a model"
+          description="Search models by name or brand"
+          className="max-w-xl"
+        >
+          {commandPicker}
+        </CommandDialog>
+      )}
     </>
   );
 };

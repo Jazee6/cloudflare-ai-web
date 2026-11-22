@@ -16,6 +16,17 @@ test("classifyDocumentFile rejects images and unknown binary formats", () => {
   );
 });
 
+test("classifyDocumentFile prefers extension over generic browser MIME types", () => {
+  expect(classifyDocumentFile("data.csv", "text/plain")).toEqual({
+    kind: "to-markdown",
+    mediaType: "text/csv",
+  });
+  expect(classifyDocumentFile("spec.docx", "application/octet-stream")).toEqual({
+    kind: "to-markdown",
+    mediaType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+});
+
 test("extractDocumentAttachment decodes UTF-8 plain text without calling Workers AI", async () => {
   const fetchSpy = mock(async () => new Response("unexpected")) as unknown as typeof fetch;
   const file = new File(["# Hello\r\nWorld"], "notes.md", { type: "text/markdown" });

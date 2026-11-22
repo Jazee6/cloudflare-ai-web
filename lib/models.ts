@@ -125,8 +125,9 @@ const splitGatewayEntries = (raw: string): string[] => {
     if (
       trimmed.length > 0 &&
       previous !== undefined &&
-      previous.includes("?") &&
-      !GATEWAY_ENTRY_START_RE.test(trimmed)
+      /[?&]input=[^&]*$/i.test(previous) &&
+      !GATEWAY_ENTRY_START_RE.test(trimmed) &&
+      /^[a-z0-9_-]+(?:&|$)/i.test(trimmed)
     ) {
       entries[entries.length - 1] = `${previous},${trimmed}`;
       continue;

@@ -97,10 +97,18 @@ test("parseGatewayModels handles commas inside input query parameters", () => {
 
 test("parseGatewayModels skips invalid and duplicate entries without failing", () => {
   const models = parseGatewayModels(
-    "invalid-without-slash,openai/gpt-5?input=audio,openai/gpt-5?contextWindow=0,openai/valid?reasoning=false,openai/valid?name=Dup",
+    "invalid-without-slash,openai/gpt-5?name=GPT-5,invalid-entry,openai/gpt-5?input=audio,openai/gpt-5?contextWindow=0,openai/valid?reasoning=false,openai/valid?name=Dup",
   );
 
   expect(models).toEqual([
+    {
+      id: "openai/gpt-5",
+      name: "GPT-5",
+      brand: "OpenAI",
+      type: "Text Generation",
+      provider: "ai-gateway",
+      source: "external",
+    },
     {
       id: "openai/valid",
       name: "valid",

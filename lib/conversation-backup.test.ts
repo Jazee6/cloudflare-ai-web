@@ -117,3 +117,46 @@ test("getStorageStats and clearAllConversations preserve Image History", async (
   });
   expect(await loadImageHistory()).toHaveLength(1);
 });
+
+test("importConversationHistory reassigns colliding message IDs instead of overwriting existing messages", async () => {
+  const existingMessage = createUserMessage("stay in session 1");
+  const session1Id = await createConversation(existingMessage);
+
+  const imported = await importConversationHistory(
+    JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sessions: [
+        {
+          id: "session-2",
+          name: "Imported Session",
+          updatedAt: new Date().toISOString(),
+          messages: [
+            {
+              id: existingMessage.id,
+              role: "user",
+              parts: [{ type: "text", text: "colliding backup message" }],
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  expect(imported).toEqual({
+    ok: true,
+    importedSessions: 1,
+    skippedSessions: 0,
+    importedMessages: 1,
+  });
+
+  const session1History = await loadConversationHistory(session1Id);
+  expect(session1History).toHaveLength(1);
+  expect(session1History[0].parts[0]).toEqual({ type: "text", text: "stay in session 1" });
+
+  const session2History = await loadConversationHistory("session-2");
+  expect(session2History).toHaveLength(1);
+  expect(session2History[0].id).not.toBe(existingMessage.id);
+  expect(session2History[0].parts[0]).toEqual({ type: "text", text: "colliding backup message" });
+});

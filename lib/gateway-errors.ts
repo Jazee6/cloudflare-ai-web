@@ -95,11 +95,12 @@ const isDlpOrGuardrailsBlock = (
   text: string,
   headers: HeaderSource | undefined,
 ) => {
-  if (readHeader(headers, "cf-aig-dlp")) {
-    return true;
-  }
   if (statusCode !== undefined && ![400, 403, 422].includes(statusCode)) {
     return false;
+  }
+  const dlpAction = sanitizeDlpAction(readHeader(headers, "cf-aig-dlp"));
+  if (dlpAction && !/^(log|redact|mask|allow)$/i.test(dlpAction)) {
+    return true;
   }
   return /\b(2016|2017)\b|guardrail|cf-aig-dlp|\bdlp\b/i.test(text);
 };

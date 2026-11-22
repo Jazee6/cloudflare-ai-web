@@ -13,11 +13,20 @@ export const contextAttachmentMethodSchema = v.picklist([
   "browser-run",
 ]);
 
+const isHttpUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export const contextAttachmentDataSchema = v.object({
   id: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
   kind: v.picklist(["document", "webpage"]),
   title: v.pipe(v.string(), v.minLength(1), v.maxLength(512)),
-  sourceUrl: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(2048))),
+  sourceUrl: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(2048), v.check(isHttpUrl))),
   mediaType: v.pipe(v.string(), v.minLength(1), v.maxLength(256)),
   method: contextAttachmentMethodSchema,
   content: v.string(),

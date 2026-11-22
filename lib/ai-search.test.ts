@@ -146,3 +146,44 @@ test("searchKnowledgeBase surfaces 429 and 404 failures instead of silently skip
     ),
   ).rejects.toMatchObject({ status: 502 });
 });
+
+test("searchKnowledgeBase omits citations for chunks dropped by the 12,000-char context cap", async () => {
+  const fetchMock = mock(async () =>
+    Response.json({
+      success: true,
+      result: {
+        chunks: [
+          {
+            id: "chunk-1",
+            score: 0.95,
+            item: { key: "included-1.md" },
+            text: "A".repeat(7_000),
+          },
+          {
+            id: "chunk-2",
+            score: 0.9,
+            item: { key: "included-2.md" },
+            text: "B".repeat(7_000),
+          },
+          {
+            id: "chunk-3",
+            score: 0.85,
+            item: { key: "dropped-3.md" },
+            text: "C".repeat(500),
+          },
+        ],
+      },
+    }),
+  ) as unknown as typeof fetch;
+
+  const result = await searchKnowledgeBase(
+    {
+      instanceId: "docs",
+      messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "hi" }] }],
+    },
+    { accountId: "acc", apiToken: "tok", instancesRaw: "docs", fetchImpl: fetchMock },
+  );
+
+  expect(result.citations.map((citation) => citation.id)).toEqual(["chunk-1", "chunk-2"]);
+  expect(result.contextText).not.toContain("dropped-3.md");
+});

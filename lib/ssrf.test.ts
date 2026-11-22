@@ -40,6 +40,9 @@ test("isPrivateOrReservedIp blocks IPv4 and IPv6 loopback, private, metadata, an
     "::ffff:127.0.0.1",
     "::ffff:169.254.169.254",
     "::ffff:7f00:1",
+    "::ffff:0:127.0.0.1",
+    "fec0::1",
+    "2002:c0a8:0101::1",
   ];
   for (const ip of blocked) {
     expect(isPrivateOrReservedIp(ip)).toBe(true);
@@ -120,4 +123,41 @@ test("safeFetchUrl aborts streaming responses exceeding maxBytes", async () => {
       lookup: publicLookup,
     }),
   ).rejects.toMatchObject({ status: 413 });
+});
+
+test("safeFetchUrl maps timeout, network errors, and malformed redirect locations cleanly", async () => {
+  const timeoutFetch = mock(async () => {
+    const err = new Error("Timed out");
+    err.name = "TimeoutError";
+    throw err;
+  }) as unknown as typeof fetch;
+  await expect(
+    safeFetchUrl("https://example.com/slow", {
+      fetchImpl: timeoutFetch,
+      lookup: publicLookup,
+    }),
+  ).rejects.toMatchObject({ status: 504 });
+
+  const networkErrorFetch = mock(async () => {
+    throw new TypeError("fetch failed");
+  }) as unknown as typeof fetch;
+  await expect(
+    safeFetchUrl("https://example.com/down", {
+      fetchImpl: networkErrorFetch,
+      lookup: publicLookup,
+    }),
+  ).rejects.toMatchObject({ status: 502 });
+
+  const badRedirectFetch = mock(async () => {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "http://[invalid" },
+    });
+  }) as unknown as typeof fetch;
+  await expect(
+    safeFetchUrl("https://example.com/bad-redirect", {
+      fetchImpl: badRedirectFetch,
+      lookup: publicLookup,
+    }),
+  ).rejects.toMatchObject({ status: 400 });
 });

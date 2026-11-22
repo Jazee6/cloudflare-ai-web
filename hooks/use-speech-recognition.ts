@@ -20,10 +20,20 @@ export const useSpeechRecognition = () => {
   const prefixRef = useRef("");
   const onChangeRef = useRef<(value: string) => void>(() => {});
 
+  const clearHandlersAndAbort = (recognition: BrowserSpeechRecognition | null) => {
+    if (!recognition) {
+      return;
+    }
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    recognition.abort();
+  };
+
   useEffect(() => {
     setSupported(isSpeechRecognitionSupported());
     return () => {
-      recognitionRef.current?.abort();
+      clearHandlersAndAbort(recognitionRef.current);
       recognitionRef.current = null;
     };
   }, []);
@@ -33,7 +43,7 @@ export const useSpeechRecognition = () => {
   }, []);
 
   const abort = useCallback(() => {
-    recognitionRef.current?.abort();
+    clearHandlersAndAbort(recognitionRef.current);
     recognitionRef.current = null;
     setListening(false);
   }, []);

@@ -1,7 +1,6 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 import { db, type Session, type StoredMessage } from "@/lib/db";
-import { blobToDataUrl } from "@/lib/image-compression";
 
 export const CONVERSATION_BACKUP_VERSION = 1;
 export const MAX_BACKUP_IMPORT_BYTES = 20 * 1024 * 1024;
@@ -146,6 +145,7 @@ export const importConversationHistory = async (
 
   await db.transaction("rw", db.session, db.message, async () => {
     const existingIds = new Set(await db.session.toCollection().primaryKeys());
+    const existingMessageIds = new Set(await db.message.toCollection().primaryKeys());
     const sessionsToAdd: Session[] = [];
     const messagesToAdd: StoredMessage[] = [];
 
@@ -165,8 +165,10 @@ export const importConversationHistory = async (
 
       for (const message of session.messages) {
         importedMessages++;
+        const messageId = existingMessageIds.has(message.id) ? crypto.randomUUID() : message.id;
+        existingMessageIds.add(messageId);
         messagesToAdd.push({
-          id: message.id,
+          id: messageId,
           role: message.role,
           parts: message.parts as UIMessage["parts"],
           ...(message.metadata !== undefined ? { metadata: message.metadata } : {}),
@@ -180,7 +182,7 @@ export const importConversationHistory = async (
       await db.session.bulkAdd(sessionsToAdd);
     }
     if (messagesToAdd.length > 0) {
-      await db.message.bulkPut(messagesToAdd);
+      await db.message.bulkAdd(messagesToAdd);
     }
   });
 
@@ -194,9 +196,12 @@ export const importConversationHistory = async (
 
 export const triggerBackupDownload = async (jsonContent: string, filename: string) => {
   const blob = new Blob([jsonContent], { type: "application/json" });
-  const url = await blobToDataUrl(blob);
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 1000);
 };

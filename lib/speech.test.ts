@@ -24,6 +24,13 @@ test("prepareTextForSpeech strips markdown syntax and skips fenced code blocks b
   expect(spoken).not.toContain("**");
 });
 
+test("prepareTextForSpeech preserves underscores inside snake_case identifiers while stripping emphasis", () => {
+  const spoken = prepareTextForSpeech(
+    "Set _max_num_results_ and __skip_cache__ around `ai_search_options`.",
+  );
+  expect(spoken).toBe("Set max_num_results and skip_cache around ai_search_options.");
+});
+
 test("prepareTextForSpeech can keep code contents when skipCodeBlocks is false", () => {
   const spoken = prepareTextForSpeech("```js\nhello();\n```", { skipCodeBlocks: false });
   expect(spoken).toBe("hello();");

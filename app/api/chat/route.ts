@@ -122,7 +122,8 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
-      return new Response("The selected provider is not configured.", { status: 503 });
+      const mapped = mapUpstreamError(error, { provider: catalogModel.provider });
+      return new Response(mapped.message, { status: mapped.status });
     }
     throw error;
   }

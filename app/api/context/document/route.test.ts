@@ -37,4 +37,19 @@ test("POST /api/context/document rejects missing files and oversized payloads", 
     }),
   );
   expect(oversized.status).toBe(413);
+
+  const oversizedStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(MAX_DOCUMENT_BYTES + 512 * 1024));
+      controller.close();
+    },
+  });
+  const chunkedOversized = await POST(
+    new Request("https://example.com/api/context/document", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=test" },
+      body: oversizedStream,
+    }),
+  );
+  expect(chunkedOversized.status).toBe(413);
 });

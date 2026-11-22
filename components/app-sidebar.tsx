@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,7 @@ const AppSidebar = () => {
   const router = useRouter();
   const { setSettingsOpen } = useSettings();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
     { kind: "conversation"; sessionId: string } | { kind: "image-history" } | null
   >(null);
@@ -93,17 +95,22 @@ const AppSidebar = () => {
   );
 
   const handleDelete = async () => {
-    if (!deleteTarget) {
+    if (!deleteTarget || deleting) {
       return;
     }
-    if (deleteTarget.kind === "image-history") {
-      await clearImageHistory();
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === "image-history") {
+        await clearImageHistory();
+        setDeleteConfirmOpen(false);
+        return;
+      }
+      await deleteConversation(deleteTarget.sessionId);
       setDeleteConfirmOpen(false);
-      return;
+      router.push("/");
+    } finally {
+      setDeleting(false);
     }
-    await deleteConversation(deleteTarget.sessionId);
-    setDeleteConfirmOpen(false);
-    router.push("/");
   };
 
   return (
@@ -207,15 +214,25 @@ const AppSidebar = () => {
         </SidebarFooter>
       </Sidebar>
 
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!deleting) {
+            setDeleteConfirmOpen(open);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this session?</AlertDialogTitle>
             <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={deleting} onClick={() => void handleDelete()}>
+              {deleting && <Spinner />}
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

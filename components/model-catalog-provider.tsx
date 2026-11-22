@@ -180,9 +180,22 @@ export const ModelCatalogProvider = ({
         return;
       }
 
+      if (parsed.output.models.length === 0) {
+        if (!hasModelsRef.current) {
+          setModels([]);
+          setCapabilities(parsed.output.capabilities);
+          setError("No models are currently available.");
+          toast.add({
+            title: "No models are currently available. Please retry.",
+            type: "error",
+          });
+        }
+        return;
+      }
+
       setModels(parsed.output.models);
       setCapabilities(parsed.output.capabilities);
-      hasModelsRef.current = parsed.output.models.length > 0;
+      hasModelsRef.current = true;
       writeCachedCatalog(parsed.output);
       setError(null);
     } catch (caughtError) {

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   const response = Response.json(payload, {
     headers: {
-      "Cache-Control": CACHE_CONTROL_HEADER,
+      "Cache-Control": payload.models.length > 0 ? CACHE_CONTROL_HEADER : "no-store",
     },
   });
 

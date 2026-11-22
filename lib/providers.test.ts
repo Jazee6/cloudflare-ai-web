@@ -140,3 +140,50 @@ test("createChatModel injects gateway skip-cache, metadata, and captures respons
   );
   expect(capturedGatewayMeta).toEqual({ cacheStatus: "HIT" });
 });
+
+test("createChatModel injects cf-aig-byok-alias, skip-cache, and metadata for ai-gateway models", async () => {
+  process.env.CF_ACCOUNT_ID = "acc";
+  process.env.CF_AI_GATEWAY_NAME = "gw";
+  process.env.CF_AI_GATEWAY_TOKEN = "gw-token";
+
+  let capturedHeaders: Headers | undefined;
+  globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    capturedHeaders = new Headers(init?.headers);
+    return Response.json({
+      id: "chatcmpl-1",
+      object: "chat.completion",
+      created: 1,
+      model: "openai/gpt-5",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: "ok" },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    });
+  }) as unknown as typeof fetch;
+
+  const gatewayModel: Model = {
+    id: "openai/gpt-5",
+    name: "gpt-5",
+    brand: "OpenAI",
+    type: "Text Generation",
+    provider: "ai-gateway",
+    source: "external",
+    byokAlias: "team-key",
+  };
+
+  const chatModel = createChatModel(gatewayModel, { retry: true, skipCache: true });
+  await chatModel.model.doGenerate({
+    prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+  });
+
+  expect(capturedHeaders?.get("cf-aig-authorization")).toBe("Bearer gw-token");
+  expect(capturedHeaders?.get("cf-aig-byok-alias")).toBe("team-key");
+  expect(capturedHeaders?.get("cf-aig-skip-cache")).toBe("true");
+  expect(capturedHeaders?.get("cf-aig-metadata")).toBe(
+    JSON.stringify({ app: "cloudflare-ai-web", retry: true }),
+  );
+});

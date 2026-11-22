@@ -128,17 +128,20 @@ const toExcerpt = (text: string): string => {
   return `${compact.slice(0, AI_SEARCH_EXCERPT_CHARS - 1).trimEnd()}…`;
 };
 
-const formatKnowledgeBaseContext = (
-  chunks: Array<{ id: string; source: string; score?: number; text: string }>,
-): string => {
+const formatKnowledgeBaseContext = <
+  T extends { id: string; source: string; score?: number; text: string },
+>(
+  chunks: T[],
+): { contextText: string; includedChunks: T[] } => {
   if (chunks.length === 0) {
-    return "";
+    return { contextText: "", includedChunks: [] };
   }
 
   const lines: string[] = [
     "Knowledge Base excerpts for this turn (cite source keys when relevant; do not invent facts beyond these excerpts or the conversation):",
   ];
   let usedChars = lines[0].length;
+  const includedChunks: T[] = [];
 
   for (const chunk of chunks) {
     const scoreAttr = typeof chunk.score === "number" ? ` score="${chunk.score.toFixed(3)}"` : "";
@@ -152,10 +155,14 @@ const formatKnowledgeBaseContext = (
     const body = chunk.text.slice(0, remaining).trimEnd();
     const block = `${header}\n${body}\n${footer}`;
     lines.push(block);
+    includedChunks.push(chunk);
     usedChars += block.length + 1;
   }
 
-  return lines.length > 1 ? lines.join("\n") : "";
+  return {
+    contextText: lines.length > 1 ? lines.join("\n") : "",
+    includedChunks,
+  };
 };
 
 export interface KnowledgeBaseSearchResult {
@@ -250,7 +257,8 @@ export const searchKnowledgeBase = async (
     }))
     .filter((chunk) => chunk.text.length > 0);
 
-  const citations: Citation[] = chunks.map((chunk) => ({
+  const { contextText, includedChunks } = formatKnowledgeBaseContext(chunks);
+  const citations: Citation[] = includedChunks.map((chunk) => ({
     id: chunk.id,
     source: chunk.source,
     ...(typeof chunk.score === "number" ? { score: chunk.score } : {}),
@@ -258,7 +266,7 @@ export const searchKnowledgeBase = async (
   }));
 
   return {
-    contextText: formatKnowledgeBaseContext(chunks),
+    contextText,
     citations,
   };
 };

@@ -43,13 +43,15 @@ export const useConversation = ({
   isNew: boolean;
   models: Model[];
 }) => {
-  const { loading: catalogLoading } = useModelCatalogState();
+  const { loading: catalogLoading, capabilities } = useModelCatalogState();
   const { settings } = useSettings();
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [hasPendingUserMessage, setHasPendingUserMessage] = useState(false);
   const startedPendingRef = useRef(false);
   const modelsRef = useRef(models);
   modelsRef.current = models;
+  const capabilitiesRef = useRef(capabilities);
+  capabilitiesRef.current = capabilities;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   // Marks the next transport request as a Retry so AI Gateway skips cached responses.
@@ -77,7 +79,9 @@ export const useConversation = ({
           throw new Error("The latest message exceeds the 64,000-character context limit.");
         }
 
-        const knowledgeBaseId = getCookie("CF_AI_KNOWLEDGE_BASE")?.trim() || undefined;
+        const knowledgeBaseId = capabilitiesRef.current.knowledgeBase
+          ? getCookie("CF_AI_KNOWLEDGE_BASE")?.trim() || undefined
+          : undefined;
         const customInstructions = settingsRef.current.customInstructions.trim();
 
         return {

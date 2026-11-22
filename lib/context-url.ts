@@ -251,6 +251,7 @@ export const extractWebpageAttachment = async (
   const title = extractHtmlTitle(html) ?? new URL(direct.finalUrl).hostname;
   const spaShell = isLikelySpaShell(html);
 
+  let toMarkdownError: unknown;
   if (!spaShell) {
     try {
       const markdown = await convertToMarkdownWithWorkersAi(
@@ -275,12 +276,10 @@ export const extractWebpageAttachment = async (
         });
       }
     } catch (error) {
-      if (mode === "zero-quota" || !hasBrowserRun) {
-        if (error instanceof ContextDocumentError) {
-          throw new ContextUrlError(error.message, error.status);
-        }
-        throw error;
+      if (error instanceof ContextDocumentError && error.status === 429) {
+        throw new ContextUrlError(error.message, 429);
       }
+      toMarkdownError = error;
     }
   }
 
@@ -296,7 +295,7 @@ export const extractWebpageAttachment = async (
   }
 
   const fallbackText = stripHtmlVisibleText(html);
-  if (!spaShell && fallbackText) {
+  if (!spaShell && fallbackText.length >= MIN_STATIC_TEXT_CHARS) {
     return buildWebpageAttachment({
       title,
       sourceUrl: direct.finalUrl,
@@ -304,6 +303,13 @@ export const extractWebpageAttachment = async (
       method: "plain-text",
       markdown: fallbackText,
     });
+  }
+
+  if (toMarkdownError instanceof ContextDocumentError) {
+    throw new ContextUrlError(toMarkdownError.message, toMarkdownError.status);
+  }
+  if (toMarkdownError instanceof Error && toMarkdownError.name !== "ContextDocumentError") {
+    throw toMarkdownError;
   }
 
   throw new ContextUrlError(

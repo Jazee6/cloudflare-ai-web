@@ -128,10 +128,7 @@ export const getImageModelProfile = (modelId: string): ImageModelProfile => {
   if (normalized.includes("flux-2-dev")) {
     return FLUX_2_DEV_PROFILE;
   }
-  if (
-    normalized.startsWith("@cf/black-forest-labs/flux-2") ||
-    normalized.includes("flux-2-klein")
-  ) {
+  if (normalized.includes("flux-2-klein")) {
     return FLUX_2_KLEIN_PROFILE;
   }
   if (normalized.includes("flux-1-schnell")) {
@@ -290,6 +287,72 @@ export const sanitizeImageParams = (
   }
 
   return { ok: true, params: normalized };
+};
+
+/**
+ * Adapts client parameters when switching image models, keeping every supported field
+ * that remains valid and dropping only fields that are unsupported or out of range.
+ */
+export const adaptImageParamsForModel = (
+  modelId: string,
+  rawParams: ImageGenerationParams,
+): NormalizedImageParams => {
+  const profile = getImageModelProfile(modelId);
+  const adapted: NormalizedImageParams = {};
+
+  if (profile.dimensions) {
+    if (
+      rawParams.width !== undefined &&
+      validateDimension(rawParams.width, profile.dimensions, "Width").ok
+    ) {
+      adapted.width = rawParams.width;
+    }
+    if (
+      rawParams.height !== undefined &&
+      validateDimension(rawParams.height, profile.dimensions, "Height").ok
+    ) {
+      adapted.height = rawParams.height;
+    }
+  }
+
+  if (
+    profile.steps &&
+    rawParams.steps !== undefined &&
+    Number.isInteger(rawParams.steps) &&
+    rawParams.steps >= profile.steps.min &&
+    rawParams.steps <= profile.steps.max
+  ) {
+    adapted.steps = rawParams.steps;
+  }
+
+  if (
+    profile.guidance &&
+    rawParams.guidance !== undefined &&
+    Number.isFinite(rawParams.guidance) &&
+    rawParams.guidance >= profile.guidance.min &&
+    rawParams.guidance <= profile.guidance.max
+  ) {
+    adapted.guidance = Math.round(rawParams.guidance * 100) / 100;
+  }
+
+  if (
+    profile.supportsSeed &&
+    rawParams.seed !== undefined &&
+    Number.isInteger(rawParams.seed) &&
+    rawParams.seed >= 0 &&
+    rawParams.seed <= MAX_SEED
+  ) {
+    adapted.seed = rawParams.seed;
+  }
+
+  if (profile.supportsNegativePrompt && rawParams.negativePrompt !== undefined) {
+    const trimmed = rawParams.negativePrompt.trim();
+    if (trimmed.length > 0 && trimmed.length <= MAX_NEGATIVE_PROMPT_LENGTH) {
+      adapted.negativePrompt = trimmed;
+    }
+  }
+
+  return adapted;
 };
 
 const imageEntryMetadataSchema = v.object({

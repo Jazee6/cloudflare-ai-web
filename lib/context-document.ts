@@ -169,16 +169,27 @@ export const classifyDocumentFile = (
     );
   }
 
-  if (PLAIN_TEXT_EXTENSIONS.has(ext) || PLAIN_TEXT_MIME_TYPES.has(mediaType)) {
-    return { kind: "plain-text", mediaType: mediaType || "text/plain" };
+  if (PLAIN_TEXT_EXTENSIONS.has(ext)) {
+    return {
+      kind: "plain-text",
+      mediaType: mediaType && mediaType !== "application/octet-stream" ? mediaType : "text/plain",
+    };
   }
 
   const richMimeFromExt = RICH_DOCUMENT_EXTENSIONS.get(ext);
-  if (richMimeFromExt || RICH_DOCUMENT_MIME_TYPES.has(mediaType)) {
+  if (richMimeFromExt) {
     return {
       kind: "to-markdown",
-      mediaType: mediaType || richMimeFromExt || "application/octet-stream",
+      mediaType: RICH_DOCUMENT_MIME_TYPES.has(mediaType) ? mediaType : richMimeFromExt,
     };
+  }
+
+  if (PLAIN_TEXT_MIME_TYPES.has(mediaType)) {
+    return { kind: "plain-text", mediaType };
+  }
+
+  if (RICH_DOCUMENT_MIME_TYPES.has(mediaType)) {
+    return { kind: "to-markdown", mediaType };
   }
 
   throw new ContextDocumentError("Unsupported document format.", 415);

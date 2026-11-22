@@ -20,7 +20,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as v from "valibot";
-import { useModelCatalog, useModelPreferences } from "@/components/model-catalog-provider";
+import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
 import { useSettings } from "@/components/settings-provider";
 import {
@@ -111,6 +111,13 @@ const chatSettingsSchema = v.object({
 
 const SYSTEM_VOICE_VALUE = "__system__";
 const VOICE_PREVIEW_ID = "__settings_voice_preview__";
+const WEB_FETCH_POLICY_ITEMS: Record<WebFetchPolicy, string> = {
+  auto: "Auto (Zero-quota first, Browser Run fallback)",
+  "zero-quota": "Zero-quota only (Never use Browser Run)",
+};
+const ASR_LOCALE_ITEMS: Record<string, string> = Object.fromEntries(
+  ASR_LOCALE_OPTIONS.map((option) => [option.value, option.label]),
+);
 
 export const SettingsDialog = () => {
   const isMobile = useIsMobile();
@@ -120,8 +127,13 @@ export const SettingsDialog = () => {
   const { settings, updateSettings, settingsOpen, setSettingsOpen } = useSettings();
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
 
-  const chatModels = useModelCatalog("Text Generation");
-  const imageModels = useModelCatalog("Text to Image");
+  const {
+    models: chatModels,
+    loading: catalogLoading,
+    error: catalogError,
+    reload: reloadCatalog,
+  } = useModelCatalogState("Text Generation");
+  const { models: imageModels } = useModelCatalogState("Text to Image");
   const { preferences, setPreference } = useModelPreferences();
 
   const selectedChatModel =
@@ -141,6 +153,24 @@ export const SettingsDialog = () => {
     }
     return Array.from(groups, ([lang, items]) => ({ lang, items }));
   }, [voices]);
+
+  const ttsVoiceItems = useMemo<Record<string, string>>(
+    () => ({
+      [SYSTEM_VOICE_VALUE]: "System default",
+      ...Object.fromEntries(voices.map((voice) => [voice.voiceURI, voice.name])),
+    }),
+    [voices],
+  );
+
+  const handleSettingsOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        stopSpeech();
+      }
+      setSettingsOpen(open);
+    },
+    [setSettingsOpen, stopSpeech],
+  );
 
   const chatForm = useForm({
     defaultValues: {
@@ -221,6 +251,9 @@ export const SettingsDialog = () => {
     setImportError(null);
     if (file.size > MAX_BACKUP_IMPORT_BYTES) {
       setImportError("Backup file exceeds the 20 MiB import limit.");
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
       return;
     }
 
@@ -285,6 +318,9 @@ export const SettingsDialog = () => {
           variant="outline"
           value={[theme ?? "system"]}
           onValueChange={(values) => {
+            if (!values[0]) {
+              return;
+            }
             const nextTheme = parseThemePreference(values[0]);
             setTheme(nextTheme);
             setCookie(THEME_COOKIE, nextTheme);
@@ -311,6 +347,9 @@ export const SettingsDialog = () => {
           <ModelSelect
             models={chatModels}
             selectedModel={selectedChatModel}
+            loading={catalogLoading}
+            error={catalogError}
+            onReload={reloadCatalog}
             onSelectModel={(model) => setPreference("CF_AI_MODEL", model.id)}
           />
         </div>
@@ -322,6 +361,9 @@ export const SettingsDialog = () => {
           <ModelSelect
             models={imageModels}
             selectedModel={selectedImageModel}
+            loading={catalogLoading}
+            error={catalogError}
+            onReload={reloadCatalog}
             onSelectModel={(model) => setPreference("CF_AI_MODEL_IMAGE", model.id)}
           />
         </div>
@@ -388,6 +430,7 @@ export const SettingsDialog = () => {
             <Field>
               <FieldLabel>Webpage Extraction</FieldLabel>
               <Select
+                items={WEB_FETCH_POLICY_ITEMS}
                 value={field.state.value}
                 onValueChange={(value) => {
                   if (value === "auto" || value === "zero-quota") {
@@ -399,12 +442,8 @@ export const SettingsDialog = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="auto">
-                    Auto (Zero-quota first, Browser Run fallback)
-                  </SelectItem>
-                  <SelectItem value="zero-quota">
-                    Zero-quota only (Never use Browser Run)
-                  </SelectItem>
+                  <SelectItem value="auto">{WEB_FETCH_POLICY_ITEMS.auto}</SelectItem>
+                  <SelectItem value="zero-quota">{WEB_FETCH_POLICY_ITEMS["zero-quota"]}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -425,6 +464,7 @@ export const SettingsDialog = () => {
       <Field>
         <FieldLabel>Voice Input Language</FieldLabel>
         <Select
+          items={ASR_LOCALE_ITEMS}
           value={settings.asrLocale}
           onValueChange={(value) => {
             if (typeof value === "string") {
@@ -462,6 +502,7 @@ export const SettingsDialog = () => {
           <Field>
             <FieldLabel>Read Aloud Voice</FieldLabel>
             <Select
+              items={ttsVoiceItems}
               value={settings.ttsVoiceURI || SYSTEM_VOICE_VALUE}
               onValueChange={(value) => {
                 if (typeof value === "string") {
@@ -689,7 +730,7 @@ export const SettingsDialog = () => {
   if (isMobile) {
     return (
       <>
-        <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <Drawer open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
           <DrawerContent>
             <div className="flex max-h-[85dvh] flex-col gap-3">
               <DrawerHeader>
@@ -721,7 +762,7 @@ export const SettingsDialog = () => {
 
   return (
     <>
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <Dialog open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
           <DialogHeader className="border-b px-4 py-3">
             <DialogTitle>Settings</DialogTitle>

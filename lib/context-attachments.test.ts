@@ -50,6 +50,11 @@ test("isContextAttachmentPart validates shape and rejects malformed parts", () =
       data: { kind: "document" },
     } as UIMessage["parts"][number]),
   ).toBe(false);
+  expect(
+    isContextAttachmentPart(
+      createContextAttachmentPart(makeAttachment({ sourceUrl: "javascript:alert(1)" })),
+    ),
+  ).toBe(false);
   expect(isContextAttachmentPart({ type: "text", text: "hi" })).toBe(false);
 });
 

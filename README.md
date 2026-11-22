@@ -42,6 +42,10 @@ docker run -d --name cloudflare-ai-web \
 - 使用 Cloudflare Workers AI 快速搭建多模型 AI 平台
 - 支持 Cloudflare AI Gateway（BYOK / Unified Billing / Gateway Route）接入外部模型
 - 支持 Vercel、Docker 与 Cloudflare Workers 三端无状态部署
+- 支持文档解析（Workers AI `toMarkdown`，0 Neurons）与网页提取（三级降级 + SSRF 防护），全对话模型通用
+- 支持 Cloudflare AI Search 只读知识库检索（RAG）与轻量来源引用展示
+- 支持文生图参数调节与 FLUX.2 多图参考编辑（最多 4 张参考图）
+- 支持本地设置面板（主题、自定义系统提示词、网关缓存偏好、浏览器原生 Web Speech 语音输入与朗读、对话历史 JSON 导出/导入）
 - 聊天记录本地存储
 - 图片附件在浏览器内自动压缩（长边不超过 1568px，单张不超过 512 KiB，每次请求最多 5 张），请求体积满足 Vercel Functions 限制
 - 支持 Access Session（访问密码）保护

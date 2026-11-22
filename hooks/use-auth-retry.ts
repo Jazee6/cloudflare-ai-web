@@ -15,6 +15,7 @@ export const useAuthRetry = (retry: () => unknown) => {
   const [open, setOpen] = useState(false);
   const retriedRef = useRef(false);
   const retryRef = useRef(retry);
+  const pendingActionRef = useRef<(() => unknown) | null>(null);
 
   useEffect(() => {
     retryRef.current = retry;
@@ -25,7 +26,14 @@ export const useAuthRetry = (retry: () => unknown) => {
     retriedRef.current = false;
   }, []);
 
-  const handleUnauthorized = useCallback(() => {
+  const handleUnauthorized = useCallback((onSuccess?: () => unknown) => {
+    if (onSuccess) {
+      pendingActionRef.current = onSuccess;
+      setOpen(true);
+      return;
+    }
+
+    pendingActionRef.current = null;
     if (retriedRef.current) {
       retriedRef.current = false;
       toast.add({ title: "Authentication failed. Please try again.", type: "error" });
@@ -34,13 +42,26 @@ export const useAuthRetry = (retry: () => unknown) => {
     setOpen(true);
   }, []);
 
+  const onOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      pendingActionRef.current = null;
+    }
+    setOpen(nextOpen);
+  }, []);
+
   const onAuthenticated = useCallback(() => {
     setOpen(false);
+    const pendingAction = pendingActionRef.current;
+    pendingActionRef.current = null;
+    if (pendingAction) {
+      void pendingAction();
+      return;
+    }
     retriedRef.current = true;
     void retryRef.current();
   }, []);
 
-  const authDialog: AuthDialogState = { open, onOpenChange: setOpen, onAuthenticated };
+  const authDialog: AuthDialogState = { open, onOpenChange, onAuthenticated };
 
   return { authDialog, handleUnauthorized, resetAuthRetry };
 };

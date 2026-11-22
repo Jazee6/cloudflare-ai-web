@@ -18,9 +18,9 @@ const BLOCKED_HOSTNAMES = new Set([
 ]);
 
 export class SsrfError extends Error {
-  readonly status: 400 | 403 | 413;
+  readonly status: 400 | 403 | 413 | 502 | 504;
 
-  constructor(message: string, status: 400 | 403 | 413) {
+  constructor(message: string, status: 400 | 403 | 413 | 502 | 504) {
     super(message);
     this.name = "SsrfError";
     this.status = status;
@@ -190,9 +190,10 @@ export const isPrivateOrReservedIp = (rawIp: string): boolean => {
     return true;
   }
 
-  // IPv4-mapped ::ffff:0:0/96 or IPv4-compatible ::/96
+  // IPv4-mapped ::ffff:0:0/96, IPv4-translated ::ffff:0:0:0/96, or IPv4-compatible ::/96
   if (
     ipv6MatchesPrefix(ipv6, [0, 0, 0, 0, 0, 0xffff], 96) ||
+    ipv6MatchesPrefix(ipv6, [0, 0, 0, 0, 0xffff, 0], 96) ||
     ipv6MatchesPrefix(ipv6, [0, 0, 0, 0, 0, 0], 96)
   ) {
     const embeddedIpv4 = ((ipv6[6] << 16) | ipv6[7]) >>> 0;
@@ -207,12 +208,14 @@ export const isPrivateOrReservedIp = (rawIp: string): boolean => {
     return true;
   }
 
-  // Discard 100::/64, Documentation 2001:db8::/32, ULA fc00::/7, Link-local fe80::/10, Multicast ff00::/8
+  // Discard 100::/64, 6to4 2002::/16, Documentation 2001:db8::/32, ULA fc00::/7, Link-local fe80::/10, Site-local fec0::/10, Multicast ff00::/8
   if (
     ipv6MatchesPrefix(ipv6, [0x0100, 0, 0, 0], 64) ||
+    ipv6MatchesPrefix(ipv6, [0x2002], 16) ||
     ipv6MatchesPrefix(ipv6, [0x2001, 0x0db8], 32) ||
     ipv6MatchesPrefix(ipv6, [0xfc00], 7) ||
     ipv6MatchesPrefix(ipv6, [0xfe80], 10) ||
+    ipv6MatchesPrefix(ipv6, [0xfec0], 10) ||
     ipv6MatchesPrefix(ipv6, [0xff00], 8)
   ) {
     return true;
@@ -419,12 +422,20 @@ export const safeFetchUrl = async (
   const deadlineSignal = AbortSignal.timeout(timeoutMs);
 
   for (let redirects = 0; ; redirects++) {
-    const response = await fetchImpl(currentUrl, {
-      method: "GET",
-      headers: options?.headers,
-      redirect: "manual",
-      signal: deadlineSignal,
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(currentUrl, {
+        method: "GET",
+        headers: options?.headers,
+        redirect: "manual",
+        signal: deadlineSignal,
+      });
+    } catch (error) {
+      if (deadlineSignal.aborted || (error as Error | undefined)?.name === "TimeoutError") {
+        throw new SsrfError("Timed out while fetching the target URL.", 504);
+      }
+      throw new SsrfError("Failed to fetch the target URL.", 502);
+    }
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
@@ -436,12 +447,28 @@ export const safeFetchUrl = async (
         throw new SsrfError("Target URL exceeded the maximum number of redirects.", 400);
       }
 
-      const nextUrl = new URL(location, currentUrl).toString();
+      let nextUrl: string;
+      try {
+        nextUrl = new URL(location, currentUrl).toString();
+      } catch {
+        throw new SsrfError("Invalid redirect location from target URL.", 400);
+      }
       currentUrl = (await assertSafePublicUrl(nextUrl, { lookup: options?.lookup })).toString();
       continue;
     }
 
-    const bytes = await readBoundedResponseBytes(response, maxBytes);
+    let bytes: Uint8Array;
+    try {
+      bytes = await readBoundedResponseBytes(response, maxBytes);
+    } catch (error) {
+      if (error instanceof SsrfError) {
+        throw error;
+      }
+      if (deadlineSignal.aborted || (error as Error | undefined)?.name === "TimeoutError") {
+        throw new SsrfError("Timed out while reading the target URL.", 504);
+      }
+      throw new SsrfError("Failed to read the target URL response.", 502);
+    }
     const contentType =
       response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
 

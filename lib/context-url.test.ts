@@ -168,3 +168,52 @@ test("extractWebpageAttachment rejects private URLs before calling Browser Run",
   ).rejects.toMatchObject({ status: 403 });
   expect(fetchSpy).not.toHaveBeenCalled();
 });
+
+test("static HTML falls back to plain-text in zero-quota mode when toMarkdown fails, but still propagates 429", async () => {
+  const html = `<html><head><title>Docs</title></head><body><main>${"Static paragraph content. ".repeat(10)}</main></body></html>`;
+
+  const unavailableFetch = mock(async (input: RequestInfo | URL) => {
+    if (String(input).includes("/ai/tomarkdown")) {
+      return new Response("down", { status: 502 });
+    }
+    return new Response(html, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  }) as unknown as typeof fetch;
+
+  const fallback = await extractWebpageAttachment(
+    { url: "https://example.com/docs", mode: "zero-quota" },
+    {
+      accountId: "acc",
+      workersAiToken: "ai-tok",
+      fetchImpl: unavailableFetch,
+      lookup: publicLookup,
+    },
+  );
+  expect(fallback.method).toBe("plain-text");
+  expect(fallback.title).toBe("Docs");
+  expect(fallback.content).toContain("Static paragraph content.");
+
+  const rateLimitedFetch = mock(async (input: RequestInfo | URL) => {
+    if (String(input).includes("/ai/tomarkdown")) {
+      return new Response("rate limit", { status: 429 });
+    }
+    return new Response(html, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  }) as unknown as typeof fetch;
+
+  await expect(
+    extractWebpageAttachment(
+      { url: "https://example.com/docs", mode: "zero-quota" },
+      {
+        accountId: "acc",
+        workersAiToken: "ai-tok",
+        fetchImpl: rateLimitedFetch,
+        lookup: publicLookup,
+      },
+    ),
+  ).rejects.toMatchObject({ status: 429 });
+});

@@ -59,6 +59,89 @@ test("POST /api/chat rejects malformed data-context-attachment parts with 400", 
   expect(response.status).toBe(400);
 });
 
+test("POST /api/chat expands data-context-attachment parts and emits gateway cache/DLP metadata", async () => {
+  configureExternalModel();
+  const originalFetch = globalThis.fetch;
+  let capturedPromptText = "";
+
+  const sseStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      const chunk1 = JSON.stringify({
+        id: "chatcmpl-1",
+        object: "chat.completion.chunk",
+        created: 1,
+        model: "openai/gpt-5",
+        choices: [
+          { index: 0, delta: { role: "assistant", content: "Hello" }, finish_reason: null },
+        ],
+      });
+      const chunk2 = JSON.stringify({
+        id: "chatcmpl-1",
+        object: "chat.completion.chunk",
+        created: 1,
+        model: "openai/gpt-5",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+        usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 },
+      });
+      controller.enqueue(encoder.encode(`data: ${chunk1}\n\ndata: ${chunk2}\n\ndata: [DONE]\n\n`));
+      controller.close();
+    },
+  });
+
+  globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    capturedPromptText = String(init?.body ?? "");
+    return new Response(sseStream, {
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "cf-aig-cache-status": "HIT",
+        "cf-aig-dlp": '{"action":"redact"}',
+      },
+    });
+  }) as unknown as typeof fetch;
+
+  try {
+    const attachmentPart = createContextAttachmentPart({
+      id: "att-1",
+      kind: "document",
+      title: "notes.md",
+      mediaType: "text/markdown",
+      method: "plain-text",
+      content: "Attachment secret body",
+      originalChars: 22,
+      truncated: false,
+    });
+
+    const response = await POST(
+      new Request("https://example.com/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: "openai/gpt-5",
+          provider: "ai-gateway",
+          messages: [
+            {
+              id: "u1",
+              role: "user",
+              parts: [attachmentPart, { type: "text", text: "Summarize this." }],
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const responseText = await response.text();
+    expect(capturedPromptText).toContain('<context_attachment kind=\\"document\\"');
+    expect(capturedPromptText).toContain("Attachment secret body");
+    expect(responseText).toContain('"cacheStatus":"HIT"');
+    expect(responseText).toContain('"dlpAction":"redact"');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("POST /api/chat rejects latest message + attachments exceeding 64,000 chars with 413", async () => {
   configureExternalModel();
   const part = createContextAttachmentPart({

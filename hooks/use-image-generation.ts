@@ -18,12 +18,12 @@ import type {
 } from "@/lib/db";
 import { compressImageToBlob } from "@/lib/image-compression";
 import {
+  adaptImageParamsForModel,
   generateRandomSeed,
   getImageEntryMetadata,
   getImageModelProfile,
   type ImageGenerationParams,
   MAX_REFERENCE_IMAGES,
-  sanitizeImageParams,
 } from "@/lib/image-models";
 import type { Model } from "@/lib/models";
 import { getStoredModel } from "@/lib/utils";
@@ -62,7 +62,8 @@ const requestImage = async ({
         form.append("skipCache", "true");
       }
       for (const [index, blob] of referenceImages.entries()) {
-        form.append("referenceImages", blob, `reference-${index}.jpg`);
+        const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+        form.append("referenceImages", blob, `reference-${index}.${ext}`);
       }
       response = await fetch("/api/image", {
         method: "POST",
@@ -327,8 +328,7 @@ export const useImageGeneration = ({
       return;
     }
 
-    const sanitized = sanitizeImageParams(selectedModel.id, effectiveParams);
-    const requestParams = sanitized.ok ? sanitized.params : {};
+    const requestParams = adaptImageParamsForModel(selectedModel.id, effectiveParams);
     const modelProfile = getImageModelProfile(selectedModel.id);
     const allowedRefs =
       modelProfile.maxReferenceImages > 0 ? refs.slice(0, modelProfile.maxReferenceImages) : [];
@@ -420,11 +420,8 @@ export const useImageGeneration = ({
 
     resetAuthRetry();
     const modelProfile = getImageModelProfile(selectedModel.id);
-    const seed = modelProfile.supportsSeed
-      ? params.seedLocked && params.seed !== undefined
-        ? params.seed
-        : generateRandomSeed()
-      : undefined;
+    const hasManualSeed = params.seed !== undefined;
+    const seed = modelProfile.supportsSeed ? (params.seed ?? generateRandomSeed()) : undefined;
 
     const effectiveParams: ImageGenerationParams = {
       ...params,
@@ -447,8 +444,6 @@ export const useImageGeneration = ({
     }
     parts.push({ type: "text", text: prompt });
 
-    clearReferenceImages();
-
     try {
       await appendImageHistoryEntry({
         id: generateId(),
@@ -463,6 +458,11 @@ export const useImageGeneration = ({
     } catch {
       toast.add({ title: "Unable to save the prompt to image history.", type: "error" });
       return;
+    }
+
+    clearReferenceImages();
+    if (hasManualSeed && !params.seedLocked) {
+      setParams((current) => ({ ...current, seed: undefined }));
     }
 
     await generate({

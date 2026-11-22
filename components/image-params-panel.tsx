@@ -41,6 +41,37 @@ import {
   sanitizeImageParams,
 } from "@/lib/image-models";
 
+const extractFormErrorMessages = (errors: unknown[]): string[] => {
+  const messages: string[] = [];
+  const visit = (item: unknown) => {
+    if (!item) {
+      return;
+    }
+    if (typeof item === "string") {
+      messages.push(item);
+      return;
+    }
+    if (Array.isArray(item)) {
+      for (const child of item) {
+        visit(child);
+      }
+      return;
+    }
+    if (typeof item === "object") {
+      const record = item as Record<string, unknown>;
+      if (typeof record.message === "string" && record.message) {
+        messages.push(record.message);
+        return;
+      }
+      for (const value of Object.values(record)) {
+        visit(value);
+      }
+    }
+  };
+  visit(errors);
+  return Array.from(new Set(messages));
+};
+
 const parseOptionalInt = (raw: string): number | undefined => {
   const trimmed = raw.trim();
   if (!trimmed) {
@@ -367,29 +398,30 @@ export const ImageParamsPanel = ({
 
       {profile.supportsNegativePrompt && (
         <form.Field name="negativePrompt">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="image-negative-prompt">Negative Prompt</FieldLabel>
-              <Textarea
-                id="image-negative-prompt"
-                rows={2}
-                maxLength={MAX_NEGATIVE_PROMPT_LENGTH}
-                placeholder="Things to exclude..."
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-            </Field>
-          )}
+          {(field) => {
+            const fieldErrors = extractFormErrorMessages(field.state.meta.errors);
+            return (
+              <Field data-invalid={fieldErrors.length > 0 ? "true" : undefined}>
+                <FieldLabel htmlFor="image-negative-prompt">Negative Prompt</FieldLabel>
+                <Textarea
+                  id="image-negative-prompt"
+                  rows={2}
+                  maxLength={MAX_NEGATIVE_PROMPT_LENGTH}
+                  placeholder="Things to exclude..."
+                  value={field.state.value}
+                  aria-invalid={fieldErrors.length > 0}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                {fieldErrors.length > 0 && <FieldError>{fieldErrors[0]}</FieldError>}
+              </Field>
+            );
+          }}
         </form.Field>
       )}
 
       <form.Subscribe selector={(state) => state.errors}>
         {(errors) => {
-          const messages = errors
-            .map((err) =>
-              typeof err === "string" ? err : (err as { message?: string } | undefined)?.message,
-            )
-            .filter((msg): msg is string => Boolean(msg));
+          const messages = extractFormErrorMessages(errors);
           return messages.length > 0 ? <FieldError>{messages[0]}</FieldError> : null;
         }}
       </form.Subscribe>
@@ -436,7 +468,7 @@ export const ImageParamsPanel = ({
         {trigger}
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent>
-            <form onSubmit={handleSubmit} className="flex max-h-[85dvh] flex-col gap-4">
+            <form onSubmit={handleSubmit} noValidate className="flex max-h-[85dvh] flex-col gap-4">
               <DrawerHeader>
                 <DrawerTitle>Image Parameters</DrawerTitle>
               </DrawerHeader>
@@ -454,7 +486,7 @@ export const ImageParamsPanel = ({
       {trigger}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <DialogHeader>
               <DialogTitle>Image Parameters</DialogTitle>
             </DialogHeader>

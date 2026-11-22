@@ -82,4 +82,22 @@ test("mapUpstreamError maps gateway, BYOK, DLP, paid-plan, and quota errors safe
   const byokMapped = mapUpstreamError(byokError, { provider: "ai-gateway" });
   expect(byokMapped.status).toBe(502);
   expect(byokMapped.message).not.toContain("sk-secret");
+
+  const nonBlockingDlpWith429 = new APICallError({
+    message: "Too many requests",
+    url: "https://gateway.ai.cloudflare.com",
+    requestBodyValues: {},
+    statusCode: 429,
+    responseHeaders: { "cf-aig-dlp": '{"action":"log"}' },
+  });
+  expect(mapUpstreamError(nonBlockingDlpWith429, { provider: "ai-gateway" }).status).toBe(429);
+
+  const redactHeaderWith401 = new APICallError({
+    message: "Unauthorized",
+    url: "https://gateway.ai.cloudflare.com",
+    requestBodyValues: {},
+    statusCode: 401,
+    responseHeaders: { "cf-aig-dlp": '{"action":"redact"}' },
+  });
+  expect(mapUpstreamError(redactHeaderWith401, { provider: "ai-gateway" }).status).toBe(502);
 });

@@ -16,7 +16,7 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import * as v from "valibot";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
 import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
@@ -90,7 +90,7 @@ const ChatInput = ({
   onSendMessage: (data: onSendMessageProps) => void;
   onStop?: () => void;
   onRetry?: () => void;
-  onUnauthorized?: () => void;
+  onUnauthorized?: (onSuccess?: () => unknown) => void;
   status?: ChatStatus;
   models: Model[];
   modelKey?: StoredModelKey;
@@ -112,6 +112,10 @@ const ChatInput = ({
   const selectedModelKey = modelKey ?? "CF_AI_MODEL";
   const [files, setFiles] = useState<FileUIPart[]>([]);
   const [attachments, setAttachments] = useState<ContextAttachmentData[]>([]);
+  const filesRef = useRef<FileUIPart[]>(files);
+  const attachmentsRef = useRef<ContextAttachmentData[]>(attachments);
+  filesRef.current = files;
+  attachmentsRef.current = attachments;
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const searchEnabled = preferences.CF_AI_SEARCH_ENABLED === "true";
@@ -130,7 +134,9 @@ const ChatInput = ({
   const kbFeatureEnabled = enableContextAttachments && capabilities.knowledgeBase;
   const {
     instances: kbInstances,
+    loading: kbLoading,
     needsAuth: kbNeedsAuth,
+    loaded: kbLoaded,
     reload: reloadKnowledgeBases,
   } = useKnowledgeBases(kbFeatureEnabled);
   const selectedKbId = preferences.CF_AI_KNOWLEDGE_BASE ?? "";
@@ -170,6 +176,8 @@ const ChatInput = ({
       const nextAttachments = attachments;
 
       form.reset({ input: "" });
+      filesRef.current = [];
+      attachmentsRef.current = [];
       setFiles([]);
       setAttachments([]);
       onSendMessage({
@@ -179,6 +187,30 @@ const ChatInput = ({
       });
     },
   });
+
+  useEffect(() => {
+    if (!preferencesReady || catalogLoading || !selectedKbId) {
+      return;
+    }
+    if (!capabilities.knowledgeBase) {
+      setPreference("CF_AI_KNOWLEDGE_BASE", undefined);
+      return;
+    }
+    if (kbFeatureEnabled && kbLoaded && !kbLoading && !kbNeedsAuth && !selectedKb) {
+      setPreference("CF_AI_KNOWLEDGE_BASE", undefined);
+    }
+  }, [
+    preferencesReady,
+    catalogLoading,
+    capabilities.knowledgeBase,
+    kbFeatureEnabled,
+    kbLoaded,
+    kbLoading,
+    kbNeedsAuth,
+    selectedKbId,
+    selectedKb,
+    setPreference,
+  ]);
 
   // Stores the fallback only after both preferences and catalog are ready,
   // avoiding overwriting stored cookies during initial client catalog hydration.
@@ -217,29 +249,29 @@ const ChatInput = ({
   };
 
   const appendFiles = (newFiles: FileUIPart[]) => {
-    setFiles((currentFiles) => {
-      const combinedFiles = [...currentFiles, ...newFiles];
-      if (combinedFiles.length > MAX_IMAGE_PARTS) {
-        toast.add({
-          title: `You can only attach up to ${MAX_IMAGE_PARTS} images.`,
-          type: "warning",
-        });
-      }
-      return combinedFiles.slice(0, MAX_IMAGE_PARTS);
-    });
+    const combinedFiles = [...filesRef.current, ...newFiles];
+    if (combinedFiles.length > MAX_IMAGE_PARTS) {
+      toast.add({
+        title: `You can only attach up to ${MAX_IMAGE_PARTS} images.`,
+        type: "warning",
+      });
+    }
+    const nextFiles = combinedFiles.slice(0, MAX_IMAGE_PARTS);
+    filesRef.current = nextFiles;
+    setFiles(nextFiles);
   };
 
   const appendAttachment = (attachment: ContextAttachmentData) => {
-    setAttachments((current) => {
-      if (current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
-        toast.add({
-          title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
-          type: "warning",
-        });
-        return current;
-      }
-      return [...current, attachment];
-    });
+    if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
+      toast.add({
+        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        type: "warning",
+      });
+      return;
+    }
+    const nextAttachments = [...attachmentsRef.current, attachment];
+    attachmentsRef.current = nextAttachments;
+    setAttachments(nextAttachments);
   };
 
   const toFilePart = async (file: File): Promise<FileUIPart | null> => {
@@ -267,7 +299,7 @@ const ChatInput = ({
   };
 
   const uploadDocument = async (file: File) => {
-    if (attachments.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
+    if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
       toast.add({
         title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
         type: "warning",
@@ -292,7 +324,11 @@ const ChatInput = ({
       });
 
       if (response.status === 401) {
-        onUnauthorized?.();
+        onUnauthorized?.(() => {
+          if (kbFeatureEnabled) {
+            void reloadKnowledgeBases();
+          }
+        });
         return;
       }
       if (!response.ok) {
@@ -316,15 +352,44 @@ const ChatInput = ({
     }
   };
 
+  const uploadDocumentsWithinLimit = async (selectedFiles: File[]) => {
+    const availableSlots = MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE - attachmentsRef.current.length;
+    if (availableSlots <= 0) {
+      toast.add({
+        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        type: "warning",
+      });
+      return;
+    }
+
+    const filesToUpload = selectedFiles.slice(0, availableSlots);
+    if (selectedFiles.length > availableSlots) {
+      toast.add({
+        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        type: "warning",
+      });
+    }
+
+    for (const file of filesToUpload) {
+      await uploadDocument(file);
+    }
+  };
+
   const onAddDocuments = () => {
+    if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
+      toast.add({
+        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        type: "warning",
+      });
+      return;
+    }
+
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = DOCUMENT_FILE_ACCEPT;
     fileInput.multiple = true;
     fileInput.onchange = async () => {
-      for (const file of Array.from(fileInput.files ?? [])) {
-        await uploadDocument(file);
-      }
+      await uploadDocumentsWithinLimit(Array.from(fileInput.files ?? []));
     };
     fileInput.click();
   };
@@ -368,8 +433,8 @@ const ChatInput = ({
     if (customImageFiles.length > 0 && onPasteFiles) {
       onPasteFiles(customImageFiles);
     }
-    for (const docFile of docFiles) {
-      await uploadDocument(docFile);
+    if (docFiles.length > 0) {
+      await uploadDocumentsWithinLimit(docFiles);
     }
   };
 
@@ -486,14 +551,16 @@ const ChatInput = ({
                       onClick={async () => {
                         const ok = await reloadKnowledgeBases();
                         if (!ok) {
-                          onUnauthorized?.();
+                          onUnauthorized?.(() => {
+                            void reloadKnowledgeBases();
+                          });
                         }
                       }}
                     >
                       <Database />
                       <span className="hidden sm:inline">KB</span>
                     </InputGroupButton>
-                  ) : (
+                  ) : kbInstances.length > 0 ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
@@ -528,7 +595,7 @@ const ChatInput = ({
                         </DropdownMenuRadioGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  ))}
+                  ) : null)}
 
                 {showAttachControl &&
                   (!enableContextAttachments ? (
@@ -566,7 +633,20 @@ const ChatInput = ({
                           </DropdownMenuItem>
                         )}
                         {supportsWebFetch && (
-                          <DropdownMenuItem onClick={() => setUrlDialogOpen(true)}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (
+                                attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE
+                              ) {
+                                toast.add({
+                                  title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+                                  type: "warning",
+                                });
+                                return;
+                              }
+                              setUrlDialogOpen(true);
+                            }}
+                          >
                             <Globe />
                             Attach webpage URL
                           </DropdownMenuItem>
@@ -637,7 +717,13 @@ const ChatInput = ({
           onOpenChange={setUrlDialogOpen}
           browserRenderAvailable={capabilities.browserRender}
           onAttached={appendAttachment}
-          onUnauthorized={onUnauthorized}
+          onUnauthorized={() =>
+            onUnauthorized?.(() => {
+              if (kbFeatureEnabled) {
+                void reloadKnowledgeBases();
+              }
+            })
+          }
         />
       )}
     </form>

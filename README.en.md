@@ -42,6 +42,10 @@ docker run -d --name cloudflare-ai-web \
 - Quickly build a multimodel AI platform using Cloudflare Workers AI
 - Support Cloudflare AI Gateway (BYOK / Unified Billing / Gateway Routes) for External Models
 - Stateless deployment across Vercel, Docker, and Cloudflare Workers
+- Document parsing (Workers AI `toMarkdown`, 0 Neurons) and webpage extraction (three-tier fallback + SSRF protection) across all chat models
+- Read-only Cloudflare AI Search Knowledge Base retrieval (RAG) with lightweight Citations
+- Image generation controls and FLUX.2 multi-image reference editing (up to 4 Reference Images)
+- Local settings panel (theme, Custom Instructions, gateway cache toggle, browser-native Web Speech ASR/TTS, Conversation History JSON export/import)
 - Chat history is stored locally
 - Image attachments are resized in the browser (long edge up to 1568px, at most 512 KiB each, up to 5 per request) so requests fit the Vercel Functions body limit
 - Access Session protection via deployment password

@@ -30,7 +30,8 @@ export const prepareTextForSpeech = (
   text = text.replace(/^>\s?/gm, "");
   text = text.replace(/^[\t ]*([-*+]|\d+\.)\s+/gm, "");
   text = text.replace(/^[-*_]{3,}\s*$/gm, "");
-  text = text.replace(/(\*\*|__|~~|\*|_)/g, "");
+  text = text.replace(/\*\*|~~|\*/g, "");
+  text = text.replace(/(^|[^\w])_{1,2}|_{1,2}(?=[^\w]|$)/g, "$1");
   text = text.replace(/<[^>]+>/g, " ");
 
   return text
