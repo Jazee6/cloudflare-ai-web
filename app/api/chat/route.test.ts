@@ -134,3 +134,21 @@ test("POST /api/chat rejects non-allowlisted knowledgeBaseId and propagates AI S
     globalThis.fetch = originalFetch;
   }
 });
+
+test("POST /api/chat rejects custom instructions exceeding 4,000 chars with 400", async () => {
+  configureExternalModel();
+  const response = await POST(
+    new Request("https://example.com/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "openai/gpt-5",
+        provider: "ai-gateway",
+        instructions: "a".repeat(4_001),
+        messages: [{ id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] }],
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(400);
+});

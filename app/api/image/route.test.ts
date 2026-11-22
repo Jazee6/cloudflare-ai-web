@@ -19,6 +19,7 @@ const installFetchMock = (payload: unknown) => {
         result: [
           "@cf/black-forest-labs/flux-2-klein-4b",
           "@cf/black-forest-labs/flux-1-schnell",
+          "@cf/leonardo/phoenix-1.0",
         ].map((name) => ({
           id: name,
           source: 1,
@@ -28,7 +29,7 @@ const installFetchMock = (payload: unknown) => {
           tags: [],
           properties: [],
         })),
-        result_info: { page: 1, per_page: 100, count: 2, total_count: 2 },
+        result_info: { page: 1, per_page: 100, count: 3, total_count: 3 },
       });
     }
 
@@ -37,11 +38,11 @@ const installFetchMock = (payload: unknown) => {
   return requests;
 };
 
-const imageRequest = (model: string) =>
+const imageRequest = (model: string, params?: Record<string, unknown>) =>
   new Request("https://example.com/api/image", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ prompt: "a red apple", model }),
+    body: JSON.stringify({ prompt: "a red apple", model, ...(params ? { params } : {}) }),
   });
 
 beforeEach(() => {
@@ -56,10 +57,25 @@ afterEach(() => {
   catalogCache.cloudflareModelCatalogCache?.clear();
 });
 
-test("flux-2 models are requested with multipart form data", async () => {
+test("flux-2 models are requested with multipart form data and reference images", async () => {
   const requests = installFetchMock({ result: { image: "aGVsbG8=" } });
 
-  const response = await postImage(imageRequest("@cf/black-forest-labs/flux-2-klein-4b"));
+  const form = new FormData();
+  form.append("prompt", "a red apple");
+  form.append("model", "@cf/black-forest-labs/flux-2-klein-4b");
+  form.append("params", JSON.stringify({ width: 1024, height: 1024, steps: 99, seed: 42 }));
+  form.append(
+    "referenceImages",
+    new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
+    "ref.jpg",
+  );
+
+  const response = await postImage(
+    new Request("https://example.com/api/image", {
+      method: "POST",
+      body: form,
+    }),
+  );
 
   expect(response.status).toBe(200);
   const runRequest = requests.find((request) => request.url.includes("/ai/run/"));
@@ -67,18 +83,52 @@ test("flux-2 models are requested with multipart form data", async () => {
     throw new Error("expected a model run request");
   }
   expect(runRequest.body).toBeInstanceOf(FormData);
-  expect((runRequest.body as FormData).get("prompt")).toBe("a red apple");
+  const upstreamForm = runRequest.body as FormData;
+  expect(upstreamForm.get("prompt")).toBe("a red apple");
+  expect(upstreamForm.get("width")).toBe("1024");
+  expect(upstreamForm.get("seed")).toBe("42");
+  expect(upstreamForm.get("steps")).toBeNull();
+  expect(upstreamForm.get("input_image_0")).toBeInstanceOf(Blob);
 });
 
-test("other image models are requested with a JSON body", async () => {
+test("reference images are rejected for models that do not support them", async () => {
+  installFetchMock({ result: { image: "aGVsbG8=" } });
+
+  const form = new FormData();
+  form.append("prompt", "a red apple");
+  form.append("model", "@cf/black-forest-labs/flux-1-schnell");
+  form.append(
+    "referenceImages",
+    new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
+    "ref.jpg",
+  );
+
+  const response = await postImage(
+    new Request("https://example.com/api/image", {
+      method: "POST",
+      body: form,
+    }),
+  );
+
+  expect(response.status).toBe(400);
+});
+
+test("other image models are requested with a JSON body and reject out-of-range params", async () => {
   const requests = installFetchMock({ result: { image: "aGVsbG8=" } });
 
-  const response = await postImage(imageRequest("@cf/black-forest-labs/flux-1-schnell"));
+  const response = await postImage(
+    imageRequest("@cf/black-forest-labs/flux-1-schnell", { steps: 4, seed: 12 }),
+  );
 
   expect(response.status).toBe(200);
   const runRequest = requests.find((request) => request.url.includes("/ai/run/"));
   if (!runRequest) {
     throw new Error("expected a model run request");
   }
-  expect(runRequest.body).toBe(JSON.stringify({ prompt: "a red apple" }));
+  expect(runRequest.body).toBe(JSON.stringify({ prompt: "a red apple", steps: 4, seed: 12 }));
+
+  const badResponse = await postImage(
+    imageRequest("@cf/black-forest-labs/flux-1-schnell", { steps: 30 }),
+  );
+  expect(badResponse.status).toBe(400);
 });

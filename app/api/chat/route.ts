@@ -19,6 +19,7 @@ import { buildModelContext, MODEL_CONTEXT_MAX_MESSAGES } from "@/lib/model-conte
 import { type ChatModel, createChatModel, ProviderConfigurationError } from "@/lib/providers";
 import { parseJsonRequest, validateImageParts } from "@/lib/request-limits";
 import type { Citation, GatewayMetadata, ResponseMetadata } from "@/lib/response-metadata";
+import { MAX_CUSTOM_INSTRUCTIONS_LENGTH } from "@/lib/settings";
 
 const BASE_CHAT_INSTRUCTIONS =
   "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.";
@@ -31,6 +32,9 @@ const chatSchema = v.object({
   skipCache: v.optional(v.boolean()),
   retry: v.optional(v.boolean()),
   knowledgeBaseId: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(128))),
+  instructions: v.optional(
+    v.pipe(v.string(), v.trim(), v.maxLength(MAX_CUSTOM_INSTRUCTIONS_LENGTH)),
+  ),
 });
 
 export async function POST(request: Request) {
@@ -62,7 +66,15 @@ export async function POST(request: Request) {
     return new Response("The latest message is too long to process.", { status: 413 });
   }
 
-  const { model, provider, search, skipCache, retry, knowledgeBaseId } = parsed.data;
+  const {
+    model,
+    provider,
+    search,
+    skipCache,
+    retry,
+    knowledgeBaseId,
+    instructions: custom,
+  } = parsed.data;
   const catalogModel = await getCatalogModel(model, "Text Generation", provider);
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
@@ -70,7 +82,8 @@ export async function POST(request: Request) {
     });
   }
 
-  let instructions = BASE_CHAT_INSTRUCTIONS;
+  const baseInstructions = custom || BASE_CHAT_INSTRUCTIONS;
+  let instructions = baseInstructions;
   let citations: Citation[] = [];
   if (knowledgeBaseId) {
     try {
@@ -79,7 +92,7 @@ export async function POST(request: Request) {
         messages: modelContext,
       });
       if (kbResult.contextText) {
-        instructions = `${BASE_CHAT_INSTRUCTIONS}\n\n${kbResult.contextText}`;
+        instructions = `${baseInstructions}\n\n${kbResult.contextText}`;
       }
       citations = kbResult.citations;
     } catch (error) {

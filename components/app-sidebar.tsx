@@ -1,11 +1,12 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { ImageIcon, MoreHorizontal, Plus } from "lucide-react";
+import { ImageIcon, MoreHorizontal, Plus, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import LoadingIndicator from "@/components/loading-indicator";
+import { useSettings } from "@/components/settings-provider";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
   AlertDialog,
@@ -52,6 +53,7 @@ interface GroupedSessions {
 const AppSidebar = () => {
   const { session_id } = useParams();
   const router = useRouter();
+  const { setSettingsOpen } = useSettings();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<
     { kind: "conversation"; sessionId: string } | { kind: "image-history" } | null
@@ -181,8 +183,18 @@ const AppSidebar = () => {
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
-            <SidebarMenuItem className="flex items-center">
+            <SidebarMenuItem className="flex items-center gap-1">
               <ThemeSwitcher />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-8"
+                aria-label="Settings"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingsIcon />
+              </Button>
 
               <Link href="/" prefetch={false} className="ml-auto">
                 <Button variant="ghost">

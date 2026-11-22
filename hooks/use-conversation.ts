@@ -2,8 +2,10 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
+import { useSettings } from "@/components/settings-provider";
 import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
+import { stopGlobalSpeech } from "@/hooks/use-speech-synthesis";
 import {
   appendConversationMessage,
   createUserMessage,
@@ -42,11 +44,14 @@ export const useConversation = ({
   models: Model[];
 }) => {
   const { loading: catalogLoading } = useModelCatalogState();
+  const { settings } = useSettings();
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [hasPendingUserMessage, setHasPendingUserMessage] = useState(false);
   const startedPendingRef = useRef(false);
   const modelsRef = useRef(models);
   modelsRef.current = models;
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   // Marks the next transport request as a Retry so AI Gateway skips cached responses.
   const retryRequestRef = useRef(false);
   // The stored response a Retry will replace once the new response succeeds.
@@ -73,6 +78,7 @@ export const useConversation = ({
         }
 
         const knowledgeBaseId = getCookie("CF_AI_KNOWLEDGE_BASE")?.trim() || undefined;
+        const customInstructions = settingsRef.current.customInstructions.trim();
 
         return {
           body: {
@@ -80,9 +86,10 @@ export const useConversation = ({
             model: selectedModel.id,
             provider: selectedModel.provider,
             search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
-            skipCache: isRetry,
+            skipCache: isRetry || settingsRef.current.skipGatewayCache,
             retry: isRetry,
             ...(knowledgeBaseId ? { knowledgeBaseId } : {}),
+            ...(customInstructions ? { instructions: customInstructions } : {}),
           },
         };
       },
@@ -126,6 +133,7 @@ export const useConversation = ({
 
   /** Retries the latest response, replacing it in Conversation History only if it was saved. */
   const retry = () => {
+    stopGlobalSpeech();
     const latest = messages.at(-1);
     retriedRef.current =
       latest?.role === "assistant" && latest.id !== unsavedIdRef.current ? latest : null;
@@ -158,6 +166,7 @@ export const useConversation = ({
 
     return () => {
       cancelled = true;
+      stopGlobalSpeech();
     };
   }, [sessionId, isNew, setMessages]);
 
@@ -182,6 +191,7 @@ export const useConversation = ({
     files?: FileUIPart[],
     attachments?: ContextAttachmentData[],
   ) => {
+    stopGlobalSpeech();
     resetAuthRetry();
     const message = createUserMessage(text, files, attachments);
     try {

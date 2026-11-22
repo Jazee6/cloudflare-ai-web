@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { getImageModelProfile, type NormalizedImageParams } from "@/lib/image-models";
 import type { CloudflareGatewayCredentials } from "@/lib/providers";
 
 export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
@@ -17,10 +18,10 @@ const sniffImageMediaType = (bytes: Uint8Array) => {
   return "image/png";
 };
 
-// FLUX.2 models only accept multipart/form-data requests with the prompt as a form
-// field; every other image model accepts a JSON body.
-const requiresMultipartFormData = (model: string) =>
-  model.startsWith("@cf/black-forest-labs/flux-2");
+export interface ImageReferenceInput {
+  blob: Blob;
+  filename?: string;
+}
 
 export const createImageRunRequest = ({
   accountId,
@@ -28,12 +29,18 @@ export const createImageRunRequest = ({
   gateway,
   model,
   prompt,
+  params = {},
+  referenceImages = [],
+  skipCache = false,
 }: {
   accountId: string;
   apiKey: string;
   gateway?: CloudflareGatewayCredentials;
   model: string;
   prompt: string;
+  params?: NormalizedImageParams;
+  referenceImages?: ImageReferenceInput[];
+  skipCache?: boolean;
 }): { url: string; init: RequestInit } => {
   const url = gateway
     ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gateway.gatewayId}/workers-ai/run/${model}`
@@ -42,16 +49,60 @@ export const createImageRunRequest = ({
   const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
   if (gateway) {
     headers["cf-aig-authorization"] = `Bearer ${gateway.gatewayToken}`;
+    if (skipCache) {
+      headers["cf-aig-skip-cache"] = "true";
+    }
   }
 
-  if (requiresMultipartFormData(model)) {
+  const profile = getImageModelProfile(model);
+
+  if (profile.transport === "multipart") {
     const form = new FormData();
     form.append("prompt", prompt);
+    if (profile.dimensions) {
+      if (params.width !== undefined) {
+        form.append("width", String(params.width));
+      }
+      if (params.height !== undefined) {
+        form.append("height", String(params.height));
+      }
+    }
+    if (profile.steps && params.steps !== undefined) {
+      form.append(profile.steps.field, String(params.steps));
+    }
+    if (profile.supportsSeed && params.seed !== undefined) {
+      form.append("seed", String(params.seed));
+    }
+    for (const [index, ref] of referenceImages.slice(0, profile.maxReferenceImages).entries()) {
+      form.append(`input_image_${index}`, ref.blob, ref.filename ?? `reference-${index}.jpg`);
+    }
     return { url, init: { method: "POST", headers, body: form } };
   }
 
+  const body: Record<string, unknown> = { prompt };
+  if (profile.dimensions) {
+    if (params.width !== undefined) {
+      body.width = params.width;
+    }
+    if (params.height !== undefined) {
+      body.height = params.height;
+    }
+  }
+  if (profile.steps && params.steps !== undefined) {
+    body[profile.steps.field] = params.steps;
+  }
+  if (profile.guidance && params.guidance !== undefined) {
+    body.guidance = params.guidance;
+  }
+  if (profile.supportsSeed && params.seed !== undefined) {
+    body.seed = params.seed;
+  }
+  if (profile.supportsNegativePrompt && params.negativePrompt) {
+    body.negative_prompt = params.negativePrompt;
+  }
+
   headers["Content-Type"] = "application/json";
-  return { url, init: { method: "POST", headers, body: JSON.stringify({ prompt }) } };
+  return { url, init: { method: "POST", headers, body: JSON.stringify(body) } };
 };
 
 /**

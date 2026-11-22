@@ -1,3 +1,6 @@
 [test]
 # Dexie captures the IndexedDB implementation when the database is constructed.
 preload = ["fake-indexeddb/auto"]
+
+[fmt]
+printWidth = 100

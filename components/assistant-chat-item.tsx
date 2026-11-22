@@ -7,7 +7,10 @@ import {
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
+  ImagePlusIcon,
   RefreshCcwIcon,
+  SquareIcon,
+  Volume2Icon,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
@@ -31,7 +34,9 @@ import {
   TraceTitle,
 } from "@/components/ui/trace";
 import ZoomableImage from "@/components/zoomable-image";
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 import type { ImageUrlsData } from "@/lib/db";
+import { getImageEntryMetadata } from "@/lib/image-models";
 import { getResponseMetadata } from "@/lib/response-metadata";
 
 /** Starts as a plain line and opens while the model thinks; the reader's own toggle wins. */
@@ -135,13 +140,24 @@ const AssistantChatItem = ({
   message,
   streaming,
   onRetry,
+  onUseAsReference,
 }: {
   message: UIMessage;
   /** Only the live response streams; a stopped one keeps its parts' "streaming" state. */
   streaming: boolean;
   onRetry?: () => void;
+  onUseAsReference?: (url: string) => void;
 }) => {
   const metadata = getResponseMetadata(message);
+  const imageMeta = getImageEntryMetadata(message);
+  const {
+    supported: ttsSupported,
+    activeId: activeSpeechId,
+    speak,
+    stop: stopSpeech,
+  } = useSpeechSynthesis();
+  const isSpeaking = activeSpeechId === message.id;
+
   const reasoningIndexes = new Map<Part, number>();
   for (const part of message.parts.filter(isReasoningUIPart)) {
     reasoningIndexes.set(part, reasoningIndexes.size);
@@ -179,15 +195,25 @@ const AssistantChatItem = ({
 
     if (part.type === "data-images") {
       return (part.data as ImageUrlsData).urls.map((url, imageIndex) => (
-        <ZoomableImage key={`${key}-${imageIndex}`}>
-          <Image
-            src={url}
-            alt={`image-${imageIndex}`}
-            width={512}
-            height={512}
-            className="rounded-md hover:brightness-75 transition-all"
-          />
-        </ZoomableImage>
+        <div key={`${key}-${imageIndex}`} className="flex flex-col gap-1.5">
+          <ZoomableImage>
+            <Image
+              src={url}
+              alt={`image-${imageIndex}`}
+              width={512}
+              height={512}
+              className="rounded-md transition-all hover:brightness-75"
+            />
+          </ZoomableImage>
+          {onUseAsReference && (
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="xs" onClick={() => onUseAsReference(url)}>
+                <ImagePlusIcon />
+                Use as reference
+              </Button>
+            </div>
+          )}
+        </div>
       ));
     }
 
@@ -197,6 +223,17 @@ const AssistantChatItem = ({
   const gatewayCacheHit = metadata?.gateway?.cacheStatus === "HIT";
   const gatewayDlpAction = metadata?.gateway?.dlpAction;
   const citations = metadata?.citations ?? [];
+  const imageSeed = imageMeta?.params?.seed;
+  const showFooter =
+    !streaming &&
+    Boolean(
+      text ||
+      onRetry ||
+      gatewayCacheHit ||
+      gatewayDlpAction ||
+      imageMeta?.modelName ||
+      imageSeed !== undefined,
+    );
 
   return (
     <Message>
@@ -261,13 +298,33 @@ const AssistantChatItem = ({
           </Collapsible>
         )}
 
-        {!streaming && (text || onRetry || gatewayCacheHit || gatewayDlpAction) && (
+        {showFooter && (
           <MessageFooter className="px-0">
             {text && <CopyAction text={text} />}
+            {text && ttsSupported && (
+              <ActionButton
+                label={isSpeaking ? "Stop" : "Read aloud"}
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeech();
+                  } else {
+                    speak(message.id, text);
+                  }
+                }}
+              >
+                {isSpeaking ? <SquareIcon /> : <Volume2Icon />}
+              </ActionButton>
+            )}
             {onRetry && (
               <ActionButton label="Retry" onClick={onRetry}>
                 <RefreshCcwIcon />
               </ActionButton>
+            )}
+            {imageMeta?.modelName && <Badge variant="secondary">{imageMeta.modelName}</Badge>}
+            {imageSeed !== undefined && (
+              <Badge variant="outline" className="tabular-nums">
+                Seed {imageSeed}
+              </Badge>
             )}
             {gatewayCacheHit && (
               <Tooltip>

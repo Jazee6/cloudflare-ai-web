@@ -81,8 +81,7 @@ export const isContextAttachmentPart = (
 };
 
 export type ContextAttachmentValidation =
-  | { ok: true }
-  | { ok: false; status: 400 | 413; message: string };
+  { ok: true } | { ok: false; status: 400 | 413; message: string };
 
 export const validateContextAttachmentParts = (
   messages: UIMessage[],

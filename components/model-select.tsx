@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ModelLogo } from "@/components/model-logo";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getImageModelProfile } from "@/lib/image-models";
 import type { Model } from "@/lib/models";
 import { getModelGroup } from "@/lib/models";
 
@@ -114,20 +116,41 @@ const ModelSelect = ({
                       <ModelLogo model={model} />
                     </span>
                     <span className="truncate">{model.name}</span>
-                    {(model.tag?.length || model.source === "external") && (
-                      <span className="ml-auto flex items-center gap-1">
-                        {model.tag?.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {model.isGatewayRoute ? (
-                          <Badge variant="secondary">Route</Badge>
-                        ) : model.source === "external" ? (
-                          <Badge variant="secondary">{model.brand}</Badge>
-                        ) : null}
-                      </span>
-                    )}
+                    {(() => {
+                      const highCostHint =
+                        model.type === "Text to Image"
+                          ? getImageModelProfile(model.id).highCostHint
+                          : undefined;
+                      if (!model.tag?.length && model.source !== "external" && !highCostHint) {
+                        return null;
+                      }
+                      return (
+                        <span className="ml-auto flex items-center gap-1">
+                          {highCostHint && (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span className="inline-flex items-center text-muted-foreground">
+                                    <AlertTriangle className="size-3.5" />
+                                  </span>
+                                }
+                              />
+                              <TooltipContent>{highCostHint}</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {model.tag?.map((tag) => (
+                            <Badge key={tag} variant="outline">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {model.isGatewayRoute ? (
+                            <Badge variant="secondary">Route</Badge>
+                          ) : model.source === "external" ? (
+                            <Badge variant="secondary">{model.brand}</Badge>
+                          ) : null}
+                        </span>
+                      );
+                    })()}
                   </CommandItem>
                 ))}
               </CommandGroup>

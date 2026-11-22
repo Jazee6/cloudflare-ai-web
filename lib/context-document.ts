@@ -153,8 +153,7 @@ const normalizeMediaType = (mediaType: string): string =>
   mediaType.split(";")[0].trim().toLowerCase();
 
 export type DocumentClassification =
-  | { kind: "plain-text"; mediaType: string }
-  | { kind: "to-markdown"; mediaType: string };
+  { kind: "plain-text"; mediaType: string } | { kind: "to-markdown"; mediaType: string };
 
 export const classifyDocumentFile = (
   filename: string,

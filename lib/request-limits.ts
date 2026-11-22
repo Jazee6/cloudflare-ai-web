@@ -18,11 +18,11 @@ export interface ReadBodyError {
   message: string;
 }
 
-/** Reads a request body while enforcing both declared and observed byte counts. */
-export const readRequestBody = async (
+/** Reads a request body as bytes while enforcing both declared and observed byte counts. */
+export const readRequestBytes = async (
   request: Request,
   maxBytes = MAX_REQUEST_BODY_BYTES,
-): Promise<ReadBodyResult | ReadBodyError> => {
+): Promise<{ ok: true; bytes: Uint8Array } | ReadBodyError> => {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > maxBytes) {
     return { ok: false, status: 413, message: "Request body too large." };
@@ -30,11 +30,11 @@ export const readRequestBody = async (
 
   const reader = request.body?.getReader();
   if (!reader) {
-    const text = await request.text();
-    if (new TextEncoder().encode(text).byteLength > maxBytes) {
+    const buffer = await request.arrayBuffer();
+    if (buffer.byteLength > maxBytes) {
       return { ok: false, status: 413, message: "Request body too large." };
     }
-    return { ok: true, text };
+    return { ok: true, bytes: new Uint8Array(buffer) };
   }
 
   let bytesRead = 0;
@@ -56,10 +56,25 @@ export const readRequestBody = async (
     chunks.push(value);
   }
 
-  const decoder = new TextDecoder();
-  const text =
-    chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join("") + decoder.decode();
-  return { ok: true, text };
+  const combined = new Uint8Array(bytesRead);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes: combined };
+};
+
+/** Reads a request body while enforcing both declared and observed byte counts. */
+export const readRequestBody = async (
+  request: Request,
+  maxBytes = MAX_REQUEST_BODY_BYTES,
+): Promise<ReadBodyResult | ReadBodyError> => {
+  const result = await readRequestBytes(request, maxBytes);
+  if (!result.ok) {
+    return result;
+  }
+  return { ok: true, text: new TextDecoder().decode(result.bytes) };
 };
 
 export type ParsedJsonRequest<T> = { ok: true; data: T } | { ok: false; response: Response };

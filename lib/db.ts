@@ -23,6 +23,16 @@ export interface ImageUrlsData {
   urls: string[];
 }
 
+/** Reference images persisted on an Image History user entry. */
+export interface StoredReferenceImagesData {
+  images: Blob[];
+}
+
+/** The display form of a `data-reference-images` part, with Blobs replaced by object URLs. */
+export interface ReferenceImageUrlsData {
+  urls: string[];
+}
+
 export const db = new Dexie("CF_AI_DB") as Dexie & {
   session: EntityTable<Session, "id">;
   message: EntityTable<StoredMessage, "id">;

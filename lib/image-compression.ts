@@ -50,12 +50,12 @@ const encodeJpeg = async (
 };
 
 /**
- * Produces an image attachment no larger than MAX_IMAGE_BYTES, or null when the image
+ * Compresses an image Blob to fit within MAX_IMAGE_BYTES, or returns null when it
  * cannot be decoded or reduced enough. Animated images keep only their first frame.
  */
-export const compressImage = async (
+export const compressImageToBlob = async (
   source: Blob,
-): Promise<{ url: string; mediaType: string } | null> => {
+): Promise<{ blob: Blob; mediaType: string } | null> => {
   if (!source.type.startsWith("image/") || source.size > MAX_SOURCE_IMAGE_BYTES) {
     return null;
   }
@@ -74,14 +74,14 @@ export const compressImage = async (
       source.size <= MAX_IMAGE_BYTES &&
       Math.max(bitmap.width, bitmap.height) <= firstAttempt.maxLongEdge;
     if (fitsAsIs) {
-      return { url: await blobToDataUrl(source), mediaType: source.type };
+      return { blob: source, mediaType: source.type };
     }
 
     for (const { maxLongEdge, quality } of getCompressionAttempts()) {
       const { width, height } = fitWithinLongEdge(bitmap.width, bitmap.height, maxLongEdge);
       const encoded = await encodeJpeg(bitmap, width, height, quality);
       if (encoded.size <= MAX_IMAGE_BYTES) {
-        return { url: await blobToDataUrl(encoded), mediaType: COMPRESSED_MEDIA_TYPE };
+        return { blob: encoded, mediaType: COMPRESSED_MEDIA_TYPE };
       }
     }
     return null;
@@ -89,6 +89,24 @@ export const compressImage = async (
     return null;
   } finally {
     bitmap.close();
+  }
+};
+
+/**
+ * Produces an image attachment no larger than MAX_IMAGE_BYTES, or null when the image
+ * cannot be decoded or reduced enough. Animated images keep only their first frame.
+ */
+export const compressImage = async (
+  source: Blob,
+): Promise<{ url: string; mediaType: string } | null> => {
+  const compressed = await compressImageToBlob(source);
+  if (!compressed) {
+    return null;
+  }
+  try {
+    return { url: await blobToDataUrl(compressed.blob), mediaType: compressed.mediaType };
+  } catch {
+    return null;
   }
 };
 

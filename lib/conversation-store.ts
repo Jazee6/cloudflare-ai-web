@@ -99,3 +99,30 @@ export const loadImageHistory = () =>
 export const clearImageHistory = async () => {
   await db.message.where("sessionId").equals(IMAGE_HISTORY_SESSION_ID).delete();
 };
+
+export interface LocalStorageStats {
+  sessionCount: number;
+  messageCount: number;
+  imageEntryCount: number;
+}
+
+export const getStorageStats = async (): Promise<LocalStorageStats> => {
+  const [sessionCount, totalMessages, imageEntryCount] = await Promise.all([
+    db.session.count(),
+    db.message.count(),
+    db.message.where("sessionId").equals(IMAGE_HISTORY_SESSION_ID).count(),
+  ]);
+  return {
+    sessionCount,
+    messageCount: Math.max(0, totalMessages - imageEntryCount),
+    imageEntryCount,
+  };
+};
+
+/** Deletes all Conversation History sessions and messages while preserving Image History. */
+export const clearAllConversations = async () => {
+  await db.transaction("rw", db.session, db.message, async () => {
+    await db.session.clear();
+    await db.message.where("sessionId").notEqual(IMAGE_HISTORY_SESSION_ID).delete();
+  });
+};

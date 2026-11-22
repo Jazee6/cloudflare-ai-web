@@ -25,12 +25,15 @@ test("createImageRunRequest targets the REST API without a gateway", () => {
   expect(init.body).toBe(JSON.stringify({ prompt: "apple" }));
 });
 
-test("createImageRunRequest routes through the gateway with its token", () => {
+test("createImageRunRequest routes through the gateway with its token and skipCache header", () => {
   const { url, init } = createImageRunRequest({
     ...credentials,
     gateway: { gatewayId: "gw", gatewayToken: "gw-token" },
     model: "@cf/black-forest-labs/flux-2-klein-4b",
     prompt: "apple",
+    params: { width: 1024, height: 1024, seed: 7 },
+    referenceImages: [{ blob: new Blob([new Uint8Array([1, 2])], { type: "image/jpeg" }) }],
+    skipCache: true,
   });
 
   expect(url).toBe(
@@ -39,8 +42,41 @@ test("createImageRunRequest routes through the gateway with its token", () => {
   expect(init.headers).toEqual({
     Authorization: "Bearer key",
     "cf-aig-authorization": "Bearer gw-token",
+    "cf-aig-skip-cache": "true",
   });
   expect(init.body).toBeInstanceOf(FormData);
+  const form = init.body as FormData;
+  expect(form.get("prompt")).toBe("apple");
+  expect(form.get("width")).toBe("1024");
+  expect(form.get("height")).toBe("1024");
+  expect(form.get("seed")).toBe("7");
+  expect(form.get("input_image_0")).toBeInstanceOf(Blob);
+});
+
+test("createImageRunRequest maps profile fields for json models", () => {
+  const { init } = createImageRunRequest({
+    ...credentials,
+    model: "@cf/leonardo/phoenix-1.0",
+    prompt: "apple",
+    params: {
+      width: 1344,
+      height: 768,
+      steps: 20,
+      guidance: 2.5,
+      seed: 99,
+      negativePrompt: "blurry",
+    },
+  });
+
+  expect(JSON.parse(init.body as string)).toEqual({
+    prompt: "apple",
+    width: 1344,
+    height: 768,
+    num_steps: 20,
+    guidance: 2.5,
+    seed: 99,
+    negative_prompt: "blurry",
+  });
 });
 
 test("getImageFailureStatus reports credential rejections as server errors", () => {

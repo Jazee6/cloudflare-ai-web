@@ -10,12 +10,14 @@ const ChatList = memo(
     messages,
     status,
     onRetry,
+    onUseAsReference,
     className,
   }: {
     messages: UIMessage[];
     status: ChatStatus;
     /** Retries the latest response; only offered on that response. */
     onRetry?: () => void;
+    onUseAsReference?: (url: string) => void;
     className?: string;
   }) => {
     const busy = status === "submitted" || status === "streaming";
@@ -49,6 +51,7 @@ const ChatList = memo(
                   message={message}
                   streaming={busy && isLastMessage}
                   onRetry={isLastMessage && !busy ? onRetry : undefined}
+                  onUseAsReference={onUseAsReference}
                 />
               </MessageScrollerItem>
             );

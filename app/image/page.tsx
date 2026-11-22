@@ -1,17 +1,83 @@
 "use client";
 
+import { ImagePlus, X } from "lucide-react";
 import { ViewTransition } from "react";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ChatList from "@/components/chat-list";
-import { useModelCatalog } from "@/components/model-catalog-provider";
+import { ImageParamsPanel } from "@/components/image-params-panel";
+import { useModelCatalog, useModelPreferences } from "@/components/model-catalog-provider";
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentMedia,
+} from "@/components/ui/attachment";
+import { InputGroupButton } from "@/components/ui/input-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useImageGeneration } from "@/hooks/use-image-generation";
 
 const Page = () => {
   const models = useModelCatalog("Text to Image");
-  const { messages, status, send, retry, authDialog } = useImageGeneration({
+  const { preferences } = useModelPreferences();
+  const selectedModel =
+    models.find((model) => model.id === preferences.CF_AI_MODEL_IMAGE) ?? models[0];
+
+  const {
+    messages,
+    status,
+    send,
+    retry,
+    authDialog,
+    params,
+    setParams,
+    profile,
+    referenceImages,
+    addReferenceImages,
+    removeReferenceImage,
+    useGeneratedImageAsReference,
+  } = useImageGeneration({
     models,
+    selectedModelId: selectedModel?.id,
   });
+
+  const supportsReferenceImages = profile.maxReferenceImages > 0;
+
+  const onPickReferenceImages = () => {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.multiple = true;
+    fileInput.onchange = () => {
+      const picked = Array.from(fileInput.files ?? []);
+      if (picked.length > 0) {
+        void addReferenceImages(picked);
+      }
+    };
+    fileInput.click();
+  };
+
+  const referencePreviews =
+    referenceImages.length > 0 ? (
+      <>
+        {referenceImages.map((ref) => (
+          <Attachment key={ref.id} orientation="vertical" className="w-20">
+            <AttachmentMedia variant="image">
+              <img src={ref.url} alt={ref.filename} />
+            </AttachmentMedia>
+            <AttachmentActions>
+              <AttachmentAction
+                type="button"
+                aria-label={`Remove ${ref.filename}`}
+                onClick={() => removeReferenceImage(ref.id)}
+              >
+                <X />
+              </AttachmentAction>
+            </AttachmentActions>
+          </Attachment>
+        ))}
+      </>
+    ) : undefined;
 
   return (
     <ChatLayout
@@ -26,6 +92,44 @@ const Page = () => {
             modelKey="CF_AI_MODEL_IMAGE"
             enableContextAttachments={false}
             onRetry={retry}
+            attachmentsPreview={referencePreviews}
+            onPasteFiles={
+              supportsReferenceImages ? (files) => void addReferenceImages(files) : undefined
+            }
+            addon={
+              <>
+                {selectedModel && (
+                  <ImageParamsPanel
+                    modelId={selectedModel.id}
+                    profile={profile}
+                    params={params}
+                    onChangeParams={setParams}
+                  />
+                )}
+                {supportsReferenceImages && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <InputGroupButton
+                          size="xs"
+                          variant={referenceImages.length > 0 ? "secondary" : "ghost"}
+                          aria-label="Attach reference images"
+                          onClick={onPickReferenceImages}
+                        />
+                      }
+                    >
+                      <ImagePlus />
+                      <span className="hidden sm:inline">
+                        Ref{referenceImages.length > 0 ? ` (${referenceImages.length})` : ""}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Attach up to {profile.maxReferenceImages} reference images
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </>
+            }
           />
         </ViewTransition>
       }
@@ -34,6 +138,9 @@ const Page = () => {
         status={status}
         messages={messages}
         onRetry={retry}
+        onUseAsReference={
+          supportsReferenceImages ? (url) => void useGeneratedImageAsReference(url) : undefined
+        }
         className="mx-auto max-w-3xl pt-16 pb-4"
       />
     </ChatLayout>

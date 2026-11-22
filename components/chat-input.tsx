@@ -1,6 +1,6 @@
 "use client";
 
-import { valibotResolver } from "@hookform/resolvers/valibot";
+import { useForm } from "@tanstack/react-form";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
   ArrowUp,
@@ -9,13 +9,14 @@ import {
   FileText,
   Globe,
   ImagePlus,
+  Mic,
+  MicOff,
   Paperclip,
   RefreshCw,
   Square,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import * as v from "valibot";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
 import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
@@ -44,8 +45,10 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 import { Toggle } from "@/components/ui/toggle";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UrlAttachmentDialog } from "@/components/url-attachment-dialog";
 import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import {
   type ContextAttachmentData,
   createContextAttachmentPart,
@@ -69,8 +72,6 @@ const formSchema = v.object({
   input: v.pipe(v.string(), v.trim(), v.minLength(1)),
 });
 
-type FormData = v.InferOutput<typeof formSchema>;
-
 const ChatInput = ({
   className,
   onSendMessage,
@@ -82,6 +83,8 @@ const ChatInput = ({
   modelKey,
   enableContextAttachments = true,
   addon,
+  attachmentsPreview,
+  onPasteFiles,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -94,6 +97,10 @@ const ChatInput = ({
   enableContextAttachments?: boolean;
   /** Extra controls shown next to the model selector. */
   addon?: ReactNode;
+  /** Optional custom preview items rendered above the textarea (e.g., reference images). */
+  attachmentsPreview?: ReactNode;
+  /** Optional handler for pasted image files when multimodal chat image parts are disabled. */
+  onPasteFiles?: (files: File[]) => void;
 }) => {
   const { preferences, ready: preferencesReady, setPreference } = useModelPreferences();
   const {
@@ -103,20 +110,22 @@ const ChatInput = ({
     reload: reloadCatalog,
   } = useModelCatalogState();
   const selectedModelKey = modelKey ?? "CF_AI_MODEL";
-  const form = useForm<FormData>({
-    resolver: valibotResolver(formSchema),
-    defaultValues: {
-      input: "",
-    },
-  });
-  const input = form.watch("input");
-  const selectedModel =
-    models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0];
   const [files, setFiles] = useState<FileUIPart[]>([]);
   const [attachments, setAttachments] = useState<ContextAttachmentData[]>([]);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const searchEnabled = preferences.CF_AI_SEARCH_ENABLED === "true";
+
+  const {
+    supported: speechSupported,
+    listening,
+    start: startSpeech,
+    stop: stopSpeech,
+    abort: abortSpeech,
+  } = useSpeechRecognition();
+
+  const selectedModel =
+    models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0];
 
   const kbFeatureEnabled = enableContextAttachments && capabilities.knowledgeBase;
   const {
@@ -126,6 +135,50 @@ const ChatInput = ({
   } = useKnowledgeBases(kbFeatureEnabled);
   const selectedKbId = preferences.CF_AI_KNOWLEDGE_BASE ?? "";
   const selectedKb = kbInstances.find((instance) => instance.id === selectedKbId);
+
+  const form = useForm({
+    defaultValues: {
+      input: "",
+    },
+    validators: {
+      onSubmit: formSchema,
+    },
+    onSubmit: async ({ value }) => {
+      if (models.length === 0 || uploadingDocument) {
+        return;
+      }
+
+      const totalChars = getMessageContentLength([
+        ...files,
+        ...attachments.map(createContextAttachmentPart),
+        { type: "text", text: value.input },
+      ]);
+      if (totalChars > MODEL_CONTEXT_MAX_CHARS) {
+        toast.add({
+          title: "Message and context attachments exceed the 64,000-character limit.",
+          type: "warning",
+        });
+        return;
+      }
+
+      if (listening) {
+        abortSpeech();
+      }
+
+      const nextText = value.input;
+      const nextFiles = files;
+      const nextAttachments = attachments;
+
+      form.reset({ input: "" });
+      setFiles([]);
+      setAttachments([]);
+      onSendMessage({
+        text: nextText,
+        files: nextFiles,
+        attachments: nextAttachments,
+      });
+    },
+  });
 
   // Stores the fallback only after both preferences and catalog are ready,
   // avoiding overwriting stored cookies during initial client catalog hydration.
@@ -151,34 +204,6 @@ const ChatInput = ({
       setFiles([]);
     }
   }, [catalogLoading, selectedModel]);
-
-  function onSubmit(values: FormData) {
-    if (models.length === 0 || uploadingDocument) {
-      return;
-    }
-
-    const totalChars = getMessageContentLength([
-      ...files,
-      ...attachments.map(createContextAttachmentPart),
-      { type: "text", text: values.input },
-    ]);
-    if (totalChars > MODEL_CONTEXT_MAX_CHARS) {
-      toast.add({
-        title: "Message and context attachments exceed the 64,000-character limit.",
-        type: "warning",
-      });
-      return;
-    }
-
-    form.resetField("input");
-    setFiles([]);
-    setAttachments([]);
-    onSendMessage({
-      text: values.input,
-      files,
-      attachments,
-    });
-  }
 
   const onSendClick = () => {
     switch (status) {
@@ -307,6 +332,7 @@ const ChatInput = ({
   const onPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboardItems = event.clipboardData.items;
     const newFiles: FileUIPart[] = [];
+    const customImageFiles: File[] = [];
     const docFiles: File[] = [];
 
     for (let i = 0; i < clipboardItems.length; i++) {
@@ -326,6 +352,9 @@ const ChatInput = ({
           if (filePart) {
             newFiles.push(filePart);
           }
+        } else if (onPasteFiles) {
+          event.preventDefault();
+          customImageFiles.push(file);
         }
       } else if (enableContextAttachments && capabilities.documents) {
         event.preventDefault();
@@ -336,6 +365,9 @@ const ChatInput = ({
     if (newFiles.length > 0) {
       appendFiles(newFiles);
     }
+    if (customImageFiles.length > 0 && onPasteFiles) {
+      onPasteFiles(customImageFiles);
+    }
     for (const docFile of docFiles) {
       await uploadDocument(docFile);
     }
@@ -345,18 +377,26 @@ const ChatInput = ({
   const supportsDocument = enableContextAttachments && capabilities.documents;
   const supportsWebFetch = enableContextAttachments && capabilities.webFetch;
   const showAttachControl = supportsImage || supportsDocument || supportsWebFetch;
+  const hasTopAddon = files.length > 0 || attachments.length > 0 || Boolean(attachmentsPreview);
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className={className}>
-      <Controller
-        control={form.control}
-        name="input"
-        render={({ field }) => (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+      className={className}
+    >
+      <form.Field name="input">
+        {(field) => (
           <Field>
             {/* The empty input disables only the send button, so the group keeps its normal look. */}
             <InputGroup className="rounded-md border-3 border-border transition-all focus-within:border-primary has-disabled:bg-transparent has-disabled:opacity-100 has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:ring-0 dark:has-disabled:bg-input/30">
-              {(files.length > 0 || attachments.length > 0) && (
+              {hasTopAddon && (
                 <InputGroupAddon align="block-start" className="flex-wrap gap-2">
+                  {attachmentsPreview}
+
                   {files.map((file, index) => (
                     <Attachment
                       key={`${file.filename}-${file.url}`}
@@ -395,18 +435,22 @@ const ChatInput = ({
               )}
 
               <InputGroupTextarea
+                id="chat-message-input"
+                name={field.name}
                 autoFocus
                 className="max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent"
                 placeholder="Text here..."
                 aria-label="Message"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
-                    form.handleSubmit(onSubmit)();
+                    void form.handleSubmit();
                   }
                 }}
                 onPaste={onPaste}
-                {...field}
               />
 
               <InputGroupAddon align="block-end" className="min-w-0 gap-1 sm:gap-2">
@@ -531,32 +575,61 @@ const ChatInput = ({
                     </DropdownMenu>
                   ))}
 
-                <InputGroupButton
-                  size="icon-sm"
-                  variant="default"
-                  className="ml-auto"
-                  aria-label={
-                    status === "streaming" ? "Stop" : status === "error" ? "Retry" : "Send"
-                  }
-                  disabled={
-                    models.length === 0 ||
-                    uploadingDocument ||
-                    status === "submitted" ||
-                    (input.trim().length === 0 && status === "ready")
-                  }
-                  type={status === "ready" ? "submit" : "button"}
-                  onClick={onSendClick}
-                >
-                  {status === "ready" && <ArrowUp />}
-                  {status === "submitted" && <Spinner />}
-                  {status === "streaming" && <Square className="fill-primary-foreground" />}
-                  {status === "error" && <RefreshCw />}
-                </InputGroupButton>
+                <div className="ml-auto flex items-center gap-1">
+                  {speechSupported && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <InputGroupButton
+                            size="icon-sm"
+                            variant={listening ? "destructive" : "ghost"}
+                            aria-label={listening ? "Stop voice input" : "Voice input"}
+                            onClick={() => {
+                              if (listening) {
+                                stopSpeech();
+                              } else {
+                                startSpeech(field.state.value, (nextText) => {
+                                  field.handleChange(nextText);
+                                });
+                              }
+                            }}
+                          />
+                        }
+                      >
+                        {listening ? <MicOff /> : <Mic />}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {listening ? "Stop voice input" : "Voice input"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  <InputGroupButton
+                    size="icon-sm"
+                    variant="default"
+                    aria-label={
+                      status === "streaming" ? "Stop" : status === "error" ? "Retry" : "Send"
+                    }
+                    disabled={
+                      models.length === 0 ||
+                      uploadingDocument ||
+                      status === "submitted" ||
+                      (field.state.value.trim().length === 0 && status === "ready")
+                    }
+                    type={status === "ready" ? "submit" : "button"}
+                    onClick={onSendClick}
+                  >
+                    {status === "ready" && <ArrowUp />}
+                    {status === "submitted" && <Spinner />}
+                    {status === "streaming" && <Square className="fill-primary-foreground" />}
+                    {status === "error" && <RefreshCw />}
+                  </InputGroupButton>
+                </div>
               </InputGroupAddon>
             </InputGroup>
           </Field>
         )}
-      />
+      </form.Field>
 
       {supportsWebFetch && (
         <UrlAttachmentDialog

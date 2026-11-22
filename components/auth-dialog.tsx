@@ -1,3 +1,9 @@
+"use client";
+
+import { useForm } from "@tanstack/react-form";
+import { useState } from "react";
+import * as v from "valibot";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -5,19 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Controller, useForm } from "react-hook-form";
-import * as v from "valibot";
-import { valibotResolver } from "@hookform/resolvers/valibot";
 import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 
 const formSchema = v.object({
-  password: v.pipe(v.string(), v.minLength(1)),
+  password: v.pipe(v.string(), v.minLength(1, "Password is required.")),
 });
-
-type FormData = v.InferOutput<typeof formSchema>;
 
 const AuthDialog = ({
   open,
@@ -31,36 +31,37 @@ const AuthDialog = ({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: valibotResolver(formSchema),
+  const form = useForm({
     defaultValues: {
       password: "",
     },
-  });
-
-  async function onSubmit(values: FormData) {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: values.password }),
-      });
-      if (res.ok) {
-        form.reset({ password: "" });
-        onAuthenticated();
-      } else if (res.status === 401) {
-        setError("Incorrect password.");
-      } else {
-        setError("Authentication failed. Please try again.");
+    validators: {
+      onSubmit: formSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: value.password }),
+        });
+        if (res.ok) {
+          form.reset({ password: "" });
+          onAuthenticated();
+        } else if (res.status === 401) {
+          setError("Incorrect password.");
+        } else {
+          setError("Authentication failed. Please try again.");
+        }
+      } catch {
+        setError("Network error. Please try again.");
+      } finally {
+        setSubmitting(false);
       }
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    },
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,26 +70,45 @@ const AuthDialog = ({
           <DialogTitle>Please enter your password to continue</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <Controller
-            control={form.control}
-            name="password"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid || !!error}>
-                <Input
-                  aria-invalid={fieldState.invalid || !!error}
-                  placeholder="password"
-                  type="password"
-                  {...field}
-                />
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                {error && !fieldState.error && <p className="text-destructive text-sm">{error}</p>}
-              </Field>
-            )}
-          />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
+          }}
+        >
+          <form.Field name="password">
+            {(field) => {
+              const firstError = field.state.meta.errors[0];
+              const fieldMessage =
+                typeof firstError === "string"
+                  ? firstError
+                  : (firstError as { message?: string } | undefined)?.message;
+              const displayError = fieldMessage ?? error;
+              const invalid = Boolean(displayError);
+
+              return (
+                <Field data-invalid={invalid || undefined}>
+                  <Input
+                    aria-invalid={invalid || undefined}
+                    placeholder="password"
+                    type="password"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      setError(null);
+                      field.handleChange(event.target.value);
+                    }}
+                  />
+                  {displayError && <FieldError>{displayError}</FieldError>}
+                </Field>
+              );
+            }}
+          </form.Field>
           <DialogFooter className="mt-4">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Submitting..." : "Submit"}
+              {submitting && <Spinner />}
+              Submit
             </Button>
           </DialogFooter>
         </form>
