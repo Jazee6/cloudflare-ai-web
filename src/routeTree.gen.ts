@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ImageRouteImport } from './routes/image'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiImageRouteImport } from './routes/api/image'
@@ -23,11 +22,6 @@ import { Route as ApiContextUrlRouteImport } from './routes/api/context/url'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImageRoute = ImageRouteImport.update({
-  id: '/image',
-  path: '/image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthRoute = ApiAuthRouteImport.update({
@@ -73,7 +67,6 @@ const ApiContextUrlRoute = ApiContextUrlRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/image': typeof ImageRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
@@ -85,7 +78,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/image': typeof ImageRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
@@ -98,7 +90,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/image': typeof ImageRoute
   '/api/auth': typeof ApiAuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
@@ -112,7 +103,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/image'
     | '/api/auth'
     | '/api/chat'
     | '/api/image'
@@ -124,7 +114,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/image'
     | '/api/auth'
     | '/api/chat'
     | '/api/image'
@@ -136,7 +125,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/image'
     | '/api/auth'
     | '/api/chat'
     | '/api/image'
@@ -149,7 +137,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ImageRoute: typeof ImageRoute
   ApiAuthRoute: typeof ApiAuthRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiImageRoute: typeof ApiImageRoute
@@ -167,13 +154,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/image': {
-      id: '/image'
-      path: '/image'
-      fullPath: '/image'
-      preLoaderRoute: typeof ImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth': {
@@ -237,7 +217,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ImageRoute: ImageRoute,
   ApiAuthRoute: ApiAuthRoute,
   ApiChatRoute: ApiChatRoute,
   ApiImageRoute: ApiImageRoute,

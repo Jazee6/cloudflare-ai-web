@@ -5,10 +5,6 @@ import { db, type Session, type StoredMessage } from "@/lib/db";
 
 export const CONVERSATION_HISTORY_LOAD_LIMIT = 100;
 export const RECENT_SESSIONS_LIMIT = 100;
-export const IMAGE_HISTORY_LOAD_LIMIT = 50;
-
-/** Image History shares the message table under a reserved session id that never has a Session row. */
-const IMAGE_HISTORY_SESSION_ID = "image";
 const SESSION_NAME_LENGTH = 20;
 
 const loadNewestMessages = async (sessionId: string, limit: number): Promise<StoredMessage[]> => {
@@ -81,48 +77,20 @@ export const deleteConversation = async (sessionId: string) => {
   });
 };
 
-export const appendImageHistoryEntry = async (entry: UIMessage) => {
-  await db.message.add({ ...entry, sessionId: IMAGE_HISTORY_SESSION_ID, createdAt: new Date() });
-};
-
-/** Completes a Retry in Image History: the new entry takes the place of the retried one. */
-export const replaceImageHistoryEntry = async (replacedId: string, entry: UIMessage) => {
-  await db.transaction("rw", db.message, async () => {
-    await db.message.delete(replacedId);
-    await db.message.add({ ...entry, sessionId: IMAGE_HISTORY_SESSION_ID, createdAt: new Date() });
-  });
-};
-
-export const loadImageHistory = () =>
-  loadNewestMessages(IMAGE_HISTORY_SESSION_ID, IMAGE_HISTORY_LOAD_LIMIT);
-
-export const clearImageHistory = async () => {
-  await db.message.where("sessionId").equals(IMAGE_HISTORY_SESSION_ID).delete();
-};
-
 export interface LocalStorageStats {
   sessionCount: number;
   messageCount: number;
-  imageEntryCount: number;
 }
 
 export const getStorageStats = async (): Promise<LocalStorageStats> => {
-  const [sessionCount, totalMessages, imageEntryCount] = await Promise.all([
-    db.session.count(),
-    db.message.count(),
-    db.message.where("sessionId").equals(IMAGE_HISTORY_SESSION_ID).count(),
-  ]);
-  return {
-    sessionCount,
-    messageCount: Math.max(0, totalMessages - imageEntryCount),
-    imageEntryCount,
-  };
+  const [sessionCount, messageCount] = await Promise.all([db.session.count(), db.message.count()]);
+  return { sessionCount, messageCount };
 };
 
-/** Deletes all Conversation History sessions and messages while preserving Image History. */
+/** Deletes every Conversation History session and message. */
 export const clearAllConversations = async () => {
   await db.transaction("rw", db.session, db.message, async () => {
     await db.session.clear();
-    await db.message.where("sessionId").notEqual(IMAGE_HISTORY_SESSION_ID).delete();
+    await db.message.clear();
   });
 };

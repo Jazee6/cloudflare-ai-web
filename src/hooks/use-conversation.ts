@@ -1,5 +1,5 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
+import { type ChatStatus, DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
@@ -15,7 +15,16 @@ import {
 } from "@/lib/conversation-store";
 import type { ContextAttachmentData } from "@/lib/context-attachments";
 import { fitImagePartsWithinLimit } from "@/lib/image-compression";
-import { buildModelContext } from "@/lib/model-context";
+import { getImageEntryMetadata } from "@/lib/image-models";
+import {
+  createImageResponseMessage,
+  getImageBlobs,
+  getPromptText,
+  isImageTurn,
+  requestImage,
+  resolveImageSeed,
+} from "@/lib/image-turn";
+import { buildModelContext, encodeGeneratedImages, expandImageTurns } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
 import { getStoredModel, readPreferences } from "@/lib/preferences";
 
@@ -33,7 +42,8 @@ const showError = (message: string) => {
 
 /**
  * Drives one Conversation History: loads its newest messages, persists each finished
- * message, and starts the first response when the conversation was just created.
+ * message, and starts the first response when the conversation was just created. A turn is
+ * either a chat turn streamed from `/api/chat` or an image-generation turn from `/api/image`.
  */
 export const useConversation = ({
   sessionId,
@@ -49,6 +59,11 @@ export const useConversation = ({
   const { settings } = useSettings();
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [hasPendingUserMessage, setHasPendingUserMessage] = useState(false);
+  // Which kind of turn the shared status follows: the latest one started.
+  const [activeTurn, setActiveTurn] = useState<"chat" | "image">("chat");
+  const [imageStatus, setImageStatus] = useState<ChatStatus>("ready");
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
   const startedPendingRef = useRef(false);
   const modelsRef = useRef(models);
   modelsRef.current = models;
@@ -63,7 +78,14 @@ export const useConversation = ({
   // A failed response that is shown but was never saved, so retrying it replaces nothing.
   const unsavedIdRef = useRef<string | null>(null);
 
-  const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
+  const {
+    messages,
+    sendMessage,
+    status: chatStatus,
+    setMessages,
+    stop,
+    regenerate,
+  } = useChat({
     id: sessionId,
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -71,12 +93,19 @@ export const useConversation = ({
         const isRetry = retryRequestRef.current;
         retryRequestRef.current = false;
 
-        const selectedModel = getStoredModel(modelsRef.current, "modelId");
+        const selectedModel = getStoredModel(modelsRef.current);
         if (!selectedModel) {
           throw new Error("No chat models are currently available");
         }
+        if (selectedModel.type !== "Text Generation") {
+          throw new Error("Select a chat model to continue this response.");
+        }
 
-        const modelContext = buildModelContext(messages);
+        const { messages: expanded, generatedImages } = expandImageTurns(
+          messages,
+          selectedModel.input?.includes("image") === true,
+        );
+        const modelContext = buildModelContext(expanded);
         if (!modelContext) {
           throw new Error("The latest message exceeds the 64,000-character context limit.");
         }
@@ -89,7 +118,9 @@ export const useConversation = ({
 
         return {
           body: {
-            messages: await fitImagePartsWithinLimit(modelContext),
+            messages: await fitImagePartsWithinLimit(
+              await encodeGeneratedImages(modelContext, generatedImages),
+            ),
             model: selectedModel.id,
             provider: selectedModel.provider,
             search: preferences.searchEnabled === true,
@@ -138,10 +169,86 @@ export const useConversation = ({
     },
   });
 
+  /**
+   * Generates the image for a prompt already in Conversation History and saves it, in place of
+   * `replacedId` when retrying. The prompt's image model is used unless another image model is
+   * selected now.
+   */
+  const runImageTurn = async (
+    prompt: UIMessage,
+    { replacedId, retry = false }: { replacedId?: string; retry?: boolean } = {},
+  ) => {
+    const turnSessionId = sessionId;
+    const isCurrent = () => sessionIdRef.current === turnSessionId;
+    const metadata = getImageEntryMetadata(prompt);
+    const text = getPromptText(prompt);
+    const selected = getStoredModel(modelsRef.current);
+    const model =
+      selected?.type === "Text to Image"
+        ? selected
+        : modelsRef.current.find(
+            (candidate) => candidate.id === metadata?.modelId && candidate.type === "Text to Image",
+          );
+
+    setActiveTurn("image");
+    if (!text || !metadata?.params || !model) {
+      setImageStatus("error");
+      showError(model ? "No prompt to retry." : "Select an image model to generate this image.");
+      return;
+    }
+
+    setImageStatus("submitted");
+    const result = await requestImage({
+      prompt: text,
+      model,
+      params: retry ? resolveImageSeed(model.id, metadata.params, "retry") : metadata.params,
+      referenceImages: getImageBlobs(prompt, "data-reference-images"),
+      skipCache: retry || settingsRef.current.skipGatewayCache,
+    });
+    if (!result.ok) {
+      if (!isCurrent()) {
+        return;
+      }
+      setImageStatus("error");
+      if (result.unauthorized) {
+        handleUnauthorized();
+      } else {
+        showError(result.message);
+      }
+      return;
+    }
+
+    resetAuthRetry();
+    const response = createImageResponseMessage(model, result.params, result.image);
+    try {
+      await (replacedId
+        ? replaceConversationResponse(turnSessionId, replacedId, response)
+        : appendConversationMessage(turnSessionId, response));
+    } catch {
+      showError("Unable to save the generated image.");
+    }
+    if (isCurrent()) {
+      setMessages((current) => [
+        ...current.filter((candidate) => candidate.id !== replacedId),
+        response,
+      ]);
+      setImageStatus("ready");
+    }
+  };
+
   /** Retries the latest response, replacing it in Conversation History only if it was saved. */
   const retry = () => {
     stopGlobalSpeech();
     const latest = messages.at(-1);
+    const latestPrompt = messages.findLast((message) => message.role === "user");
+    if (latestPrompt && isImageTurn(latestPrompt)) {
+      return runImageTurn(latestPrompt, {
+        replacedId: latest?.role === "assistant" ? latest.id : undefined,
+        retry: true,
+      });
+    }
+
+    setActiveTurn("chat");
     retriedRef.current =
       latest?.role === "assistant" && latest.id !== unsavedIdRef.current ? latest : null;
     retryRequestRef.current = true;
@@ -157,6 +264,8 @@ export const useConversation = ({
     let cancelled = false;
     setHistoryLoaded(false);
     setHasPendingUserMessage(false);
+    setActiveTurn("chat");
+    setImageStatus("ready");
     startedPendingRef.current = false;
 
     loadConversationHistory(sessionId)
@@ -180,6 +289,16 @@ export const useConversation = ({
     };
   }, [sessionId, setMessages]);
 
+  // The first turn of a new conversation is a chat or image turn, depending on its prompt.
+  const startPendingTurn = useEffectEvent(() => {
+    const pending = messages.at(-1);
+    if (pending && isImageTurn(pending)) {
+      void runImageTurn(pending);
+    } else {
+      void regenerate();
+    }
+  });
+
   useEffect(() => {
     if (
       !historyLoaded ||
@@ -201,16 +320,8 @@ export const useConversation = ({
       replace: true,
       viewTransition: false,
     });
-    void regenerate();
-  }, [
-    historyLoaded,
-    hasPendingUserMessage,
-    catalogLoading,
-    models.length,
-    regenerate,
-    navigate,
-    sessionId,
-  ]);
+    startPendingTurn();
+  }, [historyLoaded, hasPendingUserMessage, catalogLoading, models.length, navigate, sessionId]);
 
   const send = async (
     text: string,
@@ -227,8 +338,35 @@ export const useConversation = ({
       return;
     }
 
+    setActiveTurn("chat");
     await sendMessage(message);
   };
 
-  return { messages, status, send, stop, retry, authDialog, handleUnauthorized };
+  /** Sends an image-generation prompt built by `useImageTurn`. */
+  const sendImagePrompt = async (prompt: UIMessage) => {
+    stopGlobalSpeech();
+    resetAuthRetry();
+    try {
+      await appendConversationMessage(sessionId, prompt);
+    } catch {
+      showError("Unable to save the prompt to chat history.");
+      return;
+    }
+
+    setMessages((current) => [...current, prompt]);
+    await runImageTurn(prompt);
+  };
+
+  const status = activeTurn === "image" ? imageStatus : chatStatus;
+
+  return {
+    messages,
+    status,
+    send,
+    sendImagePrompt,
+    stop,
+    retry,
+    authDialog,
+    handleUnauthorized,
+  };
 };

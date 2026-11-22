@@ -3,11 +3,11 @@ import {
   createImageRunRequest,
   type ImageReferenceInput,
   mapImageFailureResponse,
-  MAX_IMAGE_PROMPT_LENGTH,
   toImageResponse,
 } from "@/lib/image-generation";
 import {
   getImageModelProfile,
+  MAX_IMAGE_PROMPT_LENGTH,
   MAX_REFERENCE_IMAGES,
   sanitizeImageParams,
 } from "@/lib/image-models";

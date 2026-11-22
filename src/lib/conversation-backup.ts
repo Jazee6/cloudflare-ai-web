@@ -1,10 +1,20 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
-import { db, type Session, type StoredMessage } from "@/lib/db";
+import { db, type Session, type StoredImagesData, type StoredMessage } from "@/lib/db";
+import { blobToDataUrl } from "@/lib/image-compression";
 
 export const CONVERSATION_BACKUP_VERSION = 1;
-export const MAX_BACKUP_IMPORT_BYTES = 20 * 1024 * 1024;
-const IMAGE_HISTORY_SESSION_ID = "image";
+/**
+ * Backups are read in the browser only; the limit guards memory. It leaves room for generated
+ * images, which are exported as data URLs about a third larger than the images themselves.
+ */
+export const MAX_BACKUP_IMPORT_BYTES = 200 * 1024 * 1024;
+export const BACKUP_TOO_LARGE_MESSAGE = "Backup file exceeds the 200 MiB import limit.";
+
+export const exceedsBackupImportLimit = (json: string) =>
+  new TextEncoder().encode(json).byteLength > MAX_BACKUP_IMPORT_BYTES;
+const IMAGE_DATA_URL_PATTERN = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/]*={0,2}$/i;
+const BLOB_IMAGE_PART_TYPES = new Set(["data-images", "data-reference-images"]);
 
 const exportedMessageSchema = v.object({
   id: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
@@ -18,12 +28,7 @@ const exportedMessageSchema = v.object({
 });
 
 const exportedSessionSchema = v.object({
-  id: v.pipe(
-    v.string(),
-    v.minLength(1),
-    v.maxLength(128),
-    v.check((value) => value !== IMAGE_HISTORY_SESSION_ID),
-  ),
+  id: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
   updatedAt: v.pipe(
     v.string(),
@@ -47,18 +52,90 @@ export interface ExportConversationOptions {
   includeImages: boolean;
 }
 
-const filterPartsForExport = (
+/** A `data-images` or `data-reference-images` part as exported, with Blobs as data URLs. */
+const exportedImagesPartSchema = v.object({
+  type: v.picklist(["data-images", "data-reference-images"]),
+  data: v.object({ images: v.array(v.pipe(v.string(), v.regex(IMAGE_DATA_URL_PATTERN))) }),
+});
+
+const isBlobImagePart = (part: { type: string }) => BLOB_IMAGE_PART_TYPES.has(part.type);
+
+const exportParts = async (
   parts: UIMessage["parts"],
   includeImages: boolean,
-): Record<string, unknown>[] =>
-  parts
-    .filter((part) => {
-      if (!includeImages && part.type === "file" && part.mediaType?.startsWith("image/")) {
-        return false;
+): Promise<Record<string, unknown>[]> => {
+  const exported: Record<string, unknown>[] = [];
+  for (const part of parts) {
+    if (isBlobImagePart(part)) {
+      if (!includeImages) {
+        continue;
       }
-      return true;
-    })
-    .map((part) => ({ ...part }) as Record<string, unknown>);
+      const images = (part as { data?: Partial<StoredImagesData> }).data?.images ?? [];
+      exported.push({
+        type: part.type,
+        data: { images: await Promise.all(images.map(blobToDataUrl)) },
+      });
+      continue;
+    }
+    if (!includeImages && part.type === "file" && part.mediaType?.startsWith("image/")) {
+      continue;
+    }
+    exported.push({ ...part } as Record<string, unknown>);
+  }
+  return exported;
+};
+
+const dataUrlToBlob = (url: string) => {
+  const [header, base64] = url.split(",", 2);
+  const mediaType = header.slice("data:".length, header.indexOf(";"));
+  const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+  return new Blob([bytes], { type: mediaType });
+};
+
+/** Restores exported image parts to Blobs; returns null when one is malformed. */
+const importParts = (parts: Record<string, unknown>[]): UIMessage["parts"] | null => {
+  const imported: UIMessage["parts"] = [];
+  for (const part of parts) {
+    if (typeof part.type === "string" && BLOB_IMAGE_PART_TYPES.has(part.type)) {
+      const parsed = v.safeParse(exportedImagesPartSchema, part);
+      if (!parsed.success) {
+        return null;
+      }
+      imported.push({
+        type: parsed.output.type,
+        data: { images: parsed.output.data.images.map(dataUrlToBlob) } satisfies StoredImagesData,
+      });
+      continue;
+    }
+    imported.push(part as UIMessage["parts"][number]);
+  }
+  return imported;
+};
+
+/**
+ * Without images, a response that was only generated images has nothing left and is dropped;
+ * its prompt stays.
+ */
+const exportMessages = async (messages: StoredMessage[], includeImages: boolean) => {
+  const exported: ConversationBackup["sessions"][number]["messages"] = [];
+  for (const message of messages) {
+    if (message.role !== "user" && message.role !== "assistant") {
+      continue;
+    }
+    const parts = await exportParts(message.parts, includeImages);
+    if (parts.length === 0) {
+      continue;
+    }
+    exported.push({
+      id: message.id,
+      role: message.role,
+      parts,
+      ...(message.metadata !== undefined ? { metadata: message.metadata } : {}),
+      createdAt: new Date(message.createdAt).toISOString(),
+    });
+  }
+  return exported;
+};
 
 export const exportConversationHistory = async (
   options: ExportConversationOptions = { includeImages: false },
@@ -67,9 +144,6 @@ export const exportConversationHistory = async (
   const exportedSessions: ConversationBackup["sessions"] = [];
 
   for (const session of sessions) {
-    if (session.id === IMAGE_HISTORY_SESSION_ID) {
-      continue;
-    }
     const messages = await db.message
       .where("[sessionId+createdAt]")
       .between([session.id, new Date(0)], [session.id, new Date(8.64e15)])
@@ -79,18 +153,7 @@ export const exportConversationHistory = async (
       id: session.id,
       name: session.name,
       updatedAt: new Date(session.updatedAt).toISOString(),
-      messages: messages
-        .filter(
-          (msg): msg is StoredMessage & { role: "user" | "assistant" } =>
-            msg.role === "user" || msg.role === "assistant",
-        )
-        .map((msg) => ({
-          id: msg.id,
-          role: msg.role,
-          parts: filterPartsForExport(msg.parts, options.includeImages),
-          ...(msg.metadata !== undefined ? { metadata: msg.metadata } : {}),
-          createdAt: new Date(msg.createdAt).toISOString(),
-        })),
+      messages: await exportMessages(messages, options.includeImages),
     });
   }
 
@@ -123,8 +186,8 @@ export type ImportConversationResult =
 export const importConversationHistory = async (
   rawJson: string,
 ): Promise<ImportConversationResult> => {
-  if (new TextEncoder().encode(rawJson).byteLength > MAX_BACKUP_IMPORT_BYTES) {
-    return { ok: false, error: "Backup file exceeds the 20 MiB import limit." };
+  if (exceedsBackupImportLimit(rawJson)) {
+    return { ok: false, error: BACKUP_TOO_LARGE_MESSAGE };
   }
 
   let parsedJson: unknown;
@@ -137,6 +200,17 @@ export const importConversationHistory = async (
   const validated = v.safeParse(conversationBackupSchema, parsedJson);
   if (!validated.success) {
     return { ok: false, error: "Backup file format is invalid or unsupported." };
+  }
+
+  const importedParts = new Map<object, UIMessage["parts"]>();
+  for (const session of validated.output.sessions) {
+    for (const message of session.messages) {
+      const parts = importParts(message.parts);
+      if (!parts) {
+        return { ok: false, error: "Backup file format is invalid or unsupported." };
+      }
+      importedParts.set(message, parts);
+    }
   }
 
   let importedSessions = 0;
@@ -170,7 +244,7 @@ export const importConversationHistory = async (
         messagesToAdd.push({
           id: messageId,
           role: message.role,
-          parts: message.parts as UIMessage["parts"],
+          parts: importedParts.get(message) ?? [],
           ...(message.metadata !== undefined ? { metadata: message.metadata } : {}),
           sessionId: session.id,
           createdAt: new Date(message.createdAt),

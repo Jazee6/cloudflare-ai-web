@@ -5,14 +5,12 @@ export const PREFERENCES_STORAGE_KEY = "cf-ai-preferences-v1";
 
 const preferencesSchema = v.object({
   modelId: v.optional(v.string()),
-  imageModelId: v.optional(v.string()),
   searchEnabled: v.optional(v.boolean()),
   knowledgeBase: v.optional(v.string()),
 });
 
 export type Preferences = v.InferOutput<typeof preferencesSchema>;
 export type PreferenceKey = keyof Preferences;
-export type ModelPreferenceKey = "modelId" | "imageModelId";
 
 const LEGACY_PREFERENCE_COOKIES = [
   "CF_AI_MODEL",
@@ -40,11 +38,10 @@ export const parseCookieString = (cookie: string): Record<string, string> => {
 
 export const legacyCookiesToPreferences = (cookies: Record<string, string>): Preferences => {
   const preferences: Preferences = {};
-  if (cookies.CF_AI_MODEL) {
-    preferences.modelId = cookies.CF_AI_MODEL;
-  }
-  if (cookies.CF_AI_MODEL_IMAGE) {
-    preferences.imageModelId = cookies.CF_AI_MODEL_IMAGE;
+  // One selection covers chat and image models now; the chat model wins.
+  const modelId = cookies.CF_AI_MODEL || cookies.CF_AI_MODEL_IMAGE;
+  if (modelId) {
+    preferences.modelId = modelId;
   }
   if (cookies.CF_AI_SEARCH_ENABLED !== undefined) {
     preferences.searchEnabled = cookies.CF_AI_SEARCH_ENABLED === "true";
@@ -107,7 +104,11 @@ export const writePreferences = (preferences: Preferences) => {
   }
 };
 
-export const getStoredModel = (models: Model[], key: ModelPreferenceKey) => {
-  const storedModelId = readPreferences()[key];
-  return models.find((model) => model.id === storedModelId) ?? models[0];
-};
+/** The selected model, falling back to the first chat model when the selection is unavailable. */
+export const pickSelectedModel = (models: Model[], modelId: string | undefined) =>
+  models.find((model) => model.id === modelId) ??
+  models.find((model) => model.type === "Text Generation") ??
+  models[0];
+
+export const getStoredModel = (models: Model[]) =>
+  pickSelectedModel(models, readPreferences().modelId);

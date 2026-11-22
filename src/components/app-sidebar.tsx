@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { ImageIcon, MoreHorizontal, Plus, SettingsIcon } from "lucide-react";
-import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { MoreHorizontal, Plus, SettingsIcon } from "lucide-react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import LoadingIndicator from "@/components/loading-indicator";
 import { useSettings } from "@/components/settings-provider";
@@ -30,17 +30,12 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import {
-  clearImageHistory,
-  deleteConversation,
-  listRecentSessions,
-} from "@/lib/conversation-store";
+import { deleteConversation, listRecentSessions } from "@/lib/conversation-store";
 import type { Session } from "@/lib/db";
 
 interface GroupedSessions {
@@ -54,10 +49,7 @@ const AppSidebar = () => {
   const { setSettingsOpen } = useSettings();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<
-    { kind: "conversation"; sessionId: string } | { kind: "image-history" } | null
-  >(null);
-  const pathname = useLocation({ select: (location) => location.pathname });
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const sessions = useLiveQuery(listRecentSessions);
 
@@ -97,12 +89,7 @@ const AppSidebar = () => {
     }
     setDeleting(true);
     try {
-      if (deleteTarget.kind === "image-history") {
-        await clearImageHistory();
-        setDeleteConfirmOpen(false);
-        return;
-      }
-      await deleteConversation(deleteTarget.sessionId);
+      await deleteConversation(deleteTarget);
       setDeleteConfirmOpen(false);
       void navigate({ to: "/" });
     } finally {
@@ -113,35 +100,6 @@ const AppSidebar = () => {
   return (
     <>
       <Sidebar>
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton render={<Link to="/image" />} isActive={pathname === "/image"}>
-                <ImageIcon />
-                Image
-                <LoadingIndicator pathname="/image" className="ml-auto" />
-              </SidebarMenuButton>
-
-              {pathname === "/image" && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<SidebarMenuAction />}>
-                    <MoreHorizontal />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" align="start">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setDeleteConfirmOpen(true);
-                        setDeleteTarget({ kind: "image-history" });
-                      }}
-                    >
-                      <span className="text-destructive">Delete</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
         <SidebarContent className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
@@ -167,7 +125,7 @@ const AppSidebar = () => {
                             <DropdownMenuItem
                               onClick={() => {
                                 setDeleteConfirmOpen(true);
-                                setDeleteTarget({ kind: "conversation", sessionId: id });
+                                setDeleteTarget(id);
                               }}
                             >
                               <span className="text-destructive">Delete</span>

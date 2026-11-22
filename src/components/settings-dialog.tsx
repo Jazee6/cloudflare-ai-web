@@ -17,7 +17,11 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as v from "valibot";
-import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
+import {
+  useModelCatalogState,
+  useModelPreferences,
+  useSelectedModel,
+} from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
 import { useSettings } from "@/components/settings-provider";
 import {
@@ -63,12 +67,13 @@ import { useSpeechSynthesis, useSpeechVoices } from "@/hooks/use-speech-synthesi
 import {
   exportConversationHistoryJson,
   importConversationHistory,
+  BACKUP_TOO_LARGE_MESSAGE,
+  exceedsBackupImportLimit,
   MAX_BACKUP_IMPORT_BYTES,
   triggerBackupDownload,
 } from "@/lib/conversation-backup";
 import {
   clearAllConversations,
-  clearImageHistory,
   getStorageStats,
   type LocalStorageStats,
 } from "@/lib/conversation-store";
@@ -126,18 +131,13 @@ export const SettingsDialog = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
 
   const {
-    models: chatModels,
+    models,
     loading: catalogLoading,
     error: catalogError,
     reload: reloadCatalog,
-  } = useModelCatalogState("Text Generation");
-  const { models: imageModels } = useModelCatalogState("Text to Image");
-  const { preferences, setPreference } = useModelPreferences();
-
-  const selectedChatModel =
-    chatModels.find((model) => model.id === preferences.modelId) ?? chatModels[0];
-  const selectedImageModel =
-    imageModels.find((model) => model.id === preferences.imageModelId) ?? imageModels[0];
+  } = useModelCatalogState();
+  const { setPreference } = useModelPreferences();
+  const selectedModel = useSelectedModel(models);
 
   const { supported: ttsSupported, voices } = useSpeechVoices();
   const { activeId: activeSpeechId, speak, stop: stopSpeech } = useSpeechSynthesis();
@@ -209,7 +209,7 @@ export const SettingsDialog = () => {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [clearTarget, setClearTarget] = useState<"conversations" | "images" | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -234,7 +234,15 @@ export const SettingsDialog = () => {
       const json = await exportConversationHistoryJson({ includeImages });
       const dateTag = new Date().toISOString().slice(0, 10);
       await triggerBackupDownload(json, `cloudflare-ai-conversations-${dateTag}.json`);
-      toast.add({ title: "Conversation history exported.", type: "success" });
+      if (exceedsBackupImportLimit(json)) {
+        toast.add({
+          title:
+            "Exported, but the backup exceeds the 200 MiB import limit. Export without images to restore it later.",
+          type: "warning",
+        });
+      } else {
+        toast.add({ title: "Conversation history exported.", type: "success" });
+      }
     } catch {
       toast.add({ title: "Failed to export conversation history.", type: "error" });
     } finally {
@@ -248,7 +256,7 @@ export const SettingsDialog = () => {
     }
     setImportError(null);
     if (file.size > MAX_BACKUP_IMPORT_BYTES) {
-      setImportError("Backup file exceeds the 20 MiB import limit.");
+      setImportError(BACKUP_TOO_LARGE_MESSAGE);
       if (importInputRef.current) {
         importInputRef.current.value = "";
       }
@@ -283,22 +291,14 @@ export const SettingsDialog = () => {
   };
 
   const handleConfirmClear = async () => {
-    if (!clearTarget) {
-      return;
-    }
     setClearing(true);
     try {
-      if (clearTarget === "conversations") {
-        await clearAllConversations();
-        toast.add({ title: "All conversations cleared.", type: "success" });
-        if (pathname.startsWith("/c/")) {
-          void navigate({ to: "/" });
-        }
-      } else {
-        await clearImageHistory();
-        toast.add({ title: "Image history cleared.", type: "success" });
+      await clearAllConversations();
+      toast.add({ title: "All conversations cleared.", type: "success" });
+      if (pathname.startsWith("/c/")) {
+        void navigate({ to: "/" });
       }
-      setClearTarget(null);
+      setClearOpen(false);
       await refreshStats();
     } catch {
       toast.add({ title: "Failed to clear local history.", type: "error" });
@@ -339,29 +339,15 @@ export const SettingsDialog = () => {
       </Field>
 
       <Field>
-        <FieldLabel>Default Chat Model</FieldLabel>
+        <FieldLabel>Default Model</FieldLabel>
         <div className="flex items-center rounded-lg border px-2 py-1">
           <ModelSelect
-            models={chatModels}
-            selectedModel={selectedChatModel}
+            models={models}
+            selectedModel={selectedModel}
             loading={catalogLoading}
             error={catalogError}
             onReload={reloadCatalog}
             onSelectModel={(model) => setPreference("modelId", model.id)}
-          />
-        </div>
-      </Field>
-
-      <Field>
-        <FieldLabel>Default Image Model</FieldLabel>
-        <div className="flex items-center rounded-lg border px-2 py-1">
-          <ModelSelect
-            models={imageModels}
-            selectedModel={selectedImageModel}
-            loading={catalogLoading}
-            error={catalogError}
-            onReload={reloadCatalog}
-            onSelectModel={(model) => setPreference("imageModelId", model.id)}
           />
         </div>
       </Field>
@@ -587,13 +573,12 @@ export const SettingsDialog = () => {
       <Field>
         <FieldLabel>Local Storage</FieldLabel>
         {statsLoading || !stats ? (
-          <div className="grid grid-cols-3 gap-2">
-            <Skeleton className="h-14 rounded-lg" />
+          <div className="grid grid-cols-2 gap-2">
             <Skeleton className="h-14 rounded-lg" />
             <Skeleton className="h-14 rounded-lg" />
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-0.5 rounded-lg border p-2.5">
               <span className="text-xs text-muted-foreground">Chats</span>
               <span className="text-base font-medium tabular-nums">{stats.sessionCount}</span>
@@ -601,10 +586,6 @@ export const SettingsDialog = () => {
             <div className="flex flex-col gap-0.5 rounded-lg border p-2.5">
               <span className="text-xs text-muted-foreground">Messages</span>
               <span className="text-base font-medium tabular-nums">{stats.messageCount}</span>
-            </div>
-            <div className="flex flex-col gap-0.5 rounded-lg border p-2.5">
-              <span className="text-xs text-muted-foreground">Images</span>
-              <span className="text-base font-medium tabular-nums">{stats.imageEntryCount}</span>
             </div>
           </div>
         )}
@@ -614,9 +595,7 @@ export const SettingsDialog = () => {
         <FieldLabel>Conversation Backup</FieldLabel>
         <div className="flex flex-col gap-3 rounded-lg border p-3">
           <Field orientation="horizontal" className="justify-between">
-            <FieldLabel htmlFor="settings-export-images">
-              Include attached images in export
-            </FieldLabel>
+            <FieldLabel htmlFor="settings-export-images">Include images in export</FieldLabel>
             <Switch
               id="settings-export-images"
               checked={includeImages}
@@ -661,23 +640,9 @@ export const SettingsDialog = () => {
       <Field>
         <FieldLabel>Danger Zone</FieldLabel>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => setClearTarget("conversations")}
-          >
+          <Button type="button" variant="destructive" size="sm" onClick={() => setClearOpen(true)}>
             <Trash2Icon />
             Clear all conversations
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => setClearTarget("images")}
-          >
-            <Trash2Icon />
-            Clear image history
           </Button>
         </div>
       </Field>
@@ -699,18 +664,16 @@ export const SettingsDialog = () => {
 
   const confirmDialog = (
     <AlertDialog
-      open={clearTarget !== null}
+      open={clearOpen}
       onOpenChange={(open) => {
         if (!open && !clearing) {
-          setClearTarget(null);
+          setClearOpen(false);
         }
       }}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {clearTarget === "conversations" ? "Clear all conversations?" : "Clear image history?"}
-          </AlertDialogTitle>
+          <AlertDialogTitle>Clear all conversations?</AlertDialogTitle>
           <AlertDialogDescription>
             This permanently removes stored local history from this browser and cannot be undone.
           </AlertDialogDescription>

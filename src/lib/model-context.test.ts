@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 import { createContextAttachmentPart } from "@/lib/context-attachments";
-import { buildModelContext, MODEL_CONTEXT_MAX_CHARS } from "@/lib/model-context";
+import type { UIMessage } from "ai";
+import {
+  buildModelContext,
+  encodeGeneratedImages,
+  expandImageTurns,
+  GENERATED_IMAGE_PLACEHOLDER,
+  MODEL_CONTEXT_MAX_CHARS,
+} from "@/lib/model-context";
 import type { StoredMessage as Message } from "@/lib/db";
 
 const makeMessage = (id: string, text: string, role: "user" | "assistant" = "user"): Message => ({
@@ -107,4 +114,61 @@ test("counts data-context-attachment parts toward the 64,000-character budget", 
   const newer = makeAttachmentMessage("newer", 40_000);
   const result = buildModelContext([older, newer]);
   expect(result?.map((message) => message.id)).toEqual(["newer"]);
+});
+
+const png = () => new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
+const imageParams = { metadata: { modelId: "@cf/flux", params: { seed: 1 } } };
+
+const imageConversation = (): UIMessage[] => [
+  {
+    id: "prompt",
+    role: "user",
+    parts: [
+      { type: "data-reference-images", data: { images: [png()] } },
+      { type: "text", text: "draw a cat" },
+    ],
+    ...imageParams,
+  },
+  {
+    id: "image",
+    role: "assistant",
+    parts: [{ type: "data-images", data: { images: [png()] } }],
+    ...imageParams,
+  },
+  { id: "question", role: "user", parts: [{ type: "text", text: "describe it" }] },
+];
+
+test("generated images ride along with the next user message for image-capable models", async () => {
+  const { messages, generatedImages } = expandImageTurns(imageConversation(), true);
+
+  expect(messages[0].parts).toEqual([{ type: "text", text: "draw a cat" }]);
+  expect(messages[1].parts).toEqual([{ type: "text", text: GENERATED_IMAGE_PLACEHOLDER }]);
+  expect(messages[2].parts.map((part) => part.type)).toEqual(["file", "text"]);
+
+  const encoded = await encodeGeneratedImages(buildModelContext(messages)!, generatedImages);
+  expect(encoded[2].parts[0]).toEqual({
+    type: "file",
+    mediaType: "image/png",
+    url: "data:image/png;base64,AQID",
+  });
+});
+
+test("generated images become placeholder text for text-only models", () => {
+  const { messages, generatedImages } = expandImageTurns(imageConversation(), false);
+
+  expect(generatedImages.size).toBe(0);
+  expect(messages[1].parts).toEqual([{ type: "text", text: GENERATED_IMAGE_PLACEHOLDER }]);
+  expect(messages[2].parts).toEqual([{ type: "text", text: "describe it" }]);
+});
+
+test("generated images count toward the most recent image limit", () => {
+  const conversation = Array.from({ length: 6 }, (_, index) =>
+    imageConversation().map((message) => ({ ...message, id: `${message.id}-${index}` })),
+  ).flat();
+  const { messages } = expandImageTurns(conversation, true);
+  const context = buildModelContext(messages)!;
+
+  const files = context.flatMap((message) => message.parts.filter((part) => part.type === "file"));
+  expect(files).toHaveLength(5);
+  expect(context.at(-1)?.parts[0].type).toBe("file");
 });

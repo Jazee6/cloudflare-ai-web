@@ -1,19 +1,38 @@
 import type { UIMessage } from "ai";
+import { ImagePlusIcon } from "lucide-react";
+import BlobImage from "@/components/blob-image";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
+import ActionButton from "@/components/message-action";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import { Message, MessageContent } from "@/components/ui/message";
+import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
+import { toast } from "@/components/ui/toast";
 import ZoomableImage from "@/components/zoomable-image";
 import { isContextAttachmentPart } from "@/lib/context-attachments";
-import type { ReferenceImageUrlsData } from "@/lib/db";
+import { getImageBlobs } from "@/lib/image-turn";
 
-const isReferenceImagesPart = (
-  part: UIMessage["parts"][number],
-): part is { type: "data-reference-images"; data: ReferenceImageUrlsData } =>
-  part.type === "data-reference-images" && "data" in part;
+const loadImage = async (url: string) => (await fetch(url)).blob();
 
-const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
+const UserChatItem = ({
+  message,
+  onUseAsReference,
+}: {
+  message: UIMessage;
+  onUseAsReference?: (image: Blob) => void;
+}) => {
+  const { parts } = message;
   const attachments = parts.filter(isContextAttachmentPart);
-  const referenceUrls = parts.filter(isReferenceImagesPart).flatMap((part) => part.data.urls ?? []);
+  const referenceImages = getImageBlobs(message, "data-reference-images");
+  const uploadedImages = parts.filter(
+    (part) => part.type === "file" && part.mediaType.startsWith("image/"),
+  );
+
+  const referenceUploadedImage = (url: string) => {
+    loadImage(url)
+      .then((image) => onUseAsReference?.(image))
+      .catch(() => {
+        toast.add({ title: "Unable to load this image as a reference.", type: "error" });
+      });
+  };
 
   return (
     <Message align="end">
@@ -26,16 +45,16 @@ const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
           </div>
         )}
 
-        {referenceUrls.length > 0 && (
+        {referenceImages.length > 0 && (
           <div className="flex flex-wrap justify-end gap-2">
-            {referenceUrls.map((url, index) => (
-              <ZoomableImage key={`${url}-${index}`} className="w-20">
-                <img
-                  src={url}
-                  alt={`reference-${index + 1}`}
-                  className="aspect-square w-full rounded-md object-cover transition-all hover:brightness-75"
-                />
-              </ZoomableImage>
+            {referenceImages.map((image, index) => (
+              <BlobImage
+                key={index}
+                zoomClassName="w-20"
+                blob={image}
+                alt={`reference-${index + 1}`}
+                className="aspect-square w-full rounded-md object-cover transition-all hover:brightness-75"
+              />
             ))}
           </div>
         )}
@@ -63,6 +82,36 @@ const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
 
           return null;
         })}
+
+        {onUseAsReference && (uploadedImages.length > 0 || referenceImages.length > 0) && (
+          <MessageFooter className="px-0">
+            {uploadedImages.map(
+              (part, index) =>
+                part.type === "file" && (
+                  <ActionButton
+                    key={`file-${index}`}
+                    label={
+                      uploadedImages.length > 1
+                        ? `Use image ${index + 1} as reference`
+                        : "Use as reference"
+                    }
+                    onClick={() => referenceUploadedImage(part.url)}
+                  >
+                    <ImagePlusIcon />
+                  </ActionButton>
+                ),
+            )}
+            {referenceImages.map((image, index) => (
+              <ActionButton
+                key={`reference-${index}`}
+                label={`Use reference ${index + 1} again`}
+                onClick={() => onUseAsReference(image)}
+              >
+                <ImagePlusIcon />
+              </ActionButton>
+            ))}
+          </MessageFooter>
+        )}
       </MessageContent>
     </Message>
   );

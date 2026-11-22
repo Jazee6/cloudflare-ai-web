@@ -2,19 +2,14 @@ import { afterEach, beforeAll, expect, setSystemTime, test } from "bun:test";
 import Dexie from "dexie";
 import {
   appendConversationMessage,
-  appendImageHistoryEntry,
-  clearImageHistory,
   CONVERSATION_HISTORY_LOAD_LIMIT,
   createConversation,
   createUserMessage,
   deleteConversation,
-  IMAGE_HISTORY_LOAD_LIMIT,
   listRecentSessions,
   loadConversationHistory,
-  loadImageHistory,
   RECENT_SESSIONS_LIMIT,
   replaceConversationResponse,
-  replaceImageHistoryEntry,
 } from "@/lib/conversation-store";
 import { db, type StoredMessage } from "@/lib/db";
 
@@ -30,7 +25,10 @@ const storedMessage = (sessionId: string, index: number): StoredMessage => ({
 });
 
 beforeAll(async () => {
-  // Seed a version 2 database so the first store access exercises the v3 upgrade.
+  // Seed a version 2 database so the first store access exercises the v3 upgrade. Test files
+  // share one IndexedDB, so start from a fresh database.
+  db.close();
+  await Dexie.delete("CF_AI_DB");
   const legacy = new Dexie("CF_AI_DB");
   legacy.version(2).stores({
     session: "&id, name, updatedAt",
@@ -39,6 +37,7 @@ beforeAll(async () => {
   await legacy.table("session").add({ id: "legacy", name: "legacy", updatedAt: new Date() });
   await legacy.table("message").bulkAdd([storedMessage("legacy", 2), storedMessage("legacy", 1)]);
   legacy.close();
+  await db.open();
 });
 
 // Entries written within the same millisecond share a timestamp, so tests that write in a
@@ -54,7 +53,7 @@ afterEach(async () => {
 test("upgrading from v2 keeps Conversation History and orders it by creation time", async () => {
   const history = await loadConversationHistory("legacy");
 
-  expect(db.verno).toBe(3);
+  expect(db.verno).toBe(4);
   expect(history.map(textOf)).toEqual(["message 1", "message 2"]);
 });
 
@@ -122,23 +121,6 @@ test("deleteConversation removes only that session and its messages", async () =
   expect(await loadConversationHistory(keep)).toHaveLength(1);
 });
 
-test("Image History is kept apart from conversations and can be cleared", async () => {
-  const conversation = await createConversation(createUserMessage("chat"));
-  for (let index = 0; index < IMAGE_HISTORY_LOAD_LIMIT + 1; index++) {
-    tick();
-    await appendImageHistoryEntry(createUserMessage(`prompt ${index}`));
-  }
-
-  const imageHistory = await loadImageHistory();
-  expect(imageHistory).toHaveLength(IMAGE_HISTORY_LOAD_LIMIT);
-  expect(textOf(imageHistory.at(-1)!)).toBe(`prompt ${IMAGE_HISTORY_LOAD_LIMIT}`);
-  expect((await listRecentSessions()).map((session) => session.id)).toEqual([conversation]);
-
-  await clearImageHistory();
-  expect(await loadImageHistory()).toEqual([]);
-  expect(await loadConversationHistory(conversation)).toHaveLength(1);
-});
-
 test("replaceConversationResponse swaps the retried response for the new one", async () => {
   tick();
   const sessionId = await createConversation(createUserMessage("hello"));
@@ -155,20 +137,6 @@ test("replaceConversationResponse swaps the retried response for the new one", a
   const history = await loadConversationHistory(sessionId);
   expect(history.map((message) => message.id).slice(1)).toEqual(["new"]);
   expect(textOf(history[1])).toBe("retried");
-});
-
-test("replaceImageHistoryEntry swaps the retried image entry for the new one", async () => {
-  tick();
-  await appendImageHistoryEntry(createUserMessage("prompt"));
-  tick();
-  await appendImageHistoryEntry({ id: "old", role: "assistant", parts: [] });
-  tick();
-
-  await replaceImageHistoryEntry("old", { id: "new", role: "assistant", parts: [] });
-
-  const history = await loadImageHistory();
-  expect(history.map((entry) => entry.role)).toEqual(["user", "assistant"]);
-  expect(history[1].id).toBe("new");
 });
 
 test("createUserMessage persists Context Attachments alongside text", async () => {

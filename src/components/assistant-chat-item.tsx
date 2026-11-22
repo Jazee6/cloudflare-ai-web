@@ -10,11 +10,12 @@ import {
   SquareIcon,
   Volume2Icon,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import BlobImage from "@/components/blob-image";
 import Markdown from "@/components/markdown";
+import ActionButton from "@/components/message-action";
 import ToolCall from "@/components/tool-call";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
@@ -30,10 +31,10 @@ import {
   TraceLine,
   TraceTitle,
 } from "@/components/ui/trace";
-import ZoomableImage from "@/components/zoomable-image";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
-import type { ImageUrlsData } from "@/lib/db";
+import type { StoredImagesData } from "@/lib/db";
 import { getImageEntryMetadata } from "@/lib/image-models";
+import { getImageBlobs } from "@/lib/image-turn";
 import { getResponseMetadata } from "@/lib/response-metadata";
 
 /** Starts as a plain line and opens while the model thinks; the reader's own toggle wins. */
@@ -70,25 +71,6 @@ const Reasoning = ({
     </TraceCollapsible>
   );
 };
-
-const ActionButton = ({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) => (
-  <Tooltip>
-    <TooltipTrigger
-      render={<Button variant="ghost" size="icon-sm" aria-label={label} onClick={onClick} />}
-    >
-      {children}
-    </TooltipTrigger>
-    <TooltipContent>{label}</TooltipContent>
-  </Tooltip>
-);
 
 const CopyAction = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
@@ -143,7 +125,7 @@ const AssistantChatItem = ({
   /** Only the live response streams; a stopped one keeps its parts' "streaming" state. */
   streaming: boolean;
   onRetry?: () => void;
-  onUseAsReference?: (url: string) => void;
+  onUseAsReference?: (image: Blob) => void;
 }) => {
   const metadata = getResponseMetadata(message);
   const imageMeta = getImageEntryMetadata(message);
@@ -191,16 +173,15 @@ const AssistantChatItem = ({
     }
 
     if (part.type === "data-images") {
-      return (part.data as ImageUrlsData).urls.map((url, imageIndex) => (
-        <ZoomableImage key={`${key}-${imageIndex}`}>
-          <img
-            src={url}
-            alt={`image-${imageIndex}`}
-            width={512}
-            height={512}
-            className="rounded-md transition-all hover:brightness-75"
-          />
-        </ZoomableImage>
+      return ((part.data as Partial<StoredImagesData>).images ?? []).map((image, imageIndex) => (
+        <BlobImage
+          key={`${key}-${imageIndex}`}
+          blob={image}
+          alt={`image-${imageIndex}`}
+          width={512}
+          height={512}
+          className="rounded-md transition-all hover:brightness-75"
+        />
       ));
     }
 
@@ -211,17 +192,13 @@ const AssistantChatItem = ({
   const gatewayDlpAction = metadata?.gateway?.dlpAction;
   const citations = metadata?.citations ?? [];
   const imageSeed = imageMeta?.params?.seed;
-  const referenceUrls = onUseAsReference
-    ? message.parts.flatMap((part) =>
-        part.type === "data-images" ? (part.data as ImageUrlsData).urls : [],
-      )
-    : [];
+  const referenceImages = onUseAsReference ? getImageBlobs(message, "data-images") : [];
   const showFooter =
     !streaming &&
     Boolean(
       text ||
       onRetry ||
-      referenceUrls.length > 0 ||
+      referenceImages.length > 0 ||
       gatewayCacheHit ||
       gatewayDlpAction ||
       imageMeta?.modelName ||
@@ -313,15 +290,15 @@ const AssistantChatItem = ({
                 <RefreshCcwIcon />
               </ActionButton>
             )}
-            {referenceUrls.map((url, index) => (
+            {referenceImages.map((image, index) => (
               <ActionButton
-                key={url}
+                key={index}
                 label={
-                  referenceUrls.length > 1
+                  referenceImages.length > 1
                     ? `Use image ${index + 1} as reference`
                     : "Use as reference"
                 }
-                onClick={() => onUseAsReference?.(url)}
+                onClick={() => onUseAsReference?.(image)}
               >
                 <ImagePlusIcon />
               </ActionButton>

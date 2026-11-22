@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronsUpDown, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronsUpDown, ImageIcon, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ModelLogo } from "@/components/model-logo";
 import { Badge } from "@/components/ui/badge";
@@ -81,15 +81,32 @@ const ModelSelect = ({
                 </span>
                 <span className="truncate">{model.name}</span>
                 {(() => {
-                  const highCostHint =
-                    model.type === "Text to Image"
-                      ? getImageModelProfile(model.id).highCostHint
-                      : undefined;
-                  if (!model.tag?.length && model.source !== "external" && !highCostHint) {
+                  const isImageModel = model.type === "Text to Image";
+                  const highCostHint = isImageModel
+                    ? getImageModelProfile(model.id).highCostHint
+                    : undefined;
+                  if (
+                    !isImageModel &&
+                    !model.tag?.length &&
+                    model.source !== "external" &&
+                    !highCostHint
+                  ) {
                     return null;
                   }
                   return (
                     <span className="ml-auto flex items-center gap-1">
+                      {isImageModel && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <span className="inline-flex items-center text-muted-foreground">
+                                <ImageIcon className="size-3.5" />
+                              </span>
+                            }
+                          />
+                          <TooltipContent>Generates images</TooltipContent>
+                        </Tooltip>
+                      )}
                       {highCostHint && (
                         <Tooltip>
                           <TooltipTrigger

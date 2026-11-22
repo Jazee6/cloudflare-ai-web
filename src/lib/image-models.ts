@@ -1,6 +1,7 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 
+export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
 export const MAX_REFERENCE_IMAGES = 4;
 export const MAX_NEGATIVE_PROMPT_LENGTH = 2_000;
 export const MAX_SEED = 2_147_483_647;

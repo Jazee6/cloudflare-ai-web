@@ -23,13 +23,17 @@ export const getCompressionAttempts = () =>
     QUALITY_STEPS.map((quality) => ({ maxLongEdge, quality })),
   );
 
-export const blobToDataUrl = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
+const BASE64_CHUNK_BYTES = 0x8000;
+
+/** Encodes a Blob as a base64 data URL without FileReader, so it also runs outside the browser. */
+export const blobToDataUrl = async (blob: Blob): Promise<string> => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += BASE64_CHUNK_BYTES) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + BASE64_CHUNK_BYTES));
+  }
+  return `data:${blob.type || "application/octet-stream"};base64,${btoa(binary)}`;
+};
 
 const encodeJpeg = async (
   bitmap: ImageBitmap,

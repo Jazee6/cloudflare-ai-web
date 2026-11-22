@@ -12,6 +12,7 @@ import * as v from "valibot";
 import { toast } from "@/components/ui/toast";
 import type { AppCapabilities, Model, ModelType } from "@/lib/models";
 import {
+  pickSelectedModel,
   type PreferenceKey,
   type Preferences,
   readPreferences,
@@ -275,3 +276,12 @@ export const useModelCatalogState = (type?: ModelType) => {
 };
 
 export const useModelCatalog = (type?: ModelType) => useModelCatalogState(type).models;
+
+/** The one selected model, chat or image, among `models`. */
+export const useSelectedModel = (models: Model[]) => {
+  const { preferences } = useModelPreferences();
+  return useMemo(
+    () => pickSelectedModel(models, preferences.modelId),
+    [models, preferences.modelId],
+  );
+};

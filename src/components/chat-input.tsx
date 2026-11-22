@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import type { ChatStatus, FileUIPart } from "ai";
+import type { ChatStatus, FileUIPart, UIMessage } from "ai";
 import {
   ArrowUp,
   Database,
@@ -17,7 +17,12 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import * as v from "valibot";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
 import { ImageAttachmentItem } from "@/components/image-attachment-item";
-import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
+import { ImageParamsPanel } from "@/components/image-params-panel";
+import {
+  useModelCatalogState,
+  useModelPreferences,
+  useSelectedModel,
+} from "@/components/model-catalog-provider";
 import ModelSelect from "@/components/model-select";
 import {
   DropdownMenu,
@@ -39,6 +44,7 @@ import { toast } from "@/components/ui/toast";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UrlAttachmentDialog } from "@/components/url-attachment-dialog";
+import type { ImageTurn } from "@/hooks/use-image-turn";
 import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import {
@@ -49,15 +55,17 @@ import {
 } from "@/lib/context-attachments";
 import { DOCUMENT_FILE_ACCEPT } from "@/lib/context-document";
 import { compressImage } from "@/lib/image-compression";
+import { MAX_IMAGE_PROMPT_LENGTH } from "@/lib/image-models";
 import { getMessageContentLength, MODEL_CONTEXT_MAX_CHARS } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
-import type { ModelPreferenceKey } from "@/lib/preferences";
 
 export interface onSendMessageProps {
   text: string;
   files?: FileUIPart[];
   attachments?: ContextAttachmentData[];
+  /** Set instead of files and attachments when an image model is selected. */
+  imagePrompt?: UIMessage;
 }
 
 const formSchema = v.object({
@@ -72,11 +80,8 @@ const ChatInput = ({
   onUnauthorized,
   status = "ready",
   models,
-  modelKey,
-  enableContextAttachments = true,
+  imageTurn,
   addon,
-  attachmentsPreview,
-  onPasteFiles,
 }: {
   className?: string;
   onSendMessage: (data: onSendMessageProps) => void;
@@ -84,15 +89,11 @@ const ChatInput = ({
   onRetry?: () => void;
   onUnauthorized?: (onSuccess?: () => unknown) => void;
   status?: ChatStatus;
+  /** Chat and image models; selecting an image model switches the input to image generation. */
   models: Model[];
-  modelKey?: ModelPreferenceKey;
-  enableContextAttachments?: boolean;
-  /** Extra controls shown next to the model selector. */
+  imageTurn: ImageTurn;
+  /** Extra controls shown next to the model selector in chat mode. */
   addon?: ReactNode;
-  /** Optional custom preview items rendered above the textarea (e.g., reference images). */
-  attachmentsPreview?: ReactNode;
-  /** Optional handler for pasted image files when multimodal chat image parts are disabled. */
-  onPasteFiles?: (files: File[]) => void;
 }) => {
   const { preferences, ready: preferencesReady, setPreference } = useModelPreferences();
   const {
@@ -101,7 +102,6 @@ const ChatInput = ({
     error: catalogError,
     reload: reloadCatalog,
   } = useModelCatalogState();
-  const selectedModelKey = modelKey ?? "modelId";
   const [files, setFiles] = useState<FileUIPart[]>([]);
   const [attachments, setAttachments] = useState<ContextAttachmentData[]>([]);
   const filesRef = useRef<FileUIPart[]>(files);
@@ -120,8 +120,10 @@ const ChatInput = ({
     abort: abortSpeech,
   } = useSpeechRecognition();
 
-  const selectedModel =
-    models.find((model) => model.id === preferences[selectedModelKey]) ?? models[0];
+  const selectedModel = useSelectedModel(models);
+  const imageMode = selectedModel?.type === "Text to Image";
+  const enableContextAttachments = !imageMode;
+  const supportsReferenceImages = imageMode && imageTurn.profile.maxReferenceImages > 0;
 
   const kbFeatureEnabled = enableContextAttachments && capabilities.knowledgeBase;
   const {
@@ -142,7 +144,26 @@ const ChatInput = ({
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      if (models.length === 0 || uploadingDocument) {
+      if (models.length === 0 || uploadingDocument || !selectedModel) {
+        return;
+      }
+
+      if (imageMode) {
+        if (value.input.length > MAX_IMAGE_PROMPT_LENGTH) {
+          toast.add({
+            title: `Image prompts are limited to ${MAX_IMAGE_PROMPT_LENGTH.toLocaleString()} characters.`,
+            type: "warning",
+          });
+          return;
+        }
+        if (listening) {
+          abortSpeech();
+        }
+        form.reset({ input: "" });
+        onSendMessage({
+          text: value.input,
+          imagePrompt: imageTurn.takePromptMessage(value.input, selectedModel),
+        });
         return;
       }
 
@@ -210,24 +231,25 @@ const ChatInput = ({
     if (!preferencesReady || catalogLoading || models.length === 0 || !selectedModel) {
       return;
     }
-    if (preferences[selectedModelKey] !== selectedModel.id) {
-      setPreference(selectedModelKey, selectedModel.id);
+    if (preferences.modelId !== selectedModel.id) {
+      setPreference("modelId", selectedModel.id);
     }
-  }, [
-    preferencesReady,
-    catalogLoading,
-    models.length,
-    preferences,
-    selectedModel,
-    selectedModelKey,
-    setPreference,
-  ]);
+  }, [preferencesReady, catalogLoading, models.length, preferences, selectedModel, setPreference]);
 
   useEffect(() => {
     if (!catalogLoading && selectedModel && !selectedModel.input?.includes("image")) {
+      filesRef.current = [];
       setFiles([]);
     }
   }, [catalogLoading, selectedModel]);
+
+  // Context Attachments belong to chat turns; an image model never receives them.
+  useEffect(() => {
+    if (imageMode) {
+      attachmentsRef.current = [];
+      setAttachments([]);
+    }
+  }, [imageMode]);
 
   const onSendClick = () => {
     switch (status) {
@@ -276,6 +298,22 @@ const ChatInput = ({
       return null;
     }
     return { type: "file", filename: file.name, ...compressed };
+  };
+
+  const onAddReferenceImages = () => {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.multiple = true;
+    fileInput.onchange = () => {
+      const picked = Array.from(fileInput.files ?? []);
+      if (picked.length > 0) {
+        void imageTurn.addReferenceImages(
+          picked.map((file) => ({ blob: file, filename: file.name })),
+        );
+      }
+    };
+    fileInput.click();
   };
 
   const onAddImages = () => {
@@ -389,7 +427,7 @@ const ChatInput = ({
   const onPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboardItems = event.clipboardData.items;
     const imageFiles: File[] = [];
-    const customImageFiles: File[] = [];
+    const referenceFiles: File[] = [];
     const docFiles: File[] = [];
 
     for (let i = 0; i < clipboardItems.length; i++) {
@@ -406,9 +444,9 @@ const ChatInput = ({
         if (selectedModel?.input?.includes("image")) {
           event.preventDefault();
           imageFiles.push(file);
-        } else if (onPasteFiles) {
+        } else if (supportsReferenceImages) {
           event.preventDefault();
-          customImageFiles.push(file);
+          referenceFiles.push(file);
         }
       } else if (enableContextAttachments && capabilities.documents) {
         event.preventDefault();
@@ -423,8 +461,10 @@ const ChatInput = ({
         appendFiles(newFiles);
       }
     }
-    if (customImageFiles.length > 0 && onPasteFiles) {
-      onPasteFiles(customImageFiles);
+    if (referenceFiles.length > 0) {
+      void imageTurn.addReferenceImages(
+        referenceFiles.map((file) => ({ blob: file, filename: file.name })),
+      );
     }
     if (docFiles.length > 0) {
       await uploadDocumentsWithinLimit(docFiles);
@@ -435,7 +475,8 @@ const ChatInput = ({
   const supportsDocument = enableContextAttachments && capabilities.documents;
   const supportsWebFetch = enableContextAttachments && capabilities.webFetch;
   const showAttachControl = supportsImage || supportsDocument || supportsWebFetch;
-  const hasTopAddon = files.length > 0 || attachments.length > 0 || Boolean(attachmentsPreview);
+  const referenceImages = supportsReferenceImages ? imageTurn.referenceImages : [];
+  const hasTopAddon = files.length > 0 || attachments.length > 0 || referenceImages.length > 0;
 
   return (
     <form
@@ -453,7 +494,14 @@ const ChatInput = ({
             <InputGroup className="rounded-md border-3 border-border transition-all focus-within:border-primary has-disabled:bg-transparent has-disabled:opacity-100 has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:ring-0 dark:has-disabled:bg-input/30">
               {hasTopAddon && (
                 <InputGroupAddon align="block-start" className="flex-wrap gap-2">
-                  {attachmentsPreview}
+                  {referenceImages.map((reference) => (
+                    <ImageAttachmentItem
+                      key={reference.id}
+                      src={reference.url}
+                      alt={reference.filename}
+                      onRemove={() => imageTurn.removeReferenceImage(reference.id)}
+                    />
+                  ))}
 
                   {files.map((file, index) => (
                     <ImageAttachmentItem
@@ -506,12 +554,41 @@ const ChatInput = ({
                   loading={catalogLoading}
                   error={catalogError}
                   onReload={reloadCatalog}
-                  onSelectModel={(model) => setPreference(selectedModelKey, model.id)}
+                  onSelectModel={(model) => setPreference("modelId", model.id)}
                 />
 
-                {addon}
+                {imageMode && selectedModel ? (
+                  <ImageParamsPanel
+                    modelId={selectedModel.id}
+                    profile={imageTurn.profile}
+                    params={imageTurn.params}
+                    onChangeParams={imageTurn.setParams}
+                  />
+                ) : (
+                  addon
+                )}
 
-                {selectedModel?.input?.includes("search") && (
+                {supportsReferenceImages && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <InputGroupButton
+                          size="icon-sm"
+                          variant={referenceImages.length > 0 ? "secondary" : "ghost"}
+                          aria-label="Attach reference images"
+                          onClick={onAddReferenceImages}
+                        />
+                      }
+                    >
+                      <ImagePlus />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Attach up to {imageTurn.profile.maxReferenceImages} reference images
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {!imageMode && selectedModel?.input?.includes("search") && (
                   <Toggle
                     variant="primary"
                     aria-label="Toggle web search"
@@ -577,63 +654,54 @@ const ChatInput = ({
                     </DropdownMenu>
                   ) : null)}
 
-                {showAttachControl &&
-                  (!enableContextAttachments ? (
-                    <InputGroupButton
-                      size="icon-sm"
-                      aria-label="Attach images"
-                      onClick={onAddImages}
+                {showAttachControl && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <InputGroupButton
+                          size="icon-sm"
+                          aria-label="Attach context"
+                          disabled={uploadingDocument}
+                        />
+                      }
                     >
-                      <Paperclip />
-                    </InputGroupButton>
-                  ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <InputGroupButton
-                            size="icon-sm"
-                            aria-label="Attach context"
-                            disabled={uploadingDocument}
-                          />
-                        }
-                      >
-                        {uploadingDocument ? <Spinner /> : <Paperclip />}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" side="top" className="w-auto">
-                        {supportsImage && (
-                          <DropdownMenuItem onClick={onAddImages}>
-                            <ImagePlus />
-                            Upload image
-                          </DropdownMenuItem>
-                        )}
-                        {supportsDocument && (
-                          <DropdownMenuItem onClick={onAddDocuments}>
-                            <FileText />
-                            Upload document
-                          </DropdownMenuItem>
-                        )}
-                        {supportsWebFetch && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (
-                                attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE
-                              ) {
-                                toast.add({
-                                  title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
-                                  type: "warning",
-                                });
-                                return;
-                              }
-                              setUrlDialogOpen(true);
-                            }}
-                          >
-                            <Globe />
-                            Attach webpage URL
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ))}
+                      {uploadingDocument ? <Spinner /> : <Paperclip />}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="top" className="w-auto">
+                      {supportsImage && (
+                        <DropdownMenuItem onClick={onAddImages}>
+                          <ImagePlus />
+                          Upload image
+                        </DropdownMenuItem>
+                      )}
+                      {supportsDocument && (
+                        <DropdownMenuItem onClick={onAddDocuments}>
+                          <FileText />
+                          Upload document
+                        </DropdownMenuItem>
+                      )}
+                      {supportsWebFetch && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (
+                              attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE
+                            ) {
+                              toast.add({
+                                title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+                                type: "warning",
+                              });
+                              return;
+                            }
+                            setUrlDialogOpen(true);
+                          }}
+                        >
+                          <Globe />
+                          Attach webpage URL
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 <div className="ml-auto flex items-center gap-1">
                   {speechSupported && (

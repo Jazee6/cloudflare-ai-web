@@ -2,23 +2,27 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import AuthDialog from "@/components/auth-dialog";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import Footer from "@/components/footer";
-import { useModelCatalog } from "@/components/model-catalog-provider";
+import { useModelCatalog, useSelectedModel } from "@/components/model-catalog-provider";
 import { TextEffect } from "@/components/ui/text-effect";
 import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
+import { useImageTurn } from "@/hooks/use-image-turn";
 import { createConversation, createUserMessage } from "@/lib/conversation-store";
 
 export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const navigate = useNavigate();
-  const models = useModelCatalog("Text Generation");
+  const models = useModelCatalog();
+  const imageTurn = useImageTurn(useSelectedModel(models));
   const { authDialog, handleUnauthorized, resetAuthRetry } = useAuthRetry(() => {});
 
-  const onSendMessage = async ({ text, files, attachments }: onSendMessageProps) => {
+  const onSendMessage = async ({ text, files, attachments, imagePrompt }: onSendMessageProps) => {
     resetAuthRetry();
     try {
-      const sessionId = await createConversation(createUserMessage(text, files, attachments));
+      const sessionId = await createConversation(
+        imagePrompt ?? createUserMessage(text, files, attachments),
+      );
       await navigate({
         to: "/c/$sessionId",
         params: { sessionId },
@@ -40,6 +44,7 @@ function Home() {
         </div>
         <ChatInput
           models={models}
+          imageTurn={imageTurn}
           className="mx-auto w-full max-w-3xl [view-transition-name:chat-input]"
           onSendMessage={onSendMessage}
           onUnauthorized={handleUnauthorized}

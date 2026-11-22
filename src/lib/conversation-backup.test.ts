@@ -5,21 +5,21 @@ import {
   importConversationHistory,
 } from "@/lib/conversation-backup";
 import {
-  appendImageHistoryEntry,
+  appendConversationMessage,
   clearAllConversations,
   createConversation,
   createUserMessage,
   getStorageStats,
   loadConversationHistory,
-  loadImageHistory,
 } from "@/lib/conversation-store";
 import { db } from "@/lib/db";
+import { getImageBlobs } from "@/lib/image-turn";
 
 afterEach(async () => {
   await Promise.all([db.session.clear(), db.message.clear()]);
 });
 
-test("exportConversationHistory exports conversations only and filters images when disabled", async () => {
+test("exportConversationHistory filters attached images when disabled", async () => {
   const sessionId = await createConversation(
     createUserMessage(
       "Look at this",
@@ -34,7 +34,6 @@ test("exportConversationHistory exports conversations only and filters images wh
       [],
     ),
   );
-  await appendImageHistoryEntry(createUserMessage("image prompt"));
 
   const withoutImages = await exportConversationHistory({ includeImages: false });
   expect(withoutImages.version).toBe(CONVERSATION_BACKUP_VERSION);
@@ -98,24 +97,96 @@ test("importConversationHistory validates payloads and skips existing session ID
   expect(importedHistory).toHaveLength(1);
 });
 
-test("getStorageStats and clearAllConversations preserve Image History", async () => {
+test("getStorageStats counts and clearAllConversations removes every conversation", async () => {
   await createConversation(createUserMessage("hello"));
-  await appendImageHistoryEntry(createUserMessage("draw cat"));
 
-  expect(await getStorageStats()).toEqual({
-    sessionCount: 1,
-    messageCount: 1,
-    imageEntryCount: 1,
-  });
+  expect(await getStorageStats()).toEqual({ sessionCount: 1, messageCount: 1 });
 
   await clearAllConversations();
 
-  expect(await getStorageStats()).toEqual({
-    sessionCount: 0,
-    messageCount: 0,
-    imageEntryCount: 1,
+  expect(await getStorageStats()).toEqual({ sessionCount: 0, messageCount: 0 });
+});
+
+const png = () => new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
+const params = { width: 1024, height: 1024, seed: 7 };
+
+const createImageConversation = async () => {
+  const sessionId = await createConversation({
+    id: "prompt",
+    role: "user",
+    parts: [
+      { type: "data-reference-images", data: { images: [png()] } },
+      { type: "text", text: "draw a cat" },
+    ],
+    metadata: { modelId: "@cf/flux", modelName: "Flux", params },
   });
-  expect(await loadImageHistory()).toHaveLength(1);
+  await appendConversationMessage(sessionId, {
+    id: "response",
+    role: "assistant",
+    parts: [{ type: "data-images", data: { images: [png()] } }],
+    metadata: { modelId: "@cf/flux", modelName: "Flux", params },
+  });
+  return sessionId;
+};
+
+test("image turns round-trip through a backup with images as data URLs", async () => {
+  const sessionId = await createImageConversation();
+  const backup = await exportConversationHistory({ includeImages: true });
+  const [prompt, response] = backup.sessions[0].messages;
+  expect(prompt.parts[0]).toEqual({
+    type: "data-reference-images",
+    data: { images: ["data:image/png;base64,iVBORw=="] },
+  });
+  expect(response.parts[0]).toEqual({
+    type: "data-images",
+    data: { images: ["data:image/png;base64,iVBORw=="] },
+  });
+
+  await clearAllConversations();
+  const imported = await importConversationHistory(JSON.stringify(backup));
+  expect(imported.ok).toBe(true);
+
+  const history = await loadConversationHistory(sessionId);
+  const [image] = getImageBlobs(history[1], "data-images");
+  expect(image).toBeInstanceOf(Blob);
+  expect(image.type).toBe("image/png");
+  expect(new Uint8Array(await image.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+  expect(getImageBlobs(history[0], "data-reference-images")).toHaveLength(1);
+  expect(history[1].metadata).toEqual({ modelId: "@cf/flux", modelName: "Flux", params });
+});
+
+test("exporting without images keeps the prompt and drops an image-only response", async () => {
+  await createImageConversation();
+  const backup = await exportConversationHistory({ includeImages: false });
+
+  expect(backup.sessions[0].messages).toHaveLength(1);
+  expect(backup.sessions[0].messages[0].parts).toEqual([{ type: "text", text: "draw a cat" }]);
+});
+
+test("importConversationHistory rejects malformed image parts", async () => {
+  const result = await importConversationHistory(
+    JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sessions: [
+        {
+          id: "s",
+          name: "s",
+          updatedAt: new Date().toISOString(),
+          messages: [
+            {
+              id: "m",
+              role: "assistant",
+              parts: [{ type: "data-images", data: { images: ["javascript:alert(1)"] } }],
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  expect(result.ok).toBe(false);
+  expect(await db.session.count()).toBe(0);
 });
 
 test("importConversationHistory reassigns colliding message IDs instead of overwriting existing messages", async () => {

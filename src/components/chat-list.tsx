@@ -17,7 +17,8 @@ const ChatList = memo(
     status: ChatStatus;
     /** Retries the latest response; only offered on that response. */
     onRetry?: () => void;
-    onUseAsReference?: (url: string) => void;
+    /** Offered on every image in the conversation while the selected model takes references. */
+    onUseAsReference?: (image: Blob) => void;
     className?: string;
   }) => {
     const busy = status === "submitted" || status === "streaming";
@@ -35,7 +36,7 @@ const ChatList = memo(
                 scrollAnchor
                 className="ani-slide-top"
               >
-                <UserChatItem parts={message.parts} />
+                <UserChatItem message={message} onUseAsReference={onUseAsReference} />
               </MessageScrollerItem>
             );
           }

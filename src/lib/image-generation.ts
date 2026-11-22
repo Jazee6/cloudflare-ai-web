@@ -3,8 +3,6 @@ import { extractGatewayMetadata } from "@/lib/gateway-errors";
 import { getImageModelProfile, type NormalizedImageParams } from "@/lib/image-models";
 import type { CloudflareGatewayCredentials } from "@/lib/providers";
 
-export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
-
 // The REST API wraps the payload in `result`; AI Gateway returns it unwrapped.
 const imagePayloadSchema = v.object({ image: v.string() });
 const imageResponseSchema = v.union([v.object({ result: imagePayloadSchema }), imagePayloadSchema]);
