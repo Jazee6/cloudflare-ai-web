@@ -1,6 +1,13 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 
+export const citationSchema = v.object({
+  id: v.string(),
+  source: v.string(),
+  score: v.optional(v.number()),
+  excerpt: v.string(),
+});
+
 const responseMetadataSchema = v.object({
   /** Seconds each reasoning segment took, in the order the segments appear. */
   reasoningSeconds: v.optional(v.array(v.nullable(v.number()))),
@@ -15,9 +22,12 @@ const responseMetadataSchema = v.object({
       dlpAction: v.optional(v.string()),
     }),
   ),
+  /** Lightweight Knowledge Base citations persisted with the assistant response. */
+  citations: v.optional(v.array(citationSchema)),
 });
 
 /** Metadata the chat route attaches to each response; stored with the message. */
+export type Citation = v.InferOutput<typeof citationSchema>;
 export type ResponseMetadata = v.InferOutput<typeof responseMetadataSchema>;
 export type GatewayMetadata = NonNullable<ResponseMetadata["gateway"]>;
 

@@ -13,7 +13,7 @@ const Page = () => {
   const { session_id } = useParams() as { session_id: string };
   const isNew = useSearchParams().get("new") !== null;
   const models = useModelCatalog("Text Generation");
-  const { messages, status, send, stop, retry, authDialog } = useConversation({
+  const { messages, status, send, stop, retry, authDialog, handleUnauthorized } = useConversation({
     sessionId: session_id,
     isNew,
     models,
@@ -27,7 +27,10 @@ const Page = () => {
           <ChatInput
             models={models}
             className="mx-auto w-full max-w-3xl"
-            onSendMessage={({ text, files }: onSendMessageProps) => send(text, files)}
+            onSendMessage={({ text, files, attachments }: onSendMessageProps) =>
+              send(text, files, attachments)
+            }
+            onUnauthorized={handleUnauthorized}
             status={status}
             onStop={stop}
             onRetry={retry}

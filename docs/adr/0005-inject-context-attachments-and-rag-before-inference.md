@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Inject Context Attachments and Knowledge Base retrieval before inference

@@ -52,14 +52,19 @@ docker run -d --name cloudflare-ai-web \
 
 ### 环境变量列表
 
-| 名称                 | 描述                                          | 必填              |
-| -------------------- | --------------------------------------------- | ----------------- |
-| CF_ACCOUNT_ID        | Cloudflare 账户 ID                            | ✅                |
-| CF_WORKERS_AI_TOKEN  | Cloudflare Workers AI 令牌                    | ✅                |
-| CF_AI_GATEWAY_NAME   | Cloudflare AI 网关名称                        | 使用网关/外部模型 |
-| CF_AI_GATEWAY_TOKEN  | Cloudflare AI 网关授权令牌                    | 使用网关/外部模型 |
-| CF_AI_GATEWAY_MODELS | 声明式外部模型与 Gateway Route（`dynamic/*`） | 使用外部模型时    |
-| APP_PASSWORD         | 访问密码（Access Session）                    |                   |
+| 名称                       | 描述                                                           | 必填              |
+| -------------------------- | -------------------------------------------------------------- | ----------------- |
+| CF_ACCOUNT_ID              | Cloudflare 账户 ID                                             | ✅                |
+| CF_WORKERS_AI_TOKEN        | Cloudflare Workers AI 令牌（推理与 `toMarkdown` 文档转换）     | ✅                |
+| CF_AI_GATEWAY_NAME         | Cloudflare AI 网关名称                                         | 使用网关/外部模型 |
+| CF_AI_GATEWAY_TOKEN        | Cloudflare AI 网关授权令牌                                     | 使用网关/外部模型 |
+| CF_AI_GATEWAY_MODELS       | 声明式外部模型与 Gateway Route（`dynamic/*`）                  | 使用外部模型时    |
+| CF_BROWSER_RUN_TOKEN       | Cloudflare Browser Run `/markdown` 令牌（SPA 动态网页回退）    | 按需              |
+| CF_AI_SEARCH_TOKEN         | Cloudflare AI Search 只读检索令牌                              | 启用知识库时      |
+| CF_AI_SEARCH_INSTANCES     | 允许挂载的 AI Search 实例白名单（逗号分隔，`id` 或 `id:别名`） | 启用知识库时必填  |
+| CF_AI_SEARCH_NAMESPACE     | AI Search 命名空间（默认 `default`）                           |                   |
+| CF_AI_SEARCH_REWRITE_QUERY | 是否开启 AI Search `rewrite_query`（默认 `false`）             |                   |
+| APP_PASSWORD               | 访问密码（Access Session）                                     |                   |
 
 #### CF_WORKERS_AI_TOKEN
 

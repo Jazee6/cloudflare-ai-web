@@ -1,5 +1,6 @@
 import { type FileUIPart, generateId, type UIMessage } from "ai";
 import Dexie from "dexie";
+import { type ContextAttachmentData, createContextAttachmentPart } from "@/lib/context-attachments";
 import { db, type Session, type StoredMessage } from "@/lib/db";
 
 export const CONVERSATION_HISTORY_LOAD_LIMIT = 100;
@@ -24,10 +25,14 @@ const getSessionName = (message: UIMessage) =>
   message.parts.find((part) => part.type === "text")?.text.slice(0, SESSION_NAME_LENGTH) ??
   "New chat";
 
-export const createUserMessage = (text: string, files: FileUIPart[] = []): UIMessage => ({
+export const createUserMessage = (
+  text: string,
+  files: FileUIPart[] = [],
+  attachments: ContextAttachmentData[] = [],
+): UIMessage => ({
   id: generateId(),
   role: "user",
-  parts: [...files, { type: "text", text }],
+  parts: [...files, ...attachments.map(createContextAttachmentPart), { type: "text", text }],
 });
 
 /** Starts a Conversation History with its first user message and returns the session id. */

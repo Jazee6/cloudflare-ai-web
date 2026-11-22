@@ -1,16 +1,23 @@
 import type { UIMessage } from "ai";
+import { getContextAttachmentCharLength, isContextAttachmentPart } from "@/lib/context-attachments";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
 
 export const MODEL_CONTEXT_MAX_CHARS = 64_000;
 export const MODEL_CONTEXT_MAX_MESSAGES = 100;
 export const MODEL_CONTEXT_MAX_IMAGES = MAX_IMAGE_PARTS;
 
-const messageContentLength = (parts: UIMessage["parts"]): number =>
+export const getMessageContentLength = (parts: UIMessage["parts"]): number =>
   parts.reduce((total, part) => {
     if (part.type === "file") {
       return total;
     }
-    return total + (part.type === "text" ? part.text.length : JSON.stringify(part).length);
+    if (part.type === "text") {
+      return total + part.text.length;
+    }
+    if (isContextAttachmentPart(part)) {
+      return total + getContextAttachmentCharLength(part.data);
+    }
+    return total + JSON.stringify(part).length;
   }, 0);
 
 /**
@@ -25,14 +32,14 @@ export const buildModelContext = <Message extends UIMessage>(
   }
 
   const newestFirst = [...messages].reverse();
-  if (messageContentLength(newestFirst[0].parts) > MODEL_CONTEXT_MAX_CHARS) {
+  if (getMessageContentLength(newestFirst[0].parts) > MODEL_CONTEXT_MAX_CHARS) {
     return null;
   }
 
   const selected: Message[] = [];
   let totalChars = 0;
   for (const message of newestFirst) {
-    const messageChars = messageContentLength(message.parts);
+    const messageChars = getMessageContentLength(message.parts);
     if (totalChars + messageChars > MODEL_CONTEXT_MAX_CHARS) {
       break;
     }

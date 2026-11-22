@@ -1,13 +1,22 @@
 "use client";
 
 import { isReasoningUIPart, isToolUIPart, type UIMessage } from "ai";
-import { BrainIcon, CheckIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  BrainIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  CopyIcon,
+  RefreshCcwIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 import Markdown from "@/components/markdown";
 import ToolCall from "@/components/tool-call";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -187,6 +196,7 @@ const AssistantChatItem = ({
 
   const gatewayCacheHit = metadata?.gateway?.cacheStatus === "HIT";
   const gatewayDlpAction = metadata?.gateway?.dlpAction;
+  const citations = metadata?.citations ?? [];
 
   return (
     <Message>
@@ -199,6 +209,56 @@ const AssistantChatItem = ({
           ) : (
             group.parts.map(({ part, index }) => renderPart(part, index))
           ),
+        )}
+
+        {!streaming && citations.length > 0 && (
+          <Collapsible className="group/sources flex flex-col gap-2">
+            <CollapsibleTrigger
+              render={
+                <button
+                  type="button"
+                  className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                />
+              }
+            >
+              <BookOpenIcon className="size-3.5" />
+              <span>Sources ({citations.length})</span>
+              <ChevronRightIcon className="size-3.5 transition-transform group-data-[open]/sources:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="flex flex-wrap gap-1.5">
+              {citations.map((citation) => (
+                <HoverCard key={citation.id}>
+                  <HoverCardTrigger
+                    render={
+                      <button type="button" className="inline-flex items-center">
+                        <Badge variant="secondary" className="max-w-64 gap-1.5">
+                          <span className="truncate">{citation.source}</span>
+                          {typeof citation.score === "number" && (
+                            <span className="text-muted-foreground tabular-nums">
+                              {Math.round(citation.score * 100)}%
+                            </span>
+                          )}
+                        </Badge>
+                      </button>
+                    }
+                  />
+                  <HoverCardContent className="w-80">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-medium">{citation.source}</span>
+                        {typeof citation.score === "number" && (
+                          <Badge variant="outline" className="tabular-nums">
+                            {Math.round(citation.score * 100)}%
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{citation.excerpt}</p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {!streaming && (text || onRetry || gatewayCacheHit || gatewayDlpAction) && (

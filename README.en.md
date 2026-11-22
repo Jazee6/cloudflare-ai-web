@@ -52,14 +52,19 @@ docker run -d --name cloudflare-ai-web \
 
 ### Environment Variables
 
-| Name                 | Description                                  | Required                |
-| -------------------- | -------------------------------------------- | ----------------------- |
-| CF_ACCOUNT_ID        | Cloudflare Account ID                        | ✅                      |
-| CF_WORKERS_AI_TOKEN  | Cloudflare Workers AI Token                  | ✅                      |
-| CF_AI_GATEWAY_NAME   | Cloudflare AI Gateway Name                   | With gateway / external |
-| CF_AI_GATEWAY_TOKEN  | Cloudflare AI Gateway Auth Token             | With gateway / external |
-| CF_AI_GATEWAY_MODELS | Declarative External Models & Gateway Routes | With external models    |
-| APP_PASSWORD         | Access Password (Access Session)             |                         |
+| Name                       | Description                                                             | Required                |
+| -------------------------- | ----------------------------------------------------------------------- | ----------------------- |
+| CF_ACCOUNT_ID              | Cloudflare Account ID                                                   | ✅                      |
+| CF_WORKERS_AI_TOKEN        | Cloudflare Workers AI Token (inference & `toMarkdown` document parsing) | ✅                      |
+| CF_AI_GATEWAY_NAME         | Cloudflare AI Gateway Name                                              | With gateway / external |
+| CF_AI_GATEWAY_TOKEN        | Cloudflare AI Gateway Auth Token                                        | With gateway / external |
+| CF_AI_GATEWAY_MODELS       | Declarative External Models & Gateway Routes                            | With external models    |
+| CF_BROWSER_RUN_TOKEN       | Cloudflare Browser Run `/markdown` token (SPA dynamic fallback)         | Optional                |
+| CF_AI_SEARCH_TOKEN         | Cloudflare AI Search read-only retrieval token                          | With Knowledge Base     |
+| CF_AI_SEARCH_INSTANCES     | Allowlisted AI Search instances (`id` or `id:Display Name`)             | Required with KB        |
+| CF_AI_SEARCH_NAMESPACE     | AI Search namespace (default `default`)                                 |                         |
+| CF_AI_SEARCH_REWRITE_QUERY | Enable AI Search `rewrite_query` (default `false`)                      |                         |
+| APP_PASSWORD               | Access Password (Access Session)                                        |                         |
 
 #### CF_WORKERS_AI_TOKEN
 

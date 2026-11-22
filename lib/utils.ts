@@ -3,7 +3,11 @@ export { cn } from "cn";
 import type { Model } from "@/lib/models";
 
 export type StoredModelKey = "CF_AI_MODEL" | "CF_AI_MODEL_IMAGE";
-export type StoredPreferenceKey = StoredModelKey | "CF_AI_SEARCH_ENABLED" | "CF_AI_THEME";
+export type StoredPreferenceKey =
+  | StoredModelKey
+  | "CF_AI_SEARCH_ENABLED"
+  | "CF_AI_KNOWLEDGE_BASE"
+  | "CF_AI_THEME";
 
 export const getCookie = (name: string) => {
   if (typeof document === "undefined") {

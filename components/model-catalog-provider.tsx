@@ -82,7 +82,12 @@ export const ModelPreferencesProvider = ({
       return;
     }
     const stored: ModelPreferences = {};
-    for (const key of ["CF_AI_MODEL", "CF_AI_MODEL_IMAGE", "CF_AI_SEARCH_ENABLED"] as const) {
+    for (const key of [
+      "CF_AI_MODEL",
+      "CF_AI_MODEL_IMAGE",
+      "CF_AI_SEARCH_ENABLED",
+      "CF_AI_KNOWLEDGE_BASE",
+    ] as const) {
       const value = getCookie(key);
       if (value !== undefined) {
         stored[key] = value;

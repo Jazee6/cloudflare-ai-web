@@ -10,6 +10,7 @@ import {
   loadConversationHistory,
   replaceConversationResponse,
 } from "@/lib/conversation-store";
+import type { ContextAttachmentData } from "@/lib/context-attachments";
 import { fitImagePartsWithinLimit } from "@/lib/image-compression";
 import { buildModelContext } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
@@ -71,6 +72,8 @@ export const useConversation = ({
           throw new Error("The latest message exceeds the 64,000-character context limit.");
         }
 
+        const knowledgeBaseId = getCookie("CF_AI_KNOWLEDGE_BASE")?.trim() || undefined;
+
         return {
           body: {
             messages: await fitImagePartsWithinLimit(modelContext),
@@ -79,6 +82,7 @@ export const useConversation = ({
             search: getCookie("CF_AI_SEARCH_ENABLED") === "true",
             skipCache: isRetry,
             retry: isRetry,
+            ...(knowledgeBaseId ? { knowledgeBaseId } : {}),
           },
         };
       },
@@ -173,9 +177,13 @@ export const useConversation = ({
     void regenerate();
   }, [historyLoaded, hasPendingUserMessage, catalogLoading, models.length, regenerate]);
 
-  const send = async (text: string, files?: FileUIPart[]) => {
+  const send = async (
+    text: string,
+    files?: FileUIPart[],
+    attachments?: ContextAttachmentData[],
+  ) => {
     resetAuthRetry();
-    const message = createUserMessage(text, files);
+    const message = createUserMessage(text, files, attachments);
     try {
       await appendConversationMessage(sessionId, message);
     } catch {
@@ -186,5 +194,5 @@ export const useConversation = ({
     await sendMessage(message);
   };
 
-  return { messages, status, send, stop, retry, authDialog };
+  return { messages, status, send, stop, retry, authDialog, handleUnauthorized };
 };

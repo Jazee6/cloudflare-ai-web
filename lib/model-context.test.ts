@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { buildModelContext } from "@/lib/model-context";
+import { createContextAttachmentPart } from "@/lib/context-attachments";
+import { buildModelContext, MODEL_CONTEXT_MAX_CHARS } from "@/lib/model-context";
 import type { StoredMessage as Message } from "@/lib/db";
 
 const makeMessage = (id: string, text: string, role: "user" | "assistant" = "user"): Message => ({
@@ -77,4 +78,33 @@ test("caps at 100 messages", () => {
 test("returns empty array for empty input", () => {
   const result = buildModelContext([]);
   expect(result).toEqual([]);
+});
+
+test("counts data-context-attachment parts toward the 64,000-character budget", () => {
+  const makeAttachmentMessage = (id: string, chars: number): Message => ({
+    id,
+    role: "user",
+    parts: [
+      createContextAttachmentPart({
+        id: `att-${id}`,
+        kind: "document",
+        title: "doc.md",
+        mediaType: "text/markdown",
+        method: "plain-text",
+        content: "a".repeat(chars),
+        originalChars: chars,
+        truncated: false,
+      }),
+      { type: "text", text: "summarize" },
+    ],
+    sessionId: "test",
+    createdAt: new Date(),
+  });
+
+  expect(buildModelContext([makeAttachmentMessage("too-big", MODEL_CONTEXT_MAX_CHARS)])).toBeNull();
+
+  const older = makeAttachmentMessage("older", 40_000);
+  const newer = makeAttachmentMessage("newer", 40_000);
+  const result = buildModelContext([older, newer]);
+  expect(result?.map((message) => message.id)).toEqual(["newer"]);
 });

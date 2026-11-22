@@ -34,4 +34,19 @@ test("proxy blocks unauthenticated non-GET /api/models and POST /api/chat", asyn
 
   const chatPost = await proxy(new NextRequest("https://example.com/api/chat", { method: "POST" }));
   expect(chatPost.status).toBe(401);
+
+  const docPost = await proxy(
+    new NextRequest("https://example.com/api/context/document", { method: "POST" }),
+  );
+  expect(docPost.status).toBe(401);
+
+  const urlPost = await proxy(
+    new NextRequest("https://example.com/api/context/url", { method: "POST" }),
+  );
+  expect(urlPost.status).toBe(401);
+
+  const instancesGet = await proxy(
+    new NextRequest("https://example.com/api/ai-search/instances", { method: "GET" }),
+  );
+  expect(instancesGet.status).toBe(401);
 });

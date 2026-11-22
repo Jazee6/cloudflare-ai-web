@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import * as v from "valibot";
+import { getConfiguredKnowledgeBases } from "@/lib/ai-search";
 import {
   type AppCapabilities,
   getExternalModels,
@@ -263,17 +264,12 @@ export const getAppCapabilities = (): AppCapabilities => {
   const accountId = process.env.CF_ACCOUNT_ID;
   const workersAiToken = process.env.CF_WORKERS_AI_TOKEN;
   const browserRunToken = process.env.CF_BROWSER_RUN_TOKEN;
-  const aiSearchToken = process.env.CF_AI_SEARCH_TOKEN;
-  const aiSearchInstances = (process.env.CF_AI_SEARCH_INSTANCES ?? "")
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 
   return {
     documents: Boolean(accountId && workersAiToken),
     webFetch: true,
     browserRender: Boolean(accountId && browserRunToken),
-    knowledgeBase: Boolean(accountId && aiSearchToken && aiSearchInstances.length > 0),
+    knowledgeBase: getConfiguredKnowledgeBases().length > 0,
   };
 };
 

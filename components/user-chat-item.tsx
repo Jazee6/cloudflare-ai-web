@@ -1,12 +1,24 @@
 import type { UIMessage } from "ai";
+import { ContextAttachmentItem } from "@/components/context-attachment-item";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Message, MessageContent } from "@/components/ui/message";
 import ZoomableImage from "@/components/zoomable-image";
+import { isContextAttachmentPart } from "@/lib/context-attachments";
 
 const UserChatItem = ({ parts }: { parts: UIMessage["parts"] }) => {
+  const attachments = parts.filter(isContextAttachmentPart);
+
   return (
     <Message align="end">
       <MessageContent>
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap justify-end gap-2">
+            {attachments.map((part, index) => (
+              <ContextAttachmentItem key={`${part.data.id}-${index}`} attachment={part.data} />
+            ))}
+          </div>
+        )}
+
         {parts.map((part, index) => {
           if (part.type === "text") {
             return (

@@ -7,12 +7,21 @@ import {
   toUIMessageStream,
 } from "ai";
 import * as v from "valibot";
+import { KnowledgeBaseError, searchKnowledgeBase } from "@/lib/ai-search";
+import {
+  formatContextAttachmentForModel,
+  isContextAttachmentPart,
+  validateContextAttachmentParts,
+} from "@/lib/context-attachments";
 import { extractGatewayMetadata, mapUpstreamError } from "@/lib/gateway-errors";
 import { getCatalogModel } from "@/lib/model-catalog";
 import { buildModelContext, MODEL_CONTEXT_MAX_MESSAGES } from "@/lib/model-context";
 import { type ChatModel, createChatModel, ProviderConfigurationError } from "@/lib/providers";
 import { parseJsonRequest, validateImageParts } from "@/lib/request-limits";
-import type { GatewayMetadata, ResponseMetadata } from "@/lib/response-metadata";
+import type { Citation, GatewayMetadata, ResponseMetadata } from "@/lib/response-metadata";
+
+const BASE_CHAT_INSTRUCTIONS =
+  "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.";
 
 const chatSchema = v.object({
   messages: v.pipe(v.array(v.unknown()), v.minLength(1), v.maxLength(MODEL_CONTEXT_MAX_MESSAGES)),
@@ -21,6 +30,7 @@ const chatSchema = v.object({
   search: v.optional(v.boolean()),
   skipCache: v.optional(v.boolean()),
   retry: v.optional(v.boolean()),
+  knowledgeBaseId: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(128))),
 });
 
 export async function POST(request: Request) {
@@ -42,17 +52,42 @@ export async function POST(request: Request) {
     return new Response(imageValidation.message, { status: imageValidation.status });
   }
 
+  const attachmentValidation = validateContextAttachmentParts(validatedMessages.data);
+  if (!attachmentValidation.ok) {
+    return new Response(attachmentValidation.message, { status: attachmentValidation.status });
+  }
+
   const modelContext = buildModelContext(validatedMessages.data);
   if (!modelContext) {
     return new Response("The latest message is too long to process.", { status: 413 });
   }
 
-  const { model, provider, search, skipCache, retry } = parsed.data;
+  const { model, provider, search, skipCache, retry, knowledgeBaseId } = parsed.data;
   const catalogModel = await getCatalogModel(model, "Text Generation", provider);
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
       status: 409,
     });
+  }
+
+  let instructions = BASE_CHAT_INSTRUCTIONS;
+  let citations: Citation[] = [];
+  if (knowledgeBaseId) {
+    try {
+      const kbResult = await searchKnowledgeBase({
+        instanceId: knowledgeBaseId,
+        messages: modelContext,
+      });
+      if (kbResult.contextText) {
+        instructions = `${BASE_CHAT_INSTRUCTIONS}\n\n${kbResult.contextText}`;
+      }
+      citations = kbResult.citations;
+    } catch (error) {
+      if (error instanceof KnowledgeBaseError) {
+        return new Response(error.message, { status: error.status });
+      }
+      throw error;
+    }
   }
 
   let gatewayMetadata: GatewayMetadata | undefined;
@@ -81,9 +116,13 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: chatModel.model,
-    messages: await convertToModelMessages(modelContext),
-    instructions:
-      "You are a helpful assistant. Follow the user's instructions carefully. Respond using Markdown.",
+    messages: await convertToModelMessages(modelContext, {
+      convertDataPart: (part) =>
+        isContextAttachmentPart(part)
+          ? { type: "text", text: formatContextAttachmentForModel(part.data) }
+          : undefined,
+    }),
+    instructions,
     tools: chatModel.tools,
     maxOutputTokens: chatModel.maxOutputTokens,
     stopWhen: isStepCount(5),
@@ -126,12 +165,13 @@ export async function POST(request: Request) {
           }
           return undefined;
         case "finish": {
-          if (!usage && !gatewayMetadata) {
+          if (!usage && !gatewayMetadata && citations.length === 0) {
             return undefined;
           }
           return {
             ...(usage ? { usage, contextWindow: catalogModel.contextWindow } : {}),
             ...(gatewayMetadata ? { gateway: gatewayMetadata } : {}),
+            ...(citations.length > 0 ? { citations } : {}),
           };
         }
         default:

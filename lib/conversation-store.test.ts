@@ -170,3 +170,30 @@ test("replaceImageHistoryEntry swaps the retried image entry for the new one", a
   expect(history.map((entry) => entry.role)).toEqual(["user", "assistant"]);
   expect(history[1].id).toBe("new");
 });
+
+test("createUserMessage persists Context Attachments alongside text", async () => {
+  const first = createUserMessage(
+    "Summarize this doc",
+    [],
+    [
+      {
+        id: "att-1",
+        kind: "document",
+        title: "notes.md",
+        mediaType: "text/markdown",
+        method: "plain-text",
+        content: "# Notes",
+        originalChars: 7,
+        truncated: false,
+      },
+    ],
+  );
+
+  const sessionId = await createConversation(first);
+  const history = await loadConversationHistory(sessionId);
+  expect(history[0].parts).toHaveLength(2);
+  expect(history[0].parts[0]).toMatchObject({
+    type: "data-context-attachment",
+    data: { title: "notes.md" },
+  });
+});

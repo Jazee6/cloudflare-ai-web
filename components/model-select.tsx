@@ -68,23 +68,23 @@ const ModelSelect = ({
       <Button
         type="button"
         variant="ghost"
-        className="text-primary hover:text-primary aria-expanded:text-primary"
+        className="min-w-0 shrink text-primary hover:text-primary aria-expanded:text-primary"
         disabled={models.length === 0}
         onClick={() => setOpen(true)}
       >
         {selectedModel ? (
           <>
-            <span className="flex size-4 items-center justify-center">
+            <span className="flex size-4 shrink-0 items-center justify-center">
               <ModelLogo model={selectedModel} />
             </span>
-            {selectedModel.name}
+            <span className="truncate">{selectedModel.name}</span>
           </>
         ) : models.length > 0 ? (
-          "Select a model"
+          <span className="truncate">Select a model</span>
         ) : (
-          "No models available"
+          <span className="truncate">No models available</span>
         )}
-        <ChevronsUpDown />
+        <ChevronsUpDown className="shrink-0" />
       </Button>
 
       <CommandDialog

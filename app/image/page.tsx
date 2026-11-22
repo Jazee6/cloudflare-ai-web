@@ -24,6 +24,7 @@ const Page = () => {
             onSendMessage={({ text }: onSendMessageProps) => send(text)}
             status={status}
             modelKey="CF_AI_MODEL_IMAGE"
+            enableContextAttachments={false}
             onRetry={retry}
           />
         </ViewTransition>
