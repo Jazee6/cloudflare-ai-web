@@ -1,12 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cloudflare-ai-web",
-  "main": ".open-next/worker.js",
+  "main": "@tanstack/react-start/server-entry",
   "keep_names": false,
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS",
+    // Deep links (/c/<id>) get the SPA shell from static assets without invoking the Worker;
+    // only /api/* runs Worker code.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
   },
 }
