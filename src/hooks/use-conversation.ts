@@ -1,6 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
 import { useSettings } from "@/components/settings-provider";
 import { toast } from "@/components/ui/toast";
@@ -43,6 +44,7 @@ export const useConversation = ({
   isNew: boolean;
   models: Model[];
 }) => {
+  const navigate = useNavigate();
   const { loading: catalogLoading, capabilities } = useModelCatalogState();
   const { settings } = useSettings();
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -148,6 +150,9 @@ export const useConversation = ({
 
   const { authDialog, handleUnauthorized, resetAuthRetry } = useAuthRetry(retry);
 
+  // `?new` is read once per load: dropping it from the URL must not reload history mid-stream.
+  const readIsNew = useEffectEvent(() => isNew);
+
   useEffect(() => {
     let cancelled = false;
     setHistoryLoaded(false);
@@ -160,7 +165,7 @@ export const useConversation = ({
           return;
         }
         setMessages(history);
-        setHasPendingUserMessage(isNew && history.at(-1)?.role === "user");
+        setHasPendingUserMessage(readIsNew() && history.at(-1)?.role === "user");
         setHistoryLoaded(true);
       })
       .catch(() => {
@@ -173,7 +178,7 @@ export const useConversation = ({
       cancelled = true;
       stopGlobalSpeech();
     };
-  }, [sessionId, isNew, setMessages]);
+  }, [sessionId, setMessages]);
 
   useEffect(() => {
     if (
@@ -187,11 +192,25 @@ export const useConversation = ({
     }
 
     startedPendingRef.current = true;
-    // Drop `?new` without notifying the router: re-running the history effect would clobber the
-    // in-flight regeneration. Keep the router-managed history state intact.
-    window.history.replaceState(window.history.state, "", location.pathname);
+    // Drop `?new` so a reload does not resend. No view transition: one is still animating the
+    // input from the home page, and a second would cut it short.
+    void navigate({
+      to: "/c/$sessionId",
+      params: { sessionId },
+      search: {},
+      replace: true,
+      viewTransition: false,
+    });
     void regenerate();
-  }, [historyLoaded, hasPendingUserMessage, catalogLoading, models.length, regenerate]);
+  }, [
+    historyLoaded,
+    hasPendingUserMessage,
+    catalogLoading,
+    models.length,
+    regenerate,
+    navigate,
+    sessionId,
+  ]);
 
   const send = async (
     text: string,

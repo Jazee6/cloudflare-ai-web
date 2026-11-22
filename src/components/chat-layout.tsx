@@ -21,7 +21,9 @@ const ChatLayout = ({
     <div className="flex flex-col h-screen">
       <MessageScrollerProvider autoScroll>
         <MessageScroller className="flex-1">
-          <MessageScrollerViewport className="px-2">{children}</MessageScrollerViewport>
+          <MessageScrollerViewport className="px-2 scrollbar-gutter-both">
+            {children}
+          </MessageScrollerViewport>
           <MessageScrollerButton />
         </MessageScroller>
       </MessageScrollerProvider>
