@@ -1,5 +1,40 @@
 # Changelog
 
+## 6.0.0
+
+### Breaking Changes
+
+- **Framework**: migrated from Next.js 16 + OpenNext to TanStack Start in SPA mode (Vite, Nitro). Pages are a static shell; the server only handles `/api/*`. Source moved under `src/`.
+- **Deployment**: one codebase builds for Cloudflare Workers (`bun run cf:build` / `cf:deploy`, `@cloudflare/vite-plugin`), Vercel (Nitro `vercel` preset), and Docker / Node (`node .output/server/index.mjs`). Existing Vercel projects whose Framework Preset is Next.js must switch it to Other.
+- **Environment variables**: `CF_AI_GATEWAY_PROVIDERS`, `NEXT_PUBLIC_CF_AI_GATEWAY_PROVIDERS`, and `GOOGLE_API_KEY` are removed. External Models are declared in `CF_AI_GATEWAY_MODELS`, with provider keys stored as AI Gateway BYOK. `CF_ACCOUNT_ID` and `CF_WORKERS_AI_TOKEN` are now optional.
+- **Image page removed**: `/image` and Image History are gone; images are generated inside conversations.
+- **Settings**: the settings dialog is replaced by `/settings` pages (General, Models, Providers, Voice, Data).
+
+### Added
+
+- **Personal Providers** (`/settings/providers`): visitors add their own provider key, through this deployment's AI Gateway or their own, and declare Personal Models by hand or pick them from the provider's model list (`POST /api/personal-models`). Credentials stay in the browser's localStorage, are never logged, and are excluded from backups. Through the deployment's gateway a request must carry the visitor's key and cannot use Dynamic Routes.
+- **Personal image models**: OpenAI Images API (size) and Gemini image output (aspect ratio) profiles.
+- **Model layout** (`/settings/models`): hide models, create, rename, and delete Model Groups, and reorder groups and models (buttons or drag). Stored locally.
+- **Image generation in conversations**: selecting a `Text to Image` model switches the input to image mode with params and up to 4 Reference Images. Any image in a conversation can be used as a reference; generated images enter the Model Context of image-capable chat models.
+- **External Models** through AI Gateway: BYOK, Unified Billing, and Gateway Routes (`dynamic/*`) declared in `CF_AI_GATEWAY_MODELS`.
+- **Context attachments**: document parsing with Workers AI `toMarkdown` and webpage extraction (Markdown for Agents, Workers AI `toMarkdown`, then Browser Run; SSRF protection) for every chat model.
+- **Knowledge Base**: read-only Cloudflare AI Search retrieval (RAG) with Citations (`CF_AI_SEARCH_*`).
+- Image params panel and FLUX.2 multi-image reference editing.
+- Browser-native Web Speech voice input and read-aloud, Custom Instructions, gateway cache toggle, Conversation History JSON export/import (optionally with images).
+- Responses show the model name on hover.
+
+### Changed
+
+- Theme and model preferences move from cookies to localStorage; the chat and image model selections merge into one.
+- Dependencies: added `@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/react-form`, `vite`, `@vitejs/plugin-react`, `@tailwindcss/vite`, `@cloudflare/vite-plugin`, `nitro`, `wrangler`; removed `next`, `next-themes`, `react-hook-form`, `@hookform/resolvers`, `@tailwindcss/postcss`, `oxfmt`. React 19.3, Bun 1.4.4.
+
+### Migration from 5.x
+
+- Data migrates on first load: cookie preferences move to localStorage, and Dexie v4 turns Image History into an ordinary "Image History" conversation.
+- Replace `CF_AI_GATEWAY_PROVIDERS` / `GOOGLE_API_KEY` with an AI Gateway BYOK key plus `CF_AI_GATEWAY_MODELS`, `CF_AI_GATEWAY_NAME`, and `CF_AI_GATEWAY_TOKEN`.
+- Docker: same image, port, and variables.
+- Vercel: set Framework Preset to Other and clear custom build/output settings, then redeploy.
+
 ## 5.2.0
 
 ### Added
