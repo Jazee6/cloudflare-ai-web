@@ -21,8 +21,17 @@ function Page() {
   const isNew = Route.useSearch({ select: (search) => search.new === true });
   const models = useModelCatalog();
   const imageTurn = useImageTurn(useSelectedModel(models));
-  const { messages, status, send, sendImagePrompt, stop, retry, authDialog, handleUnauthorized } =
-    useConversation({ sessionId, isNew, models });
+  const {
+    messages,
+    status,
+    unansweredError,
+    send,
+    sendImagePrompt,
+    stop,
+    retry,
+    authDialog,
+    handleUnauthorized,
+  } = useConversation({ sessionId, isNew, models });
   const canUseAsReference = imageTurn.profile.maxReferenceImages > 0;
 
   return (
@@ -47,6 +56,7 @@ function Page() {
       <ChatList
         status={status}
         messages={messages}
+        unansweredError={unansweredError}
         onRetry={retry}
         onUseAsReference={
           canUseAsReference

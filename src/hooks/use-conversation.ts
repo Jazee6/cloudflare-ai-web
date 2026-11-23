@@ -63,6 +63,8 @@ export const useConversation = ({
   // Which kind of turn the shared status follows: the latest one started.
   const [activeTurn, setActiveTurn] = useState<"chat" | "image">("chat");
   const [imageStatus, setImageStatus] = useState<ChatStatus>("ready");
+  // The latest failure, kept so an unanswered prompt can show why once the toast is gone.
+  const [lastError, setLastError] = useState<string | null>(null);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const startedPendingRef = useRef(false);
@@ -171,6 +173,7 @@ export const useConversation = ({
         handleUnauthorized();
         return;
       }
+      setLastError(error.message);
       showError(error.message);
     },
   });
@@ -198,8 +201,12 @@ export const useConversation = ({
 
     setActiveTurn("image");
     if (!text || !metadata?.params || !model) {
+      const message = model
+        ? "No prompt to retry."
+        : "Select an image model to generate this image.";
       setImageStatus("error");
-      showError(model ? "No prompt to retry." : "Select an image model to generate this image.");
+      setLastError(message);
+      showError(message);
       return;
     }
 
@@ -219,6 +226,7 @@ export const useConversation = ({
       if (result.unauthorized) {
         handleUnauthorized();
       } else {
+        setLastError(result.message);
         showError(result.message);
       }
       return;
@@ -245,6 +253,7 @@ export const useConversation = ({
   /** Retries the latest response, replacing it in Conversation History only if it was saved. */
   const retry = () => {
     stopGlobalSpeech();
+    setLastError(null);
     const latest = messages.at(-1);
     const latestPrompt = messages.findLast((message) => message.role === "user");
     if (latestPrompt && isImageTurn(latestPrompt)) {
@@ -272,6 +281,7 @@ export const useConversation = ({
     setHasPendingUserMessage(false);
     setActiveTurn("chat");
     setImageStatus("ready");
+    setLastError(null);
     startedPendingRef.current = false;
 
     loadConversationHistory(sessionId)
@@ -327,6 +337,7 @@ export const useConversation = ({
       viewTransition: false,
     });
     startPendingTurn();
+    setHasPendingUserMessage(false);
   }, [historyLoaded, hasPendingUserMessage, catalogLoading, models.length, navigate, sessionId]);
 
   const send = async (
@@ -336,6 +347,7 @@ export const useConversation = ({
   ) => {
     stopGlobalSpeech();
     resetAuthRetry();
+    setLastError(null);
     const message = createUserMessage(text, files, attachments);
     try {
       await appendConversationMessage(sessionId, message);
@@ -352,6 +364,7 @@ export const useConversation = ({
   const sendImagePrompt = async (prompt: UIMessage) => {
     stopGlobalSpeech();
     resetAuthRetry();
+    setLastError(null);
     try {
       await appendConversationMessage(sessionId, prompt);
     } catch {
@@ -364,10 +377,18 @@ export const useConversation = ({
   };
 
   const status = activeTurn === "image" ? imageStatus : chatStatus;
+  // A prompt left without a response, after a failure or an interrupted page, offers a Retry.
+  const unanswered =
+    historyLoaded &&
+    !hasPendingUserMessage &&
+    messages.at(-1)?.role === "user" &&
+    status !== "submitted" &&
+    status !== "streaming";
 
   return {
     messages,
     status,
+    unansweredError: unanswered ? (lastError ?? "No response was received.") : null,
     send,
     sendImagePrompt,
     stop,

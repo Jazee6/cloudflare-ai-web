@@ -1,6 +1,9 @@
 import type { ChatStatus, UIMessage } from "ai";
+import { CircleAlertIcon, RefreshCcwIcon } from "lucide-react";
 import { memo } from "react";
 import AssistantChatItem from "@/components/assistant-chat-item";
+import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { MessageScrollerContent, MessageScrollerItem } from "@/components/ui/message-scroller";
 import UserChatItem from "@/components/user-chat-item";
 import { cn } from "@/lib/utils";
@@ -9,12 +12,15 @@ const ChatList = memo(
   ({
     messages,
     status,
+    unansweredError,
     onRetry,
     onUseAsReference,
     className,
   }: {
     messages: UIMessage[];
     status: ChatStatus;
+    /** Why the latest prompt has no response; shown with a Retry until it gets one. */
+    unansweredError?: string | null;
     /** Retries the latest response; only offered on that response. */
     onRetry?: () => void;
     /** Offered on every image in the conversation while the selected model takes references. */
@@ -60,6 +66,23 @@ const ChatList = memo(
 
           return null;
         })}
+
+        {unansweredError && (
+          <MessageScrollerItem className="ani-slide-top">
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertTitle className="font-normal">{unansweredError}</AlertTitle>
+              {onRetry && (
+                <AlertAction>
+                  <Button variant="outline" size="xs" onClick={onRetry}>
+                    <RefreshCcwIcon />
+                    Retry
+                  </Button>
+                </AlertAction>
+              )}
+            </Alert>
+          </MessageScrollerItem>
+        )}
 
         {status === "submitted" && (
           <MessageScrollerItem className="ani-slide-top">
