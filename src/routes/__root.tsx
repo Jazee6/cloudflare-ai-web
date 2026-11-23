@@ -65,8 +65,8 @@ function RootLayout() {
                   <AppSidebar />
 
                   <SidebarInset>
-                    <header className="h-16 flex items-center px-4 absolute">
-                      <SidebarTrigger className="-ml-1 z-10" />
+                    <header className="absolute z-20 flex h-16 items-center px-4">
+                      <SidebarTrigger className="-ml-1" />
                     </header>
 
                     <Outlet />

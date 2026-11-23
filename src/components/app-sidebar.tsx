@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
   DropdownMenu,
@@ -35,6 +36,9 @@ import {
 } from "@/components/ui/sidebar";
 import { deleteConversation, listRecentSessions } from "@/lib/conversation-store";
 import type { Session } from "@/lib/db";
+
+/** Fixed widths so the server and client render the same skeleton. */
+const SKELETON_WIDTHS = ["72%", "56%", "84%", "64%", "48%", "76%"];
 
 interface GroupedSessions {
   type: "today" | "last 7 days" | "last 30 days" | "earlier";
@@ -98,6 +102,20 @@ const AppSidebar = () => {
     <>
       <Sidebar>
         <SidebarContent className="scroll-fade-y scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
+          {sessions === undefined && (
+            <SidebarGroup aria-hidden>
+              <div className="flex h-8 items-center px-2">
+                <Skeleton className="h-3 w-12" />
+              </div>
+              <SidebarMenu>
+                {SKELETON_WIDTHS.map((width) => (
+                  <SidebarMenuItem key={width} className="flex h-8 items-center px-2">
+                    <Skeleton className="h-4" style={{ width }} />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          )}
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
               <SidebarGroupLabel>{type}</SidebarGroupLabel>

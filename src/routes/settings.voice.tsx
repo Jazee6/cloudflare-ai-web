@@ -152,7 +152,6 @@ function VoiceSettings() {
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={() => {
                   if (isPreviewing) {
                     stopSpeech();

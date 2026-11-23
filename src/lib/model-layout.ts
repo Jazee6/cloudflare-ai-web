@@ -216,6 +216,46 @@ export const moveGroup = (
   return { ...layout, groupOrder: [...ordered, ...stale] };
 };
 
+/**
+ * Places `ordered` into the slots that its items occupy in `full`, so items left out of `ordered`
+ * (hidden models, groups with nothing to show) keep their positions.
+ */
+const reorderSubset = (full: string[], ordered: string[]) => {
+  const subset = new Set(ordered);
+  const queue = ordered.filter((item) => full.includes(item));
+  return full.map((item) => (subset.has(item) ? (queue.shift() ?? item) : item));
+};
+
+/** Stores a new order for the shown models of a group, keeping hidden models where they were. */
+export const reorderGroupModels = (
+  layout: ModelLayout,
+  catalog: Model[],
+  key: string,
+  orderedIds: string[],
+): ModelLayout => {
+  const groups = allGroups(catalog, layout);
+  if (!groups.some((group) => group.key === key)) {
+    return layout;
+  }
+  const catalogIds = new Set(catalog.map((model) => model.id));
+  const full = materializeOrder(groups, layout, catalogIds, key);
+  return {
+    ...layout,
+    modelOrder: { ...layout.modelOrder, [key]: reorderSubset(full, orderedIds) },
+  };
+};
+
+/** Stores a new order for the shown groups, keeping the other groups where they were. */
+export const reorderGroups = (
+  layout: ModelLayout,
+  catalog: Model[],
+  orderedKeys: string[],
+): ModelLayout => {
+  const keys = allGroups(catalog, layout).map((group) => group.key);
+  const stale = layout.groupOrder.filter((candidate) => !keys.includes(candidate));
+  return { ...layout, groupOrder: [...reorderSubset(keys, orderedKeys), ...stale] };
+};
+
 /** Adds a custom group at the end of the group order. */
 export const createCustomGroup = (
   layout: ModelLayout,

@@ -51,7 +51,9 @@ export const ResponsiveFormDialog = ({
               <DrawerTitle>{title}</DrawerTitle>
               {description && <DrawerDescription>{description}</DrawerDescription>}
             </DrawerHeader>
-            <div className="min-h-0 overflow-y-auto px-4">{children}</div>
+            <div className="-my-1 min-h-0 overflow-x-hidden overflow-y-auto px-4 py-1">
+              {children}
+            </div>
             <DrawerFooter className="flex-row justify-end">{footer}</DrawerFooter>
           </form>
         </DrawerContent>
@@ -67,7 +69,7 @@ export const ResponsiveFormDialog = ({
             <DialogTitle>{title}</DialogTitle>
             {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
-          <div className="-mx-1 min-h-0 overflow-y-auto px-1">{children}</div>
+          <div className="-m-1 min-h-0 overflow-x-hidden overflow-y-auto p-1">{children}</div>
           <DialogFooter>{footer}</DialogFooter>
         </form>
       </DialogContent>

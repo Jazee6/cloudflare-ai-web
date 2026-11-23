@@ -12,6 +12,8 @@ import {
   parseModelLayout,
   pruneModelLayout,
   renameCustomGroup,
+  reorderGroupModels,
+  reorderGroups,
   setModelHidden,
 } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
@@ -206,4 +208,26 @@ test("each Personal Provider is a default group named after its label", () => {
     0,
   );
   expect(reordered.modelOrder["personal:a"]).toEqual(["personal:a:gpt-5-mini", "personal:a:gpt-5"]);
+});
+
+test("reordering shown models keeps hidden models in their slots", () => {
+  const models = [...catalog, cf("meta-3", "Meta")];
+  const hidden = setModelHidden(EMPTY_MODEL_LAYOUT, "meta-2", true);
+  const layout = reorderGroupModels(hidden, models, "default:Meta", ["meta-3", "meta-1"]);
+  expect(shape(layout, models, true)[0]).toEqual(["default:Meta", ["meta-3", "meta-2", "meta-1"]]);
+  expect(shape(layout, models)[0]).toEqual(["default:Meta", ["meta-3", "meta-1"]]);
+});
+
+test("reordering shown groups keeps the other groups in their slots", () => {
+  const layout = reorderGroups(EMPTY_MODEL_LAYOUT, catalog, [
+    "default:external",
+    "default:Meta",
+    "default:Black Forest Labs",
+  ]);
+  expect(shape(layout).map(([key]) => key)).toEqual([
+    "default:external",
+    "default:Qwen",
+    "default:Meta",
+    "default:Black Forest Labs",
+  ]);
 });

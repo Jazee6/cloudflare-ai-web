@@ -132,6 +132,10 @@
   }
 }
 
+@utility app-blur {
+  @apply bg-background/80 backdrop-blur-[20px] backdrop-saturate-180;
+}
+
 @keyframes slide-top {
   from {
     opacity: 0;

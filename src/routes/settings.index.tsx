@@ -194,7 +194,7 @@ function ChatSettingsForm({ settings }: { settings: AppSettings }) {
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <div className="flex justify-end">
-              <Button type="submit" size="sm" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting}>
                 Save
               </Button>
             </div>

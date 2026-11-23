@@ -166,7 +166,6 @@ function DataSettings() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               disabled={exporting}
               onClick={() => void handleExport()}
             >
@@ -176,7 +175,6 @@ function DataSettings() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               disabled={importing}
               onClick={() => importInputRef.current?.click()}
             >
@@ -200,7 +198,7 @@ function DataSettings() {
       <Field>
         <FieldLabel>Danger Zone</FieldLabel>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="destructive" size="sm" onClick={() => setClearOpen(true)}>
+          <Button type="button" variant="destructive" onClick={() => setClearOpen(true)}>
             <Trash2Icon />
             Clear all conversations
           </Button>

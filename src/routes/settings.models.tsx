@@ -1,16 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
   BrushCleaningIcon,
+  EyeOffIcon,
+  FolderInputIcon,
+  FolderPlusIcon,
   GripVerticalIcon,
   ImageIcon,
   LayersIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
+  Trash2Icon,
 } from "lucide-react";
-import { type DragEvent, useMemo, useState } from "react";
+import { type DragControls, Reorder, useDragControls } from "motion/react";
+import { useState } from "react";
+import { AddModelsDialog } from "@/components/add-models-dialog";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
 import { ModelGroupDialog } from "@/components/model-group-dialog";
 import { useModelGroups, useModelLayout } from "@/components/model-layout-provider";
@@ -26,15 +31,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -46,8 +51,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
+import { useDialogState } from "@/hooks/use-dialog-state";
 import {
   createCustomGroup,
   defaultGroupKey,
@@ -55,73 +60,59 @@ import {
   deleteCustomGroup,
   hasStaleLayoutEntries,
   type ModelLayoutGroup,
-  moveGroup,
   moveModel,
   pruneModelLayout,
   renameCustomGroup,
+  reorderGroupModels,
+  reorderGroups,
   setModelHidden,
 } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
 
 export const Route = createFileRoute("/settings/models")({ component: ModelSettings });
 
-type Dragging = { kind: "model"; model: Model } | { kind: "group"; key: string } | null;
-type GroupDialog = { mode: "create" } | { mode: "rename"; id: string; name: string } | null;
+type GroupDialogData = { mode: "create" } | { mode: "rename"; id: string; name: string };
+type GroupOption = { key: string; name: string };
 
 const groupIdOf = (key: string) => key.slice("custom:".length);
+
+const DRAG_TRANSITION = { type: "spring", stiffness: 600, damping: 40 } as const;
+const WHILE_DRAG = { scale: 1.01, boxShadow: "0 8px 24px -8px rgb(0 0 0 / 0.2)" };
+
+const DragHandle = ({ controls, label }: { controls: DragControls; label: string }) => (
+  <span
+    role="button"
+    aria-label={label}
+    className="flex cursor-grab touch-none items-center text-muted-foreground active:cursor-grabbing"
+    onPointerDown={(event) => controls.start(event)}
+  >
+    <GripVerticalIcon className="size-4" />
+  </span>
+);
 
 function ModelSettings() {
   const { models: catalog, loading, error, reload } = useModelCatalogState();
   const { layout, ready, updateLayout } = useModelLayout();
-  const groups = useModelGroups({ includeHidden: true });
-  const hidden = useMemo(() => new Set(layout.hidden), [layout.hidden]);
+  const shownGroups = useModelGroups();
+  const allGroups = useModelGroups({ includeHidden: true });
+  const hidden = new Set(layout.hidden);
+  const hiddenGroups = allGroups
+    .map((group) => ({ ...group, models: group.models.filter((model) => hidden.has(model.id)) }))
+    .filter((group) => group.models.length > 0);
+  // Default groups whose models are all hidden have nothing to show; custom groups always do.
+  const groups = shownGroups.filter((group) => group.custom || group.models.length > 0);
   const customGroups = groups.filter((group) => group.custom);
   const showCleanup =
     ready && !loading && catalog.length > 0 && hasStaleLayoutEntries(layout, catalog);
 
-  const [groupDialog, setGroupDialog] = useState<GroupDialog>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ModelLayoutGroup | null>(null);
-  const [dragging, setDragging] = useState<Dragging>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const addDialog = useDialogState<true>();
+  const groupDialog = useDialogState<GroupDialogData>();
+  const deleteDialog = useDialogState<ModelLayoutGroup>();
 
-  const canDropModel = (model: Model, groupKey: string) =>
-    groupKey.startsWith("custom:") || groupKey === defaultGroupKey(model);
-
-  const endDrag = () => {
-    setDragging(null);
-    setDropTarget(null);
-  };
-
-  /** Drops the dragged model before `beforeId`, or at the end of the group. */
-  const dropModel = (group: ModelLayoutGroup, beforeId?: string) => {
-    if (dragging?.kind !== "model" || !canDropModel(dragging.model, group.key)) {
-      return;
-    }
-    const { model } = dragging;
-    const rest = group.models.filter((candidate) => candidate.id !== model.id);
-    const index = beforeId ? rest.findIndex((candidate) => candidate.id === beforeId) : rest.length;
-    updateLayout((current) =>
-      moveModel(current, catalog, model.id, group.key, index < 0 ? rest.length : index),
-    );
-  };
-
-  const dropGroup = (beforeKey: string) => {
-    if (dragging?.kind !== "group" || dragging.key === beforeKey) {
-      return;
-    }
-    const rest = groups.filter((group) => group.key !== dragging.key);
-    const index = rest.findIndex((group) => group.key === beforeKey);
-    updateLayout((current) => moveGroup(current, catalog, dragging.key, index));
-  };
-
-  const allowDrop = (event: DragEvent, target: string, allowed: boolean) => {
-    if (!allowed) {
-      return;
-    }
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setDropTarget(target);
-  };
+  // Order shown while a group is dragged; committed when the drag ends.
+  const [draftGroupOrder, setDraftGroupOrder] = useState<string[] | null>(null);
+  const groupKeys = draftGroupOrder ?? groups.map((group) => group.key);
+  const groupsByKey = new Map(groups.map((group) => [group.key, group]));
 
   if (!ready || (loading && catalog.length === 0)) {
     return (
@@ -144,7 +135,7 @@ function ModelSettings() {
           {error && <EmptyDescription>{error}</EmptyDescription>}
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" size="sm" onClick={reload}>
+          <Button variant="outline" onClick={reload}>
             <RefreshCwIcon />
             Retry
           </Button>
@@ -153,17 +144,32 @@ function ModelSettings() {
     );
   }
 
+  const commitGroupOrder = () => {
+    if (draftGroupOrder) {
+      const order = draftGroupOrder;
+      updateLayout((current) => reorderGroups(current, catalog, order));
+      setDraftGroupOrder(null);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => setGroupDialog({ mode: "create" })}>
+        <Button
+          variant="outline"
+          disabled={hiddenGroups.length === 0}
+          onClick={() => addDialog.show(true)}
+        >
           <PlusIcon />
+          Add models
+        </Button>
+        <Button variant="outline" onClick={() => groupDialog.show({ mode: "create" })}>
+          <FolderPlusIcon />
           New group
         </Button>
         {showCleanup && (
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => {
               updateLayout((current) => pruneModelLayout(current, catalog));
               toast.add({ title: "Removed entries for unavailable models.", type: "success" });
@@ -175,252 +181,62 @@ function ModelSettings() {
         )}
       </div>
 
-      {groups.map((group, groupIndex) => (
-        <section
-          key={group.key}
-          className="flex flex-col rounded-lg border data-[drop-target=true]:border-primary"
-          data-drop-target={dropTarget === group.key}
-          onDragOver={(event) => {
-            if (dragging?.kind === "group") {
-              allowDrop(event, group.key, dragging.key !== group.key);
-            } else if (dragging?.kind === "model") {
-              allowDrop(event, group.key, canDropModel(dragging.model, group.key));
-            }
-          }}
-          onDragLeave={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-              setDropTarget((current) => (current === group.key ? null : current));
-            }
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            if (dragging?.kind === "group") {
-              dropGroup(group.key);
-            } else {
-              dropModel(group);
-            }
-            endDrag();
-          }}
-        >
-          <header className="flex items-center gap-2 border-b py-1.5 pr-2 pl-1">
-            <span
-              draggable
-              className="flex cursor-grab items-center text-muted-foreground"
-              aria-hidden
-              onDragStart={(event) => {
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", group.key);
-                setDragging({ kind: "group", key: group.key });
-              }}
-              onDragEnd={endDrag}
-            >
-              <GripVerticalIcon className="size-4" />
-            </span>
-            <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</h2>
-            <ButtonGroup>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Move ${group.name} up`}
-                disabled={groupIndex === 0}
-                onClick={() =>
-                  updateLayout((current) => moveGroup(current, catalog, group.key, groupIndex - 1))
+      <Reorder.Group
+        as="div"
+        axis="y"
+        values={groupKeys}
+        onReorder={setDraftGroupOrder}
+        className="flex flex-col gap-4"
+      >
+        {groupKeys.map((key) => {
+          const group = groupsByKey.get(key);
+          return (
+            group && (
+              <GroupCard
+                key={key}
+                group={group}
+                customGroups={customGroups}
+                onDragEnd={commitGroupOrder}
+                onReorder={(ids) =>
+                  updateLayout((current) => reorderGroupModels(current, catalog, key, ids))
                 }
-              >
-                <ArrowUpIcon />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Move ${group.name} down`}
-                disabled={groupIndex === groups.length - 1}
-                onClick={() =>
-                  updateLayout((current) => moveGroup(current, catalog, group.key, groupIndex + 1))
+                onMove={(model, target) =>
+                  updateLayout((current) => moveModel(current, catalog, model.id, target))
                 }
-              >
-                <ArrowDownIcon />
-              </Button>
-            </ButtonGroup>
-            {group.custom && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="ghost" size="icon-xs" aria-label={`${group.name} options`} />
-                  }
-                >
-                  <MoreHorizontalIcon />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setGroupDialog({ mode: "rename", id: groupIdOf(group.key), name: group.name })
-                    }
-                  >
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(group)}>
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </header>
+                onHide={(model) =>
+                  updateLayout((current) => setModelHidden(current, model.id, true))
+                }
+                onRename={() =>
+                  groupDialog.show({ mode: "rename", id: groupIdOf(key), name: group.name })
+                }
+                onDelete={() => deleteDialog.show(group)}
+              />
+            )
+          );
+        })}
+      </Reorder.Group>
 
-          {group.models.length === 0 ? (
-            <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-              Drag models here or use a model’s menu.
-            </p>
-          ) : (
-            <ul className="flex flex-col py-1">
-              {group.models.map((model, modelIndex) => {
-                const groupOptions = [
-                  { key: defaultGroupKey(model), name: defaultGroupName(model) },
-                  ...customGroups.map((custom) => ({ key: custom.key, name: custom.name })),
-                ];
-                const rowKey = `${group.key}|${model.id}`;
-                return (
-                  <li
-                    key={model.id}
-                    className="flex items-center gap-2 py-1 pr-2 pl-1 data-[drop-target=true]:shadow-[inset_0_2px_0_var(--primary)]"
-                    data-drop-target={dropTarget === rowKey}
-                    onDragOver={(event) => {
-                      if (dragging?.kind === "model") {
-                        event.stopPropagation();
-                        allowDrop(
-                          event,
-                          rowKey,
-                          dragging.model.id !== model.id && canDropModel(dragging.model, group.key),
-                        );
-                      }
-                    }}
-                    onDrop={(event) => {
-                      if (dragging?.kind === "model") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        dropModel(group, model.id);
-                        endDrag();
-                      }
-                    }}
-                  >
-                    <span
-                      draggable
-                      className="flex cursor-grab items-center text-muted-foreground"
-                      aria-hidden
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", model.id);
-                        setDragging({ kind: "model", model });
-                      }}
-                      onDragEnd={endDrag}
-                    >
-                      <GripVerticalIcon className="size-4" />
-                    </span>
-                    <span className="flex size-4 shrink-0 items-center justify-center">
-                      <ModelLogo model={model} />
-                    </span>
-                    <span
-                      className="min-w-0 flex-1 truncate text-sm data-[hidden=true]:text-muted-foreground"
-                      data-hidden={hidden.has(model.id)}
-                    >
-                      {model.name}
-                    </span>
-                    {model.type === "Text to Image" && (
-                      <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    )}
-                    <ButtonGroup>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={`Move ${model.name} up`}
-                        disabled={modelIndex === 0}
-                        onClick={() =>
-                          updateLayout((current) =>
-                            moveModel(current, catalog, model.id, group.key, modelIndex - 1),
-                          )
-                        }
-                      >
-                        <ArrowUpIcon />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={`Move ${model.name} down`}
-                        disabled={modelIndex === group.models.length - 1}
-                        onClick={() =>
-                          updateLayout((current) =>
-                            moveModel(current, catalog, model.id, group.key, modelIndex + 1),
-                          )
-                        }
-                      >
-                        <ArrowDownIcon />
-                      </Button>
-                    </ButtonGroup>
-                    {customGroups.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label={`Move ${model.name} to group`}
-                            />
-                          }
-                        >
-                          <MoreHorizontalIcon />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>Move to</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup
-                              value={group.key}
-                              onValueChange={(value) => {
-                                if (typeof value === "string" && value !== group.key) {
-                                  updateLayout((current) =>
-                                    moveModel(current, catalog, model.id, value),
-                                  );
-                                }
-                              }}
-                            >
-                              {groupOptions.map((option) => (
-                                <DropdownMenuRadioItem key={option.key} value={option.key}>
-                                  {option.name}
-                                </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuRadioGroup>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    <Switch
-                      size="sm"
-                      aria-label={`Show ${model.name}`}
-                      checked={!hidden.has(model.id)}
-                      onCheckedChange={(checked) =>
-                        updateLayout((current) => setModelHidden(current, model.id, !checked))
-                      }
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      ))}
+      <AddModelsDialog
+        open={addDialog.open}
+        onOpenChange={addDialog.onOpenChange}
+        groups={hiddenGroups}
+        onAdd={(ids) =>
+          updateLayout((current) =>
+            ids.reduce((next, id) => setModelHidden(next, id, false), current),
+          )
+        }
+      />
 
       <ModelGroupDialog
-        open={groupDialog !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setGroupDialog(null);
-          }
-        }}
-        title={groupDialog?.mode === "rename" ? "Rename group" : "New group"}
-        submitLabel={groupDialog?.mode === "rename" ? "Rename" : "Create"}
-        initialName={groupDialog?.mode === "rename" ? groupDialog.name : ""}
+        open={groupDialog.open}
+        onOpenChange={groupDialog.onOpenChange}
+        title={groupDialog.data?.mode === "rename" ? "Rename group" : "New group"}
+        submitLabel={groupDialog.data?.mode === "rename" ? "Rename" : "Create"}
+        initialName={groupDialog.data?.mode === "rename" ? groupDialog.data.name : ""}
         onSubmit={(name) => {
-          if (groupDialog?.mode === "rename") {
-            const { id } = groupDialog;
-            updateLayout((current) => renameCustomGroup(current, id, name));
+          const data = groupDialog.data;
+          if (data?.mode === "rename") {
+            updateLayout((current) => renameCustomGroup(current, data.id, name));
           } else {
             const id = crypto.randomUUID();
             updateLayout((current) => createCustomGroup(current, catalog, { id, name }));
@@ -428,17 +244,10 @@ function ModelSettings() {
         }}
       />
 
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteTarget(null);
-          }
-        }}
-      >
+      <AlertDialog open={deleteDialog.open} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{deleteTarget?.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>Delete “{deleteDialog.data?.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
               Its models return to their default groups.
             </AlertDialogDescription>
@@ -448,11 +257,13 @@ function ModelSettings() {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (deleteTarget) {
-                  const id = groupIdOf(deleteTarget.key);
-                  updateLayout((current) => deleteCustomGroup(current, catalog, id));
+                const target = deleteDialog.data;
+                if (target) {
+                  updateLayout((current) =>
+                    deleteCustomGroup(current, catalog, groupIdOf(target.key)),
+                  );
                 }
-                setDeleteTarget(null);
+                deleteDialog.close();
               }}
             >
               Delete
@@ -461,5 +272,187 @@ function ModelSettings() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function GroupCard({
+  group,
+  customGroups,
+  onDragEnd,
+  onReorder,
+  onMove,
+  onHide,
+  onRename,
+  onDelete,
+}: {
+  group: ModelLayoutGroup;
+  customGroups: GroupOption[];
+  onDragEnd: () => void;
+  onReorder: (ids: string[]) => void;
+  onMove: (model: Model, targetKey: string) => void;
+  onHide: (model: Model) => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const controls = useDragControls();
+  // Order shown while a model is dragged; committed when the drag ends.
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  const modelIds = draftOrder ?? group.models.map((model) => model.id);
+  const modelsById = new Map(group.models.map((model) => [model.id, model]));
+
+  const commitOrder = () => {
+    if (draftOrder) {
+      onReorder(draftOrder);
+      setDraftOrder(null);
+    }
+  };
+
+  return (
+    <Reorder.Item
+      as="section"
+      value={group.key}
+      dragListener={false}
+      dragControls={controls}
+      onDragEnd={onDragEnd}
+      transition={DRAG_TRANSITION}
+      whileDrag={WHILE_DRAG}
+      className="relative flex flex-col rounded-lg border bg-background"
+    >
+      <header className="flex h-10 items-center gap-2 border-b pr-2 pl-1">
+        <DragHandle controls={controls} label={`Reorder ${group.name}`} />
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</h2>
+        {group.custom && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon-sm" aria-label={`${group.name} options`} />
+              }
+            >
+              <MoreHorizontalIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onRename}>
+                <PencilIcon />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                <Trash2Icon />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </header>
+
+      {group.models.length === 0 ? (
+        <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+          Move models here from their menu.
+        </p>
+      ) : (
+        <Reorder.Group
+          axis="y"
+          values={modelIds}
+          onReorder={setDraftOrder}
+          className="flex flex-col py-1"
+        >
+          {modelIds.map((id) => {
+            const model = modelsById.get(id);
+            return (
+              model && (
+                <ModelRow
+                  key={id}
+                  model={model}
+                  groupKey={group.key}
+                  groupOptions={[
+                    { key: defaultGroupKey(model), name: defaultGroupName(model) },
+                    ...customGroups,
+                  ]}
+                  onDragEnd={commitOrder}
+                  onMove={(target) => onMove(model, target)}
+                  onHide={() => onHide(model)}
+                />
+              )
+            );
+          })}
+        </Reorder.Group>
+      )}
+    </Reorder.Item>
+  );
+}
+
+function ModelRow({
+  model,
+  groupKey,
+  groupOptions,
+  onDragEnd,
+  onMove,
+  onHide,
+}: {
+  model: Model;
+  groupKey: string;
+  groupOptions: GroupOption[];
+  onDragEnd: () => void;
+  onMove: (targetKey: string) => void;
+  onHide: () => void;
+}) {
+  const controls = useDragControls();
+  const canMove = groupOptions.length > 1;
+
+  return (
+    <Reorder.Item
+      value={model.id}
+      dragListener={false}
+      dragControls={controls}
+      onDragEnd={onDragEnd}
+      transition={DRAG_TRANSITION}
+      whileDrag={WHILE_DRAG}
+      className="relative flex h-9 items-center gap-2 rounded-md bg-background pr-2 pl-1"
+    >
+      <DragHandle controls={controls} label={`Reorder ${model.name}`} />
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        <ModelLogo model={model} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm">{model.name}</span>
+      {model.type === "Text to Image" && (
+        <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button variant="ghost" size="icon-sm" aria-label={`${model.name} options`} />}
+        >
+          <MoreHorizontalIcon />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {canMove && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <FolderInputIcon />
+                Move to
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={groupKey}
+                  onValueChange={(value) => {
+                    if (typeof value === "string" && value !== groupKey) {
+                      onMove(value);
+                    }
+                  }}
+                >
+                  {groupOptions.map((option) => (
+                    <DropdownMenuRadioItem key={option.key} value={option.key}>
+                      {option.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuItem onClick={onHide}>
+            <EyeOffIcon />
+            Hide
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </Reorder.Item>
   );
 }

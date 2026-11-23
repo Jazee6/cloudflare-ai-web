@@ -727,12 +727,7 @@ export const FetchModelsDialog = ({
               <EmptyDescription>{state.message}</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setAttempt((n) => n + 1)}
-              >
+              <Button type="button" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
                 <RefreshCwIcon />
                 Retry
               </Button>

@@ -9,7 +9,6 @@ import {
   ShieldAlertIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
 import {
   FetchModelsDialog,
@@ -45,6 +44,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDialogState } from "@/hooks/use-dialog-state";
 import {
   GATEWAY_PROVIDERS,
   MAX_PERSONAL_MODELS,
@@ -56,33 +56,40 @@ import {
 
 export const Route = createFileRoute("/settings/providers")({ component: ProviderSettings });
 
-type ProviderDialogState = { provider?: PersonalProvider } | null;
-type ModelDialogState = { providerId: string; model?: PersonalModelDeclaration } | null;
+type ProviderDialogData = { provider?: PersonalProvider };
+type ModelDialogData = { providerId: string; model?: PersonalModelDeclaration };
 type DeleteTarget =
   | { kind: "provider"; provider: PersonalProvider }
-  | { kind: "model"; providerId: string; model: PersonalModelDeclaration }
-  | null;
+  | { kind: "model"; providerId: string; model: PersonalModelDeclaration };
 
 function ProviderSettings() {
   const { providers, ready, updateProviders } = usePersonalProviders();
   const { capabilities } = useModelCatalogState();
   const deploymentAvailable = capabilities.personalViaDeploymentGateway;
 
-  const [providerDialog, setProviderDialog] = useState<ProviderDialogState>(null);
-  const [modelDialog, setModelDialog] = useState<ModelDialogState>(null);
-  const [fetchTarget, setFetchTarget] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const providerDialog = useDialogState<ProviderDialogData>();
+  const modelDialog = useDialogState<ModelDialogData>();
+  const fetchDialog = useDialogState<string>();
+  const deleteDialog = useDialogState<DeleteTarget>();
+  const deleteTarget = deleteDialog.data;
 
-  const findProvider = (id: string | undefined) => providers.find((provider) => provider.id === id);
-  const modelProvider = findProvider(modelDialog?.providerId);
-  const fetchProvider = findProvider(fetchTarget ?? undefined);
+  const findProvider = (id: string | null | undefined) =>
+    providers.find((provider) => provider.id === id);
+  const modelProvider = findProvider(modelDialog.data?.providerId);
+  const fetchProvider = findProvider(fetchDialog.data);
 
-  const saveProvider = (next: PersonalProvider) =>
+  const saveProvider = (next: PersonalProvider) => {
+    const isNew = !providers.some((provider) => provider.id === next.id);
     updateProviders((current) =>
       current.some((provider) => provider.id === next.id)
         ? current.map((provider) => (provider.id === next.id ? next : provider))
         : [...current, next],
     );
+    // A new provider starts by listing its models, when the service publishes them.
+    if (isNew && MODEL_LIST_PATHS[next.provider]) {
+      fetchDialog.show(next.id);
+    }
+  };
 
   const updateModels = (
     providerId: string,
@@ -104,7 +111,7 @@ function ProviderSettings() {
         models.filter((model) => model.modelId !== deleteTarget.model.modelId),
       );
     }
-    setDeleteTarget(null);
+    deleteDialog.close();
   };
 
   const canAddProvider = providers.length < MAX_PERSONAL_PROVIDERS;
@@ -137,7 +144,7 @@ function ProviderSettings() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button size="sm" onClick={() => setProviderDialog({})}>
+            <Button onClick={() => providerDialog.show({})}>
               <PlusIcon />
               Add provider
             </Button>
@@ -148,9 +155,8 @@ function ProviderSettings() {
           <div className="flex">
             <Button
               variant="outline"
-              size="sm"
               disabled={!canAddProvider}
-              onClick={() => setProviderDialog({})}
+              onClick={() => providerDialog.show({})}
             >
               <PlusIcon />
               Add provider
@@ -180,13 +186,13 @@ function ProviderSettings() {
                       <MoreHorizontalIcon />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setProviderDialog({ provider })}>
+                      <DropdownMenuItem onClick={() => providerDialog.show({ provider })}>
                         <PencilIcon />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
-                        onClick={() => setDeleteTarget({ kind: "provider", provider })}
+                        onClick={() => deleteDialog.show({ kind: "provider", provider })}
                       >
                         <Trash2Icon />
                         Delete
@@ -218,14 +224,14 @@ function ProviderSettings() {
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={
-                              <Button variant="ghost" size="icon-xs" aria-label="Model actions" />
+                              <Button variant="ghost" size="icon-sm" aria-label="Model actions" />
                             }
                           >
                             <MoreHorizontalIcon />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setModelDialog({ providerId: provider.id, model })}
+                              onClick={() => modelDialog.show({ providerId: provider.id, model })}
                             >
                               <PencilIcon />
                               Edit
@@ -233,7 +239,7 @@ function ProviderSettings() {
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() =>
-                                setDeleteTarget({ kind: "model", providerId: provider.id, model })
+                                deleteDialog.show({ kind: "model", providerId: provider.id, model })
                               }
                             >
                               <Trash2Icon />
@@ -249,9 +255,8 @@ function ProviderSettings() {
                 <footer className="flex flex-wrap gap-2 border-t px-3 py-2">
                   <Button
                     variant="ghost"
-                    size="sm"
                     disabled={full}
-                    onClick={() => setModelDialog({ providerId: provider.id })}
+                    onClick={() => modelDialog.show({ providerId: provider.id })}
                   >
                     <PlusIcon />
                     Add model
@@ -259,9 +264,8 @@ function ProviderSettings() {
                   {MODEL_LIST_PATHS[provider.provider] && (
                     <Button
                       variant="ghost"
-                      size="sm"
                       disabled={full}
-                      onClick={() => setFetchTarget(provider.id)}
+                      onClick={() => fetchDialog.show(provider.id)}
                     >
                       <DownloadCloudIcon />
                       Fetch models
@@ -275,22 +279,22 @@ function ProviderSettings() {
       )}
 
       <PersonalProviderDialog
-        open={providerDialog !== null}
-        onOpenChange={(open) => !open && setProviderDialog(null)}
-        provider={providerDialog?.provider}
+        open={providerDialog.open}
+        onOpenChange={providerDialog.onOpenChange}
+        provider={providerDialog.data?.provider}
         deploymentAvailable={deploymentAvailable}
         onSave={saveProvider}
       />
 
       {modelProvider && (
         <PersonalModelDialog
-          open={modelDialog !== null}
-          onOpenChange={(open) => !open && setModelDialog(null)}
+          open={modelDialog.open}
+          onOpenChange={modelDialog.onOpenChange}
           provider={modelProvider}
-          model={modelDialog?.model}
+          model={modelDialog.data?.model}
           onSave={(next) =>
             updateModels(modelProvider.id, (models) => {
-              const editedId = modelDialog?.model?.modelId;
+              const editedId = modelDialog.data?.model?.modelId;
               return editedId
                 ? models.map((model) => (model.modelId === editedId ? next : model))
                 : [...models, next];
@@ -301,17 +305,14 @@ function ProviderSettings() {
 
       {fetchProvider && (
         <FetchModelsDialog
-          open={fetchTarget !== null}
-          onOpenChange={(open) => !open && setFetchTarget(null)}
+          open={fetchDialog.open}
+          onOpenChange={fetchDialog.onOpenChange}
           provider={fetchProvider}
           onAdd={(added) => updateModels(fetchProvider.id, (models) => [...models, ...added])}
         />
       )}
 
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
+      <AlertDialog open={deleteDialog.open} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

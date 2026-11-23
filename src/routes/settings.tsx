@@ -16,10 +16,12 @@ function SettingsLayout() {
   const matchRoute = useMatchRoute();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-16 pb-10">
-      <h1 className="text-xl font-semibold">Settings</h1>
-      <div className="flex flex-col gap-6 md:flex-row">
-        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:w-44 md:shrink-0 md:flex-col">
+    <div className="h-svh overflow-y-auto scrollbar-gutter-stable">
+      <header className="sticky top-0 z-10 flex h-16 items-center pr-4 pl-14 app-blur">
+        <h1 className="text-base font-medium">Settings</h1>
+      </header>
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-2 pb-10 md:flex-row">
+        <nav className="sticky top-16 z-10 -mx-4 flex scrollbar-none gap-1 overflow-x-auto px-4 py-2 max-md:app-blur md:mx-0 md:w-44 md:shrink-0 md:flex-col md:self-start md:p-0">
           {SECTIONS.map((section) => (
             <Button
               key={section.to}

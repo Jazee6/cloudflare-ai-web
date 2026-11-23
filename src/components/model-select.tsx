@@ -135,7 +135,7 @@ const ModelSelect = ({
 
   if (!loading && error && modelCount === 0 && onReload) {
     return (
-      <Button type="button" variant="ghost" size="sm" onClick={onReload}>
+      <Button type="button" variant="ghost" onClick={onReload}>
         <RefreshCw />
         Retry
       </Button>
