@@ -7,6 +7,7 @@ import {
   ModelPreferencesProvider,
 } from "@/components/model-catalog-provider";
 import { ModelLayoutProvider } from "@/components/model-layout-provider";
+import { PersonalProvidersProvider } from "@/components/personal-providers-provider";
 import { SettingsProvider } from "@/components/settings-provider";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toast";
@@ -55,25 +56,27 @@ function RootLayout() {
     <>
       <Toaster />
 
-      <ModelCatalogProvider>
-        <ModelPreferencesProvider>
-          <ModelLayoutProvider>
-            <SettingsProvider>
-              <SidebarProvider>
-                <AppSidebar />
+      <PersonalProvidersProvider>
+        <ModelCatalogProvider>
+          <ModelPreferencesProvider>
+            <ModelLayoutProvider>
+              <SettingsProvider>
+                <SidebarProvider>
+                  <AppSidebar />
 
-                <SidebarInset>
-                  <header className="h-16 flex items-center px-4 absolute">
-                    <SidebarTrigger className="-ml-1 z-10" />
-                  </header>
+                  <SidebarInset>
+                    <header className="h-16 flex items-center px-4 absolute">
+                      <SidebarTrigger className="-ml-1 z-10" />
+                    </header>
 
-                  <Outlet />
-                </SidebarInset>
-              </SidebarProvider>
-            </SettingsProvider>
-          </ModelLayoutProvider>
-        </ModelPreferencesProvider>
-      </ModelCatalogProvider>
+                    <Outlet />
+                  </SidebarInset>
+                </SidebarProvider>
+              </SettingsProvider>
+            </ModelLayoutProvider>
+          </ModelPreferencesProvider>
+        </ModelCatalogProvider>
+      </PersonalProvidersProvider>
     </>
   );
 }

@@ -7,7 +7,7 @@ import type { CloudflareGatewayCredentials } from "@/lib/providers";
 const imagePayloadSchema = v.object({ image: v.string() });
 const imageResponseSchema = v.union([v.object({ result: imagePayloadSchema }), imagePayloadSchema]);
 
-const sniffImageMediaType = (bytes: Uint8Array) => {
+export const sniffImageMediaType = (bytes: Uint8Array) => {
   if (bytes[0] === 0xff && bytes[1] === 0xd8) {
     return "image/jpeg";
   }

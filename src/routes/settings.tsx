@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { DatabaseIcon, LayersIcon, Settings2Icon, Volume2Icon } from "lucide-react";
+import { DatabaseIcon, KeyRoundIcon, LayersIcon, Settings2Icon, Volume2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/settings")({ component: SettingsLayout });
@@ -7,6 +7,7 @@ export const Route = createFileRoute("/settings")({ component: SettingsLayout })
 const SECTIONS = [
   { to: "/settings", label: "General", icon: Settings2Icon },
   { to: "/settings/models", label: "Models", icon: LayersIcon },
+  { to: "/settings/providers", label: "Providers", icon: KeyRoundIcon },
   { to: "/settings/voice", label: "Voice", icon: Volume2Icon },
   { to: "/settings/data", label: "Data", icon: DatabaseIcon },
 ] as const;

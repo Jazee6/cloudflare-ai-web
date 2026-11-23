@@ -36,11 +36,27 @@ export const MAX_GROUP_NAME_LENGTH = 40;
 
 export const customGroupKey = (id: string) => `custom:${id}`;
 
-export const defaultGroupKey = (model: Model) =>
-  model.source === "external" ? "default:external" : `default:${model.brand}`;
+export const defaultGroupKey = (model: Model) => {
+  switch (model.source) {
+    case "personal":
+      return `personal:${model.personalProviderId}`;
+    case "external":
+      return "default:external";
+    default:
+      return `default:${model.brand}`;
+  }
+};
 
-export const defaultGroupName = (model: Model) =>
-  model.source === "external" ? "External" : model.brand;
+export const defaultGroupName = (model: Model) => {
+  switch (model.source) {
+    case "personal":
+      return model.personalProviderLabel ?? model.brand;
+    case "external":
+      return "External";
+    default:
+      return model.brand;
+  }
+};
 
 const resolveGroupKey = (model: Model, layout: ModelLayout, customKeys: Set<string>) => {
   const assigned = layout.assignments[model.id];

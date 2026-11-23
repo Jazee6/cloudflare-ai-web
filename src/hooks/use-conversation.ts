@@ -26,6 +26,7 @@ import {
 } from "@/lib/image-turn";
 import { buildModelContext, encodeGeneratedImages, expandImageTurns } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
+import { getPersonalRequest, readPersonalProviders } from "@/lib/personal-providers";
 import { getStoredModel, readPreferences } from "@/lib/preferences";
 
 const MAX_TOAST_LENGTH = 100;
@@ -115,6 +116,10 @@ export const useConversation = ({
           ? preferences.knowledgeBase?.trim() || undefined
           : undefined;
         const customInstructions = settingsRef.current.customInstructions.trim();
+        const personal = getPersonalRequest(selectedModel, readPersonalProviders());
+        if (selectedModel.source === "personal" && !personal) {
+          throw new Error("This Personal Model is no longer configured. Select another model.");
+        }
 
         return {
           body: {
@@ -128,6 +133,7 @@ export const useConversation = ({
             retry: isRetry,
             ...(knowledgeBaseId ? { knowledgeBaseId } : {}),
             ...(customInstructions ? { instructions: customInstructions } : {}),
+            ...(personal ? { personal } : {}),
           },
         };
       },
@@ -201,7 +207,7 @@ export const useConversation = ({
     const result = await requestImage({
       prompt: text,
       model,
-      params: retry ? resolveImageSeed(model.id, metadata.params, "retry") : metadata.params,
+      params: retry ? resolveImageSeed(model, metadata.params, "retry") : metadata.params,
       referenceImages: getImageBlobs(prompt, "data-reference-images"),
       skipCache: retry || settingsRef.current.skipGatewayCache,
     });

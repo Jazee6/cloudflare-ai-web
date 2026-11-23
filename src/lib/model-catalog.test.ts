@@ -150,6 +150,8 @@ test("getAppCapabilities derives feature flags from server configuration", () =>
   process.env.CF_ACCOUNT_ID = "acc";
   process.env.CF_WORKERS_AI_TOKEN = "tok";
   delete process.env.CF_BROWSER_RUN_TOKEN;
+  delete process.env.CF_AI_GATEWAY_NAME;
+  process.env.CF_AI_GATEWAY_TOKEN = "gw-tok";
   process.env.CF_AI_SEARCH_TOKEN = "search-tok";
   process.env.CF_AI_SEARCH_INSTANCES = " , ";
 
@@ -158,16 +160,39 @@ test("getAppCapabilities derives feature flags from server configuration", () =>
     webFetch: true,
     browserRender: false,
     knowledgeBase: false,
+    personalViaDeploymentGateway: false,
   });
 
   process.env.CF_BROWSER_RUN_TOKEN = "br-tok";
+  process.env.CF_AI_GATEWAY_NAME = "gw";
   process.env.CF_AI_SEARCH_INSTANCES = "docs:Docs";
   expect(getAppCapabilities()).toEqual({
     documents: true,
     webFetch: true,
     browserRender: true,
     knowledgeBase: true,
+    personalViaDeploymentGateway: true,
   });
+});
+
+test("getModelCatalog returns no Cloudflare models without Workers AI credentials", async () => {
+  delete process.env.CF_ACCOUNT_ID;
+  delete process.env.CF_WORKERS_AI_TOKEN;
+  delete process.env.CF_AI_GATEWAY_MODELS;
+  const originalFetch = globalThis.fetch;
+  const fetchMock = mock(() => Promise.reject(new Error("unexpected fetch")));
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
+  try {
+    expect(await getModelCatalog()).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getAppCapabilities()).toMatchObject({
+      documents: false,
+      knowledgeBase: false,
+      personalViaDeploymentGateway: false,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("getModelCatalog retains stale Catalog Snapshot when background refresh fails", async () => {

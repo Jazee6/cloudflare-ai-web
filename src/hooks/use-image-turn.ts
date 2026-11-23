@@ -52,8 +52,13 @@ export const useImageTurn = (selectedModel: Model | undefined): ImageTurn => {
   const referenceImagesRef = useRef(referenceImages);
   referenceImagesRef.current = referenceImages;
 
-  const modelId = selectedModel?.type === "Text to Image" ? selectedModel.id : "";
-  const profile = useMemo(() => getImageModelProfile(modelId), [modelId]);
+  const isImageModel = selectedModel?.type === "Text to Image";
+  const modelId = isImageModel ? selectedModel.id : "";
+  const imageProtocol = isImageModel ? selectedModel.imageProtocol : undefined;
+  const profile = useMemo(
+    () => getImageModelProfile({ id: modelId, imageProtocol }),
+    [modelId, imageProtocol],
+  );
 
   useEffect(() => () => revokeAll(referenceImagesRef.current), []);
 
@@ -124,7 +129,7 @@ export const useImageTurn = (selectedModel: Model | undefined): ImageTurn => {
     const message = createImagePromptMessage({
       text,
       model,
-      params: resolveImageSeed(model.id, params, "send"),
+      params: resolveImageSeed(model, params, "send"),
       referenceImages: referenceImagesRef.current.map((item) => item.blob),
     });
 

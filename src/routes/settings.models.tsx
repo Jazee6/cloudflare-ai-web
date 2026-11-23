@@ -76,7 +76,8 @@ function ModelSettings() {
   const groups = useModelGroups({ includeHidden: true });
   const hidden = useMemo(() => new Set(layout.hidden), [layout.hidden]);
   const customGroups = groups.filter((group) => group.custom);
-  const showCleanup = ready && catalog.length > 0 && hasStaleLayoutEntries(layout, catalog);
+  const showCleanup =
+    ready && !loading && catalog.length > 0 && hasStaleLayoutEntries(layout, catalog);
 
   const [groupDialog, setGroupDialog] = useState<GroupDialog>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModelLayoutGroup | null>(null);

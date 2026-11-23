@@ -71,12 +71,13 @@ const ModelSelect = ({
                 {(() => {
                   const isImageModel = model.type === "Text to Image";
                   const highCostHint = isImageModel
-                    ? getImageModelProfile(model.id).highCostHint
+                    ? getImageModelProfile(model).highCostHint
                     : undefined;
                   if (
                     !isImageModel &&
                     !model.tag?.length &&
                     model.source !== "external" &&
+                    !model.isGatewayRoute &&
                     !highCostHint
                   ) {
                     return null;

@@ -1,5 +1,7 @@
+import { APICallError } from "@ai-sdk/provider";
 import {
   convertToModelMessages,
+  RetryError,
   createUIMessageStreamResponse,
   isStepCount,
   safeValidateUIMessages,
@@ -16,6 +18,15 @@ import {
 import { extractGatewayMetadata, mapUpstreamError } from "@/lib/gateway-errors";
 import { getCatalogModel } from "@/lib/model-catalog";
 import { buildModelContext, MODEL_CONTEXT_MAX_MESSAGES } from "@/lib/model-context";
+import type { Model } from "@/lib/models";
+import {
+  createPersonalChatModel,
+  mapPersonalFailure,
+  type PersonalGateway,
+  resolvePersonalGateway,
+  toPersonalModel,
+} from "@/lib/personal-gateway";
+import { personalRequestSchema } from "@/lib/personal-providers";
 import { type ChatModel, createChatModel, ProviderConfigurationError } from "@/lib/providers";
 import { parseJsonRequest, validateImageParts } from "@/lib/request-limits";
 import type { Citation, GatewayMetadata, ResponseMetadata } from "@/lib/response-metadata";
@@ -35,6 +46,8 @@ const chatSchema = v.object({
   instructions: v.optional(
     v.pipe(v.string(), v.trim(), v.maxLength(MAX_CUSTOM_INSTRUCTIONS_LENGTH)),
   ),
+  /** Set for Personal Models: the visitor's provider credentials and model declaration. */
+  personal: v.optional(personalRequestSchema),
 });
 
 export async function POST(request: Request) {
@@ -74,8 +87,24 @@ export async function POST(request: Request) {
     retry,
     knowledgeBaseId,
     instructions: custom,
+    personal,
   } = parsed.data;
-  const catalogModel = await getCatalogModel(model, "Text Generation", provider);
+
+  let catalogModel: Model | undefined;
+  let personalGateway: PersonalGateway | undefined;
+  if (personal) {
+    if (personal.declaration.type !== "Text Generation") {
+      return new Response("Select a chat model to continue this response.", { status: 400 });
+    }
+    const resolved = resolvePersonalGateway(personal, personal.declaration.modelId);
+    if (!resolved.ok) {
+      return new Response(resolved.message, { status: resolved.status });
+    }
+    personalGateway = resolved.gateway;
+    catalogModel = toPersonalModel(personal);
+  } else {
+    catalogModel = await getCatalogModel(model, "Text Generation", provider);
+  }
   if (!catalogModel) {
     return new Response("The model catalog has changed. Refresh and select another model.", {
       status: 409,
@@ -111,14 +140,32 @@ export async function POST(request: Request) {
     gatewayMetadata = { ...gatewayMetadata, ...next };
   };
 
+  const mapError = (error: unknown) => {
+    if (!personalGateway) {
+      return mapUpstreamError(error, { provider: catalogModel.provider });
+    }
+    const unwrapped = RetryError.isInstance(error) && error.lastError ? error.lastError : error;
+    return APICallError.isInstance(unwrapped)
+      ? mapPersonalFailure(
+          personalGateway,
+          unwrapped.statusCode,
+          unwrapped.responseBody,
+          unwrapped.responseHeaders,
+        )
+      : mapPersonalFailure(personalGateway, undefined);
+  };
+
   let chatModel: ChatModel;
   try {
-    chatModel = createChatModel(catalogModel, {
-      search,
-      skipCache,
-      retry,
-      onGatewayMetadata: mergeGatewayMetadata,
-    });
+    chatModel =
+      personal && personalGateway
+        ? createPersonalChatModel(personalGateway, personal, { search, skipCache, retry })
+        : createChatModel(catalogModel, {
+            search,
+            skipCache,
+            retry,
+            onGatewayMetadata: mergeGatewayMetadata,
+          });
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
@@ -140,6 +187,9 @@ export async function POST(request: Request) {
     tools: chatModel.tools,
     maxOutputTokens: chatModel.maxOutputTokens,
     stopWhen: isStepCount(5),
+    // The SDK logs raw errors by default; Personal errors may echo the visitor's credentials and
+    // are logged in redacted form by the UI stream below.
+    ...(personalGateway ? { onError: () => {} } : {}),
   });
   // Reasoning segments are timed here because the AI SDK does not time them. Each finished
   // segment resends the whole list, since metadata merges replace arrays.
@@ -150,8 +200,14 @@ export async function POST(request: Request) {
     stream: result.stream,
     originalMessages: modelContext,
     onError: (error) => {
-      console.error(`Chat stream error for ${catalogModel.id}:`, error);
-      return mapUpstreamError(error, { provider: catalogModel.provider }).message;
+      const mapped = mapError(error);
+      if (personalGateway) {
+        // Upstream errors can carry request details, so Personal failures log only the outcome.
+        console.error(`Personal chat stream error: ${mapped.status} ${mapped.message}`);
+      } else {
+        console.error(`Chat stream error for ${catalogModel.id}:`, error);
+      }
+      return mapped.message;
     },
     messageMetadata: ({ part }): ResponseMetadata | undefined => {
       switch (part.type) {

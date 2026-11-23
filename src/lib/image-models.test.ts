@@ -149,3 +149,16 @@ test("adaptImageParamsForModel retains compatible fields when switching models",
     seed: 42,
   });
 });
+
+test("Personal image models follow their protocol's profile and default to its first ratio", () => {
+  const openai = { id: "flux-2-dev", imageProtocol: "openai-images" as const };
+  expect(getImageModelProfile(openai).family).toBe("openai-images");
+  expect(adaptImageParamsForModel(openai, { width: 1024, steps: 20 })).toEqual({
+    aspectRatio: "1:1",
+  });
+  expect(adaptImageParamsForModel(openai, { aspectRatio: "2:3" })).toEqual({ aspectRatio: "2:3" });
+  expect(sanitizeImageParams(openai, { aspectRatio: "16:9" }).ok).toBe(false);
+  expect(
+    sanitizeImageParams({ id: "x", imageProtocol: "gemini" }, { aspectRatio: "16:9" }),
+  ).toEqual({ ok: true, params: { aspectRatio: "16:9" } });
+});

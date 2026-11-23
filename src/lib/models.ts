@@ -2,7 +2,7 @@ import * as v from "valibot";
 
 export type ModelType = "Text Generation" | "Text to Image";
 export type ModelProvider = "workers-ai" | "ai-gateway";
-export type ModelSource = "cloudflare" | "external";
+export type ModelSource = "cloudflare" | "external" | "personal";
 export type ModelInput = "image" | "search";
 
 export interface Model {
@@ -20,6 +20,11 @@ export interface Model {
   isGatewayRoute?: boolean;
   /** Server-only BYOK stored-key alias (`cf-aig-byok-alias`), stripped from public responses. */
   byokAlias?: string;
+  /** Personal Models only: the Personal Provider that serves the model. */
+  personalProviderId?: string;
+  personalProviderLabel?: string;
+  /** Personal image models only: the upstream image API shape. */
+  imageProtocol?: "openai-images" | "gemini";
 }
 
 export interface AppCapabilities {
@@ -27,6 +32,8 @@ export interface AppCapabilities {
   webFetch: boolean;
   browserRender: boolean;
   knowledgeBase: boolean;
+  /** Whether Personal Providers may route through the deployment's AI Gateway. */
+  personalViaDeploymentGateway: boolean;
 }
 
 export interface ModelCatalogResponse {

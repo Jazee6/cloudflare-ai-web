@@ -6,10 +6,12 @@ import {
   getImageEntryMetadata,
   getImageModelProfile,
   type ImageEntryMetadata,
+  type ImageModelRef,
   type ImageGenerationParams,
   type NormalizedImageParams,
 } from "@/lib/image-models";
 import type { Model } from "@/lib/models";
+import { getPersonalRequest, readPersonalProviders } from "@/lib/personal-providers";
 
 export type ImagePartType = "data-images" | "data-reference-images";
 
@@ -38,11 +40,11 @@ export const getPromptText = (message: UIMessage) =>
  * a Retry rolls a new one unless the seed is locked.
  */
 export const resolveImageSeed = (
-  modelId: string,
+  model: ImageModelRef,
   params: ImageGenerationParams,
   mode: "send" | "retry",
 ): ImageGenerationParams => {
-  if (!getImageModelProfile(modelId).supportsSeed) {
+  if (!getImageModelProfile(model).supportsSeed) {
     return params;
   }
   const keep =
@@ -61,7 +63,7 @@ export const createImagePromptMessage = ({
   params: ImageGenerationParams;
   referenceImages: Blob[];
 }): UIMessage => {
-  const maxReferenceImages = getImageModelProfile(model.id).maxReferenceImages;
+  const maxReferenceImages = getImageModelProfile(model).maxReferenceImages;
   const images = referenceImages.slice(0, maxReferenceImages);
   return {
     id: generateId(),
@@ -112,8 +114,16 @@ export const requestImage = async ({
   referenceImages: Blob[];
   skipCache: boolean;
 }): Promise<ImageRequestResult> => {
-  const requestParams = adaptImageParamsForModel(model.id, params);
-  const references = referenceImages.slice(0, getImageModelProfile(model.id).maxReferenceImages);
+  const requestParams = adaptImageParamsForModel(model, params);
+  const references = referenceImages.slice(0, getImageModelProfile(model).maxReferenceImages);
+  const personal = getPersonalRequest(model, readPersonalProviders());
+  if (model.source === "personal" && !personal) {
+    return {
+      ok: false,
+      unauthorized: false,
+      message: "This Personal Model is no longer configured. Select another model.",
+    };
+  }
 
   let response: Response;
   try {
@@ -125,6 +135,9 @@ export const requestImage = async ({
       if (skipCache) {
         form.append("skipCache", "true");
       }
+      if (personal) {
+        form.append("personal", JSON.stringify(personal));
+      }
       for (const [index, blob] of references.entries()) {
         form.append("referenceImages", blob, `reference-${index}.${getBlobExtension(blob)}`);
       }
@@ -133,7 +146,13 @@ export const requestImage = async ({
       response = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model: model.id, params: requestParams, skipCache }),
+        body: JSON.stringify({
+          prompt,
+          model: model.id,
+          params: requestParams,
+          skipCache,
+          ...(personal ? { personal } : {}),
+        }),
       });
     }
   } catch {

@@ -90,7 +90,8 @@ const collectErrorText = (error: unknown): string => {
   return typeof error === "string" ? error : "";
 };
 
-const isDlpOrGuardrailsBlock = (
+/** Whether AI Gateway DLP or Guardrails blocked the request or response. */
+export const isDlpOrGuardrailsBlock = (
   statusCode: number | undefined,
   text: string,
   headers: HeaderSource | undefined,

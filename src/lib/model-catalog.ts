@@ -221,6 +221,11 @@ const refreshTask = (task: CloudflareTask, entry: CatalogCacheEntry) => {
 };
 
 const getTaskModels = async (task: CloudflareTask): Promise<Model[]> => {
+  // Workers AI is optional: without its credentials the deployment offers no Cloudflare models.
+  if (!process.env.CF_ACCOUNT_ID || !process.env.CF_WORKERS_AI_TOKEN) {
+    return [];
+  }
+
   const entry = taskCache.get(task) ?? { refreshedAt: 0 };
   taskCache.set(task, entry);
 
@@ -254,6 +259,9 @@ export const getAppCapabilities = (): AppCapabilities => {
     webFetch: true,
     browserRender: Boolean(accountId && browserRunToken),
     knowledgeBase: getConfiguredKnowledgeBases().length > 0,
+    personalViaDeploymentGateway: Boolean(
+      accountId && process.env.CF_AI_GATEWAY_NAME && process.env.CF_AI_GATEWAY_TOKEN,
+    ),
   };
 };
 

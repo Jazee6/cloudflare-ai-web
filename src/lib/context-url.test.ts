@@ -217,3 +217,28 @@ test("static HTML falls back to plain-text in zero-quota mode when toMarkdown fa
     ),
   ).rejects.toMatchObject({ status: 429 });
 });
+
+test("static HTML falls back to its visible text when Workers AI is not configured", async () => {
+  const saved = { account: process.env.CF_ACCOUNT_ID, token: process.env.CF_WORKERS_AI_TOKEN };
+  delete process.env.CF_ACCOUNT_ID;
+  delete process.env.CF_WORKERS_AI_TOKEN;
+  const html = `<html><head><title>Static Page</title></head><body><article>${"Readable content sentence. ".repeat(10)}</article></body></html>`;
+  const calls: string[] = [];
+  const fetchMock = mock(async (input: RequestInfo | URL) => {
+    calls.push(String(input));
+    return new Response(html, { status: 200, headers: { "content-type": "text/html" } });
+  }) as unknown as typeof fetch;
+
+  try {
+    const attachment = await extractWebpageAttachment(
+      { url: "https://example.com/page", mode: "zero-quota" },
+      { fetchImpl: fetchMock, lookup: publicLookup },
+    );
+    expect(calls).toEqual(["https://example.com/page"]);
+    expect(attachment).toMatchObject({ title: "Static Page", method: "plain-text" });
+    expect(attachment.content).toContain("Readable content sentence.");
+  } finally {
+    if (saved.account !== undefined) process.env.CF_ACCOUNT_ID = saved.account;
+    if (saved.token !== undefined) process.env.CF_WORKERS_AI_TOKEN = saved.token;
+  }
+});

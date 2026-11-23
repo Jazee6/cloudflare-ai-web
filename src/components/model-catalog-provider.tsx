@@ -9,8 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import * as v from "valibot";
+import { usePersonalProviders } from "@/components/personal-providers-provider";
 import { toast } from "@/components/ui/toast";
 import type { AppCapabilities, Model, ModelType } from "@/lib/models";
+import { getPersonalCatalogModels } from "@/lib/personal-providers";
 import {
   type PreferenceKey,
   type Preferences,
@@ -25,6 +27,7 @@ const DEFAULT_CAPABILITIES: AppCapabilities = {
   webFetch: true,
   browserRender: false,
   knowledgeBase: false,
+  personalViaDeploymentGateway: false,
 };
 
 const modelSchema = v.object({
@@ -48,6 +51,8 @@ const catalogResponseSchema = v.object({
     webFetch: v.boolean(),
     browserRender: v.boolean(),
     knowledgeBase: v.boolean(),
+    // Optional so catalogs cached before Personal Providers existed still parse.
+    personalViaDeploymentGateway: v.optional(v.boolean(), false),
   }),
 });
 
@@ -147,7 +152,7 @@ export const ModelCatalogProvider = ({
   models?: Model[];
   capabilities?: AppCapabilities;
 }) => {
-  const [models, setModels] = useState<Model[]>(initialModels ?? []);
+  const [publicModels, setModels] = useState<Model[]>(initialModels ?? []);
   const [capabilities, setCapabilities] = useState<AppCapabilities>(
     initialCapabilities ?? DEFAULT_CAPABILITIES,
   );
@@ -155,6 +160,11 @@ export const ModelCatalogProvider = ({
   const [error, setError] = useState<string | null>(null);
   const hasModelsRef = useRef((initialModels?.length ?? 0) > 0);
   const requestIdRef = useRef(0);
+  const { providers, ready: personalReady } = usePersonalProviders();
+  // Personal Models join the public catalog in memory only; they never enter the catalog cache.
+  const personalModels = useMemo(() => getPersonalCatalogModels(providers), [providers]);
+  const hasPersonalModelsRef = useRef(false);
+  hasPersonalModelsRef.current = personalModels.length > 0;
 
   const loadCatalog = useCallback(async (signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -183,10 +193,13 @@ export const ModelCatalogProvider = ({
           setModels([]);
           setCapabilities(parsed.output.capabilities);
           setError("No models are currently available.");
-          toast.add({
-            title: "No models are currently available. Please retry.",
-            type: "error",
-          });
+          // A deployment without Cloudflare models may still serve the visitor's Personal Models.
+          if (!hasPersonalModelsRef.current) {
+            toast.add({
+              title: "No models are currently available. Please retry.",
+              type: "error",
+            });
+          }
         }
         return;
       }
@@ -240,9 +253,21 @@ export const ModelCatalogProvider = ({
     void loadCatalog();
   }, [loadCatalog]);
 
+  const models = useMemo(
+    () => (personalModels.length > 0 ? [...publicModels, ...personalModels] : publicModels),
+    [publicModels, personalModels],
+  );
+
   const value = useMemo(
-    () => ({ models, capabilities, loading, error, reload }),
-    [models, capabilities, loading, error, reload],
+    () => ({
+      models,
+      capabilities,
+      // The selection must not fall back while a stored Personal Model is still loading.
+      loading: loading || !personalReady,
+      error: models.length > 0 ? null : error,
+      reload,
+    }),
+    [models, capabilities, loading, personalReady, error, reload],
   );
 
   return <ModelCatalogContext value={value}>{children}</ModelCatalogContext>;

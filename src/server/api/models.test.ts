@@ -77,6 +77,7 @@ test("GET /api/models returns public catalog, capabilities, and cache headers wi
     webFetch: true,
     browserRender: false,
     knowledgeBase: false,
+    personalViaDeploymentGateway: true,
   });
   const external = body.models.find((model) => model.id === "openai/gpt-5");
   expect(external).toBeDefined();

@@ -576,7 +576,7 @@ const ChatInput = ({
 
                 {imageMode && selectedModel ? (
                   <ImageParamsPanel
-                    modelId={selectedModel.id}
+                    model={selectedModel}
                     profile={imageTurn.profile}
                     params={imageTurn.params}
                     onChangeParams={imageTurn.setParams}

@@ -15,10 +15,12 @@ import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiImageRouteImport } from './routes/api/image'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
+import { Route as ApiPersonalModelsRouteImport } from './routes/api/personal-models'
 import { Route as CSessionIdRouteImport } from './routes/c.$sessionId'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsDataRouteImport } from './routes/settings.data'
 import { Route as SettingsModelsRouteImport } from './routes/settings.models'
+import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
 import { Route as SettingsVoiceRouteImport } from './routes/settings.voice'
 import { Route as ApiAiSearchInstancesRouteImport } from './routes/api/ai-search/instances'
 import { Route as ApiContextDocumentRouteImport } from './routes/api/context/document'
@@ -54,6 +56,11 @@ const ApiModelsRoute = ApiModelsRouteImport.update({
   path: '/api/models',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPersonalModelsRoute = ApiPersonalModelsRouteImport.update({
+  id: '/api/personal-models',
+  path: '/api/personal-models',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CSessionIdRoute = CSessionIdRouteImport.update({
   id: '/c/$sessionId',
   path: '/c/$sessionId',
@@ -72,6 +79,11 @@ const SettingsDataRoute = SettingsDataRouteImport.update({
 const SettingsModelsRoute = SettingsModelsRouteImport.update({
   id: '/models',
   path: '/models',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
@@ -102,9 +114,11 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
+  '/api/personal-models': typeof ApiPersonalModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -117,9 +131,11 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
+  '/api/personal-models': typeof ApiPersonalModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -134,9 +150,11 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
+  '/api/personal-models': typeof ApiPersonalModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -152,9 +170,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/image'
     | '/api/models'
+    | '/api/personal-models'
     | '/c/$sessionId'
     | '/settings/data'
     | '/settings/models'
+    | '/settings/providers'
     | '/settings/voice'
     | '/settings/'
     | '/api/ai-search/instances'
@@ -167,9 +187,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/image'
     | '/api/models'
+    | '/api/personal-models'
     | '/c/$sessionId'
     | '/settings/data'
     | '/settings/models'
+    | '/settings/providers'
     | '/settings/voice'
     | '/settings'
     | '/api/ai-search/instances'
@@ -183,9 +205,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/image'
     | '/api/models'
+    | '/api/personal-models'
     | '/c/$sessionId'
     | '/settings/data'
     | '/settings/models'
+    | '/settings/providers'
     | '/settings/voice'
     | '/settings/'
     | '/api/ai-search/instances'
@@ -200,6 +224,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiImageRoute: typeof ApiImageRoute
   ApiModelsRoute: typeof ApiModelsRoute
+  ApiPersonalModelsRoute: typeof ApiPersonalModelsRoute
   CSessionIdRoute: typeof CSessionIdRoute
   ApiAiSearchInstancesRoute: typeof ApiAiSearchInstancesRoute
   ApiContextDocumentRoute: typeof ApiContextDocumentRoute
@@ -250,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/personal-models': {
+      id: '/api/personal-models'
+      path: '/api/personal-models'
+      fullPath: '/api/personal-models'
+      preLoaderRoute: typeof ApiPersonalModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/c/$sessionId': {
       id: '/c/$sessionId'
       path: '/c/$sessionId'
@@ -276,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/models'
       fullPath: '/settings/models'
       preLoaderRoute: typeof SettingsModelsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/providers': {
+      id: '/settings/providers'
+      path: '/providers'
+      fullPath: '/settings/providers'
+      preLoaderRoute: typeof SettingsProvidersRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/voice': {
@@ -312,6 +351,7 @@ declare module '@tanstack/react-router' {
 interface SettingsRouteChildren {
   SettingsDataRoute: typeof SettingsDataRoute
   SettingsModelsRoute: typeof SettingsModelsRoute
+  SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsVoiceRoute: typeof SettingsVoiceRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -319,6 +359,7 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsDataRoute: SettingsDataRoute,
   SettingsModelsRoute: SettingsModelsRoute,
+  SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsVoiceRoute: SettingsVoiceRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -334,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiImageRoute: ApiImageRoute,
   ApiModelsRoute: ApiModelsRoute,
+  ApiPersonalModelsRoute: ApiPersonalModelsRoute,
   CSessionIdRoute: CSessionIdRoute,
   ApiAiSearchInstancesRoute: ApiAiSearchInstancesRoute,
   ApiContextDocumentRoute: ApiContextDocumentRoute,

@@ -35,6 +35,7 @@ import {
   IMAGE_ASPECT_RATIOS,
   type ImageGenerationParams,
   type ImageModelProfile,
+  type ImageModelRef,
   MAX_NEGATIVE_PROMPT_LENGTH,
   MAX_SEED,
   sanitizeImageParams,
@@ -81,12 +82,13 @@ const parseOptionalInt = (raw: string): number | undefined => {
 };
 
 const getInitialValues = (
-  modelId: string,
+  model: ImageModelRef,
   params: ImageGenerationParams,
   profile: ImageModelProfile,
 ) => {
-  const adapted = adaptImageParamsForModel(modelId, params);
+  const adapted = adaptImageParamsForModel(model, params);
   return {
+    aspectRatio: adapted.aspectRatio ?? profile.aspectRatios?.[0] ?? "",
     width: String(adapted.width ?? profile.dimensions?.defaultWidth ?? 1024),
     height: String(adapted.height ?? profile.dimensions?.defaultHeight ?? 1024),
     steps: adapted.steps ?? profile.steps?.default ?? 20,
@@ -98,12 +100,12 @@ const getInitialValues = (
 };
 
 export const ImageParamsPanel = ({
-  modelId,
+  model,
   profile,
   params,
   onChangeParams,
 }: {
-  modelId: string;
+  model: ImageModelRef;
   profile: ImageModelProfile;
   params: ImageGenerationParams;
   onChangeParams: (next: ImageGenerationParams) => void;
@@ -114,6 +116,7 @@ export const ImageParamsPanel = ({
 
   const formSchema = v.pipe(
     v.object({
+      aspectRatio: v.string(),
       width: v.string(),
       height: v.string(),
       steps: v.number(),
@@ -134,7 +137,7 @@ export const ImageParamsPanel = ({
       }
       const w = parseOptionalInt(values.width);
       const h = parseOptionalInt(values.height);
-      const check = sanitizeImageParams(modelId, { width: w, height: h });
+      const check = sanitizeImageParams(model, { width: w, height: h });
       return check.ok;
     }, "Dimensions must match the model range and step size."),
     v.check(
@@ -178,7 +181,7 @@ export const ImageParamsPanel = ({
   );
 
   const form = useForm({
-    defaultValues: getInitialValues(modelId, params, profile),
+    defaultValues: getInitialValues(model, params, profile),
     validators: {
       onSubmit: ({ value }) => {
         const parsed = v.safeParse(formSchema, value);
@@ -191,6 +194,9 @@ export const ImageParamsPanel = ({
     onSubmit: async ({ value }) => {
       const next: ImageGenerationParams = {};
 
+      if (profile.aspectRatios && value.aspectRatio) {
+        next.aspectRatio = value.aspectRatio;
+      }
       if (profile.dimensions) {
         next.width = parseOptionalInt(value.width);
         next.height = parseOptionalInt(value.height);
@@ -214,7 +220,7 @@ export const ImageParamsPanel = ({
         next.negativePrompt = value.negativePrompt.trim();
       }
 
-      const validated = sanitizeImageParams(modelId, next);
+      const validated = sanitizeImageParams(model, next);
       if (!validated.ok) {
         return;
       }
@@ -229,16 +235,19 @@ export const ImageParamsPanel = ({
 
   useEffect(() => {
     if (open) {
-      form.reset(getInitialValues(modelId, params, profile));
+      form.reset(getInitialValues(model, params, profile));
     }
-  }, [open, modelId, params, profile, form]);
+  }, [open, model, params, profile, form]);
 
   if (!adjustable) {
     return null;
   }
 
-  const adaptedParams = adaptImageParamsForModel(modelId, params);
+  const adaptedParams = adaptImageParamsForModel(model, params);
   const hasCustomValues =
+    (profile.aspectRatios !== undefined &&
+      adaptedParams.aspectRatio !== undefined &&
+      adaptedParams.aspectRatio !== profile.aspectRatios[0]) ||
     Boolean(params.seedLocked && adaptedParams.seed !== undefined) ||
     Boolean(adaptedParams.negativePrompt) ||
     adaptedParams.steps !== undefined ||
@@ -250,7 +259,7 @@ export const ImageParamsPanel = ({
           adaptedParams.height !== profile.dimensions.defaultHeight)));
 
   const handleReset = () => {
-    form.reset(getInitialValues(modelId, {}, profile));
+    form.reset(getInitialValues(model, {}, profile));
   };
 
   const formBody = (
@@ -260,6 +269,33 @@ export const ImageParamsPanel = ({
           <AlertTriangle />
           <AlertDescription>{profile.highCostHint}</AlertDescription>
         </Alert>
+      )}
+
+      {profile.aspectRatios && (
+        <form.Field name="aspectRatio">
+          {(field) => (
+            <Field>
+              <FieldLabel>Aspect Ratio</FieldLabel>
+              <ToggleGroup
+                multiple={false}
+                variant="outline"
+                size="sm"
+                value={field.state.value ? [field.state.value] : []}
+                onValueChange={(values) => {
+                  if (values[0]) {
+                    field.handleChange(values[0]);
+                  }
+                }}
+              >
+                {profile.aspectRatios?.map((ratio) => (
+                  <ToggleGroupItem key={ratio} value={ratio}>
+                    {ratio}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </Field>
+          )}
+        </form.Field>
       )}
 
       {profile.dimensions && (

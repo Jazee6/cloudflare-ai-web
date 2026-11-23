@@ -171,3 +171,39 @@ test("a default group emptied into a custom group is not stale", () => {
   expect(hasStaleLayoutEntries(layout, catalog)).toBe(false);
   expect(pruneModelLayout(layout, catalog).groupOrder).toContain("default:Qwen");
 });
+
+test("each Personal Provider is a default group named after its label", () => {
+  const personal = (id: string, providerId: string, label: string): Model => ({
+    id,
+    name: id,
+    brand: "OpenAI",
+    type: "Text Generation",
+    provider: "ai-gateway",
+    source: "personal",
+    personalProviderId: providerId,
+    personalProviderLabel: label,
+  });
+  const withPersonal = [
+    ...catalog,
+    personal("personal:a:gpt-5", "a", "Work"),
+    personal("personal:b:gpt-5", "b", "Home"),
+    personal("personal:a:gpt-5-mini", "a", "Work"),
+  ];
+  const groups = applyModelLayout(withPersonal, EMPTY_MODEL_LAYOUT).groups;
+  expect(groups.slice(-2).map((group) => [group.key, group.name, group.models.length])).toEqual([
+    ["personal:a", "Work", 2],
+    ["personal:b", "Home", 1],
+  ]);
+
+  // A Personal Model can only move within its own provider's group or into a custom group.
+  const moved = moveModel(EMPTY_MODEL_LAYOUT, withPersonal, "personal:a:gpt-5", "personal:b");
+  expect(moved).toBe(EMPTY_MODEL_LAYOUT);
+  const reordered = moveModel(
+    EMPTY_MODEL_LAYOUT,
+    withPersonal,
+    "personal:a:gpt-5-mini",
+    "personal:a",
+    0,
+  );
+  expect(reordered.modelOrder["personal:a"]).toEqual(["personal:a:gpt-5-mini", "personal:a:gpt-5"]);
+});

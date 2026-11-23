@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
+import type { Model } from "@/lib/models";
 
 export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
 export const MAX_REFERENCE_IMAGES = 4;
@@ -47,6 +48,8 @@ export interface ImageModelProfile {
   transport: "multipart" | "json";
   maxReferenceImages: number;
   dimensions?: ImageDimensionSpec;
+  /** Preset aspect ratios, for providers that take a ratio instead of a width and height. */
+  aspectRatios?: readonly string[];
   steps?: ImageStepsSpec;
   guidance?: ImageGuidanceSpec;
   supportsSeed: boolean;
@@ -124,8 +127,39 @@ const FALLBACK_PROFILE: ImageModelProfile = {
   supportsNegativePrompt: false,
 };
 
-export const getImageModelProfile = (modelId: string): ImageModelProfile => {
-  const normalized = modelId.toLowerCase();
+/** Sizes the OpenAI Images API accepts, by aspect ratio. */
+export const OPENAI_IMAGE_SIZES: Record<string, string> = {
+  "1:1": "1024x1024",
+  "3:2": "1536x1024",
+  "2:3": "1024x1536",
+};
+
+const OPENAI_IMAGES_PROFILE: ImageModelProfile = {
+  family: "openai-images",
+  transport: "json",
+  maxReferenceImages: MAX_REFERENCE_IMAGES,
+  aspectRatios: Object.keys(OPENAI_IMAGE_SIZES),
+  supportsSeed: false,
+  supportsNegativePrompt: false,
+};
+
+const GEMINI_IMAGE_PROFILE: ImageModelProfile = {
+  family: "gemini",
+  transport: "json",
+  maxReferenceImages: MAX_REFERENCE_IMAGES,
+  aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+  supportsSeed: false,
+  supportsNegativePrompt: false,
+};
+
+/** A model ID, or a model whose image protocol decides its profile (Personal Models). */
+export type ImageModelRef = string | Pick<Model, "id" | "imageProtocol">;
+
+export const getImageModelProfile = (ref: ImageModelRef): ImageModelProfile => {
+  if (typeof ref !== "string" && ref.imageProtocol) {
+    return ref.imageProtocol === "gemini" ? GEMINI_IMAGE_PROFILE : OPENAI_IMAGES_PROFILE;
+  }
+  const normalized = (typeof ref === "string" ? ref : ref.id).toLowerCase();
   if (normalized.includes("flux-2-dev")) {
     return FLUX_2_DEV_PROFILE;
   }
@@ -154,6 +188,7 @@ export const getImageModelProfile = (modelId: string): ImageModelProfile => {
 export const hasAdjustableImageParams = (profile: ImageModelProfile): boolean =>
   Boolean(
     profile.dimensions ||
+    profile.aspectRatios ||
     profile.steps ||
     profile.guidance ||
     profile.supportsSeed ||
@@ -174,6 +209,7 @@ const imageGenerationParamsSchema = v.object({
   seed: v.optional(v.number()),
   seedLocked: v.optional(v.boolean()),
   negativePrompt: v.optional(v.string()),
+  aspectRatio: v.optional(v.string()),
 });
 
 export type ImageGenerationParams = v.InferOutput<typeof imageGenerationParamsSchema>;
@@ -185,6 +221,7 @@ export interface NormalizedImageParams {
   guidance?: number;
   seed?: number;
   negativePrompt?: string;
+  aspectRatio?: string;
 }
 
 const validateDimension = (
@@ -206,7 +243,7 @@ const validateDimension = (
  * so switching models or passing extra client state never sends invalid upstream fields.
  */
 export const sanitizeImageParams = (
-  modelId: string,
+  model: ImageModelRef,
   rawParams: unknown,
 ): { ok: true; params: NormalizedImageParams } | { ok: false; message: string } => {
   if (rawParams === undefined || rawParams === null) {
@@ -218,9 +255,19 @@ export const sanitizeImageParams = (
     return { ok: false, message: "Invalid image generation parameters." };
   }
 
-  const profile = getImageModelProfile(modelId);
+  const profile = getImageModelProfile(model);
   const input = parsed.output;
   const normalized: NormalizedImageParams = {};
+
+  if (profile.aspectRatios && input.aspectRatio !== undefined) {
+    if (!profile.aspectRatios.includes(input.aspectRatio)) {
+      return {
+        ok: false,
+        message: `Aspect ratio must be one of ${profile.aspectRatios.join(", ")}.`,
+      };
+    }
+    normalized.aspectRatio = input.aspectRatio;
+  }
 
   if (profile.dimensions) {
     if (input.width !== undefined) {
@@ -295,11 +342,19 @@ export const sanitizeImageParams = (
  * that remains valid and dropping only fields that are unsupported or out of range.
  */
 export const adaptImageParamsForModel = (
-  modelId: string,
+  model: ImageModelRef,
   rawParams: ImageGenerationParams,
 ): NormalizedImageParams => {
-  const profile = getImageModelProfile(modelId);
+  const profile = getImageModelProfile(model);
   const adapted: NormalizedImageParams = {};
+
+  if (profile.aspectRatios) {
+    // The first ratio is the one the parameters panel shows as selected by default.
+    adapted.aspectRatio =
+      rawParams.aspectRatio !== undefined && profile.aspectRatios.includes(rawParams.aspectRatio)
+        ? rawParams.aspectRatio
+        : profile.aspectRatios[0];
+  }
 
   if (profile.dimensions) {
     if (
