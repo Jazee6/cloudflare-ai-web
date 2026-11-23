@@ -79,7 +79,7 @@ const ModelSelect = ({
                 <span className="flex size-4 items-center justify-center">
                   <ModelLogo model={model} />
                 </span>
-                <span className="truncate">{model.name}</span>
+                <span className="min-w-0 flex-1 truncate">{model.name}</span>
                 {(() => {
                   const isImageModel = model.type === "Text to Image";
                   const highCostHint = isImageModel
@@ -94,7 +94,7 @@ const ModelSelect = ({
                     return null;
                   }
                   return (
-                    <span className="ml-auto flex items-center gap-1">
+                    <span className="flex shrink-0 items-center gap-1">
                       {isImageModel && (
                         <Tooltip>
                           <TooltipTrigger

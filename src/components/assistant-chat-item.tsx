@@ -192,6 +192,7 @@ const AssistantChatItem = ({
   const gatewayDlpAction = metadata?.gateway?.dlpAction;
   const citations = metadata?.citations ?? [];
   const imageSeed = imageMeta?.params?.seed;
+  const modelName = imageMeta?.modelName ?? metadata?.modelName;
   const referenceImages = onUseAsReference ? getImageBlobs(message, "data-images") : [];
   const showFooter =
     !streaming &&
@@ -201,7 +202,7 @@ const AssistantChatItem = ({
       referenceImages.length > 0 ||
       gatewayCacheHit ||
       gatewayDlpAction ||
-      imageMeta?.modelName ||
+      modelName ||
       imageSeed !== undefined,
     );
 
@@ -303,19 +304,24 @@ const AssistantChatItem = ({
                 <ImagePlusIcon />
               </ActionButton>
             ))}
-            {imageMeta?.modelName && <Badge variant="secondary">{imageMeta.modelName}</Badge>}
-            {imageSeed !== undefined && (
-              <Badge variant="outline" className="tabular-nums">
-                Seed {imageSeed}
-              </Badge>
-            )}
-            {gatewayCacheHit && (
-              <Tooltip>
-                <TooltipTrigger render={<Badge variant="secondary">Cached</Badge>} />
-                <TooltipContent>
-                  Served from Cloudflare AI Gateway cache. Retry to bypass cache.
-                </TooltipContent>
-              </Tooltip>
+            {(modelName || imageSeed !== undefined || gatewayCacheHit) && (
+              // Details about how the response was produced appear while hovering the message.
+              <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100">
+                {modelName && <Badge variant="secondary">{modelName}</Badge>}
+                {imageSeed !== undefined && (
+                  <Badge variant="outline" className="tabular-nums">
+                    Seed {imageSeed}
+                  </Badge>
+                )}
+                {gatewayCacheHit && (
+                  <Tooltip>
+                    <TooltipTrigger render={<Badge variant="secondary">Cached</Badge>} />
+                    <TooltipContent>
+                      Served from Cloudflare AI Gateway cache. Retry to bypass cache.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             )}
             {gatewayDlpAction && (
               <Tooltip>

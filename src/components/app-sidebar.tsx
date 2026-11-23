@@ -100,7 +100,7 @@ const AppSidebar = () => {
   return (
     <>
       <Sidebar>
-        <SidebarContent className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
+        <SidebarContent className="scroll-fade-y scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
               <SidebarGroupLabel>{type}</SidebarGroupLabel>

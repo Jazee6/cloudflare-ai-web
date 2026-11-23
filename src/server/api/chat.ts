@@ -179,10 +179,8 @@ export async function POST(request: Request) {
           }
           return undefined;
         case "finish": {
-          if (!usage && !gatewayMetadata && citations.length === 0) {
-            return undefined;
-          }
           return {
+            modelName: catalogModel.name,
             ...(usage ? { usage, contextWindow: catalogModel.contextWindow } : {}),
             ...(gatewayMetadata ? { gateway: gatewayMetadata } : {}),
             ...(citations.length > 0 ? { citations } : {}),

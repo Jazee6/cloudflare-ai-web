@@ -9,6 +9,8 @@ export const citationSchema = v.object({
 });
 
 const responseMetadataSchema = v.object({
+  /** The display name of the model that produced the response. */
+  modelName: v.optional(v.string()),
   /** Seconds each reasoning segment took, in the order the segments appear. */
   reasoningSeconds: v.optional(v.array(v.nullable(v.number()))),
   /** Tokens occupied by the final inference step, as reported by the model. */
