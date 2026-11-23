@@ -134,6 +134,18 @@
   }
 }
 
+@theme inline {
+  --animate-text-reveal: text-reveal 300ms ease-out both;
+
+  @keyframes text-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+      filter: blur(12px);
+    }
+  }
+}
+
 @utility app-blur {
   @apply bg-background/80 backdrop-blur-[20px] backdrop-saturate-180;
 }

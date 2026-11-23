@@ -41,9 +41,7 @@ function Home() {
     <div className="flex flex-col items-center justify-center h-full">
       <div className="flex flex-col justify-center h-full w-full gap-4 px-4">
         <div className="font-bold text-2xl mx-auto font-mono">
-          <TextEffect key={t("home.greeting")} per="word" preset="fade-in-blur">
-            {t("home.greeting")}
-          </TextEffect>
+          <TextEffect key={t("home.greeting")}>{t("home.greeting")}</TextEffect>
         </div>
         <ChatInput
           models={models}
