@@ -85,9 +85,6 @@ export const getModelBrand = (id: string) => {
   return formatNamespaceBrand(namespace);
 };
 
-export const getModelGroup = (model: Model) =>
-  model.source === "external" ? "External" : model.brand;
-
 export const toPublicModel = (model: Model): Model => {
   const { byokAlias: _, ...publicModel } = model;
   return publicModel;

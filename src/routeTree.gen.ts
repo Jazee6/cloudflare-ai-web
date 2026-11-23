@@ -10,11 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiImageRouteImport } from './routes/api/image'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as CSessionIdRouteImport } from './routes/c.$sessionId'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsDataRouteImport } from './routes/settings.data'
+import { Route as SettingsModelsRouteImport } from './routes/settings.models'
+import { Route as SettingsVoiceRouteImport } from './routes/settings.voice'
 import { Route as ApiAiSearchInstancesRouteImport } from './routes/api/ai-search/instances'
 import { Route as ApiContextDocumentRouteImport } from './routes/api/context/document'
 import { Route as ApiContextUrlRouteImport } from './routes/api/context/url'
@@ -22,6 +27,11 @@ import { Route as ApiContextUrlRouteImport } from './routes/api/context/url'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthRoute = ApiAuthRouteImport.update({
@@ -49,6 +59,26 @@ const CSessionIdRoute = CSessionIdRouteImport.update({
   path: '/c/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsDataRoute = SettingsDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsModelsRoute = SettingsModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const ApiAiSearchInstancesRoute = ApiAiSearchInstancesRouteImport.update({
   id: '/api/ai-search/instances',
   path: '/api/ai-search/instances',
@@ -67,11 +97,16 @@ const ApiContextUrlRoute = ApiContextUrlRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/api/auth': typeof ApiAuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
+  '/settings/data': typeof SettingsDataRoute
+  '/settings/models': typeof SettingsModelsRoute
+  '/settings/voice': typeof SettingsVoiceRoute
+  '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
   '/api/context/document': typeof ApiContextDocumentRoute
   '/api/context/url': typeof ApiContextUrlRoute
@@ -83,6 +118,10 @@ export interface FileRoutesByTo {
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
+  '/settings/data': typeof SettingsDataRoute
+  '/settings/models': typeof SettingsModelsRoute
+  '/settings/voice': typeof SettingsVoiceRoute
+  '/settings': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
   '/api/context/document': typeof ApiContextDocumentRoute
   '/api/context/url': typeof ApiContextUrlRoute
@@ -90,11 +129,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/api/auth': typeof ApiAuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/image': typeof ApiImageRoute
   '/api/models': typeof ApiModelsRoute
   '/c/$sessionId': typeof CSessionIdRoute
+  '/settings/data': typeof SettingsDataRoute
+  '/settings/models': typeof SettingsModelsRoute
+  '/settings/voice': typeof SettingsVoiceRoute
+  '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
   '/api/context/document': typeof ApiContextDocumentRoute
   '/api/context/url': typeof ApiContextUrlRoute
@@ -103,11 +147,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/settings'
     | '/api/auth'
     | '/api/chat'
     | '/api/image'
     | '/api/models'
     | '/c/$sessionId'
+    | '/settings/data'
+    | '/settings/models'
+    | '/settings/voice'
+    | '/settings/'
     | '/api/ai-search/instances'
     | '/api/context/document'
     | '/api/context/url'
@@ -119,17 +168,26 @@ export interface FileRouteTypes {
     | '/api/image'
     | '/api/models'
     | '/c/$sessionId'
+    | '/settings/data'
+    | '/settings/models'
+    | '/settings/voice'
+    | '/settings'
     | '/api/ai-search/instances'
     | '/api/context/document'
     | '/api/context/url'
   id:
     | '__root__'
     | '/'
+    | '/settings'
     | '/api/auth'
     | '/api/chat'
     | '/api/image'
     | '/api/models'
     | '/c/$sessionId'
+    | '/settings/data'
+    | '/settings/models'
+    | '/settings/voice'
+    | '/settings/'
     | '/api/ai-search/instances'
     | '/api/context/document'
     | '/api/context/url'
@@ -137,6 +195,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   ApiAuthRoute: typeof ApiAuthRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiImageRoute: typeof ApiImageRoute
@@ -154,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth': {
@@ -191,6 +257,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/data': {
+      id: '/settings/data'
+      path: '/data'
+      fullPath: '/settings/data'
+      preLoaderRoute: typeof SettingsDataRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/models': {
+      id: '/settings/models'
+      path: '/models'
+      fullPath: '/settings/models'
+      preLoaderRoute: typeof SettingsModelsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/voice': {
+      id: '/settings/voice'
+      path: '/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof SettingsVoiceRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/api/ai-search/instances': {
       id: '/api/ai-search/instances'
       path: '/api/ai-search/instances'
@@ -215,8 +309,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteChildren {
+  SettingsDataRoute: typeof SettingsDataRoute
+  SettingsModelsRoute: typeof SettingsModelsRoute
+  SettingsVoiceRoute: typeof SettingsVoiceRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsDataRoute: SettingsDataRoute,
+  SettingsModelsRoute: SettingsModelsRoute,
+  SettingsVoiceRoute: SettingsVoiceRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   ApiAuthRoute: ApiAuthRoute,
   ApiChatRoute: ApiChatRoute,
   ApiImageRoute: ApiImageRoute,

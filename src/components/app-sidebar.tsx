@@ -3,8 +3,6 @@ import { MoreHorizontal, Plus, SettingsIcon } from "lucide-react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import LoadingIndicator from "@/components/loading-indicator";
-import { useSettings } from "@/components/settings-provider";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +44,6 @@ interface GroupedSessions {
 const AppSidebar = () => {
   const sessionId = useParams({ strict: false, select: (params) => params.sessionId });
   const navigate = useNavigate();
-  const { setSettingsOpen } = useSettings();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -143,14 +140,12 @@ const AppSidebar = () => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center gap-1">
-              <ThemeSwitcher />
               <Button
-                type="button"
                 size="icon"
                 variant="ghost"
-                className="size-8"
                 aria-label="Settings"
-                onClick={() => setSettingsOpen(true)}
+                render={<Link to="/settings" />}
+                nativeButton={false}
               >
                 <SettingsIcon />
               </Button>

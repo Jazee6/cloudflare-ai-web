@@ -20,8 +20,6 @@ interface SettingsContextValue {
   settings: AppSettings;
   ready: boolean;
   updateSettings: (patch: Partial<AppSettings>) => void;
-  settingsOpen: boolean;
-  setSettingsOpen: (open: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -29,7 +27,6 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [ready, setReady] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -63,8 +60,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const value = useMemo(
-    () => ({ settings, ready, updateSettings, settingsOpen, setSettingsOpen }),
-    [settings, ready, updateSettings, settingsOpen],
+    () => ({ settings, ready, updateSettings }),
+    [settings, ready, updateSettings],
   );
 
   return <SettingsContext value={value}>{children}</SettingsContext>;

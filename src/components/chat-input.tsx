@@ -18,11 +18,12 @@ import * as v from "valibot";
 import { ContextAttachmentItem } from "@/components/context-attachment-item";
 import { ImageAttachmentItem } from "@/components/image-attachment-item";
 import { ImageParamsPanel } from "@/components/image-params-panel";
+import { useModelCatalogState, useModelPreferences } from "@/components/model-catalog-provider";
 import {
-  useModelCatalogState,
-  useModelPreferences,
+  useModelGroups,
+  useModelLayout,
   useSelectedModel,
-} from "@/components/model-catalog-provider";
+} from "@/components/model-layout-provider";
 import ModelSelect from "@/components/model-select";
 import {
   DropdownMenu,
@@ -121,6 +122,8 @@ const ChatInput = ({
   } = useSpeechRecognition();
 
   const selectedModel = useSelectedModel(models);
+  const modelGroups = useModelGroups();
+  const { ready: layoutReady } = useModelLayout();
   const imageMode = selectedModel?.type === "Text to Image";
   const enableContextAttachments = !imageMode;
   const supportsReferenceImages = imageMode && imageTurn.profile.maxReferenceImages > 0;
@@ -225,16 +228,30 @@ const ChatInput = ({
     setPreference,
   ]);
 
-  // Stores the fallback only after both preferences and catalog are ready,
-  // avoiding overwriting stored cookies during initial client catalog hydration.
+  // Stores the fallback only after preferences, the model layout and the catalog are ready,
+  // avoiding overwriting the stored selection during initial client catalog hydration.
   useEffect(() => {
-    if (!preferencesReady || catalogLoading || models.length === 0 || !selectedModel) {
+    if (
+      !preferencesReady ||
+      !layoutReady ||
+      catalogLoading ||
+      models.length === 0 ||
+      !selectedModel
+    ) {
       return;
     }
     if (preferences.modelId !== selectedModel.id) {
       setPreference("modelId", selectedModel.id);
     }
-  }, [preferencesReady, catalogLoading, models.length, preferences, selectedModel, setPreference]);
+  }, [
+    preferencesReady,
+    layoutReady,
+    catalogLoading,
+    models.length,
+    preferences,
+    selectedModel,
+    setPreference,
+  ]);
 
   useEffect(() => {
     if (!catalogLoading && selectedModel && !selectedModel.input?.includes("image")) {
@@ -550,7 +567,7 @@ const ChatInput = ({
               <InputGroupAddon align="block-end" className="min-w-0 gap-1 sm:gap-2">
                 <ModelSelect
                   selectedModel={selectedModel}
-                  models={models}
+                  groups={modelGroups}
                   loading={catalogLoading}
                   error={catalogError}
                   onReload={reloadCatalog}

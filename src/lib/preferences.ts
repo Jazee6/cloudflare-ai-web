@@ -1,4 +1,10 @@
 import * as v from "valibot";
+import {
+  EMPTY_MODEL_LAYOUT,
+  getVisibleModels,
+  type ModelLayout,
+  readModelLayout,
+} from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
 
 export const PREFERENCES_STORAGE_KEY = "cf-ai-preferences-v1";
@@ -104,11 +110,23 @@ export const writePreferences = (preferences: Preferences) => {
   }
 };
 
-/** The selected model, falling back to the first chat model when the selection is unavailable. */
-export const pickSelectedModel = (models: Model[], modelId: string | undefined) =>
-  models.find((model) => model.id === modelId) ??
-  models.find((model) => model.type === "Text Generation") ??
-  models[0];
+/**
+ * The selected model among the visible models. A hidden or missing selection falls back to the
+ * first visible model of the same type (chat when unknown), then to the first visible model.
+ */
+export const pickSelectedModel = (
+  models: Model[],
+  modelId: string | undefined,
+  layout: ModelLayout = EMPTY_MODEL_LAYOUT,
+) => {
+  const visible = getVisibleModels(models, layout);
+  const selected = visible.find((model) => model.id === modelId);
+  if (selected) {
+    return selected;
+  }
+  const type = models.find((model) => model.id === modelId)?.type ?? "Text Generation";
+  return visible.find((model) => model.type === type) ?? visible[0];
+};
 
 export const getStoredModel = (models: Model[]) =>
-  pickSelectedModel(models, readPreferences().modelId);
+  pickSelectedModel(models, readPreferences().modelId, readModelLayout());

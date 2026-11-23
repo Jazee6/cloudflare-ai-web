@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { EMPTY_MODEL_LAYOUT } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
 import {
   legacyCookiesToPreferences,
@@ -52,4 +53,29 @@ test("pickSelectedModel keeps the selection or falls back to the first chat mode
   expect(pickSelectedModel(models, undefined)?.id).toBe("chat-a");
   expect(pickSelectedModel([models[0]], undefined)?.id).toBe("img");
   expect(pickSelectedModel([], "img")).toBeUndefined();
+});
+
+test("pickSelectedModel skips hidden models and falls back within the same type", () => {
+  const models = [
+    model("chat-a", "Text Generation"),
+    model("img-a", "Text to Image"),
+    model("img-b", "Text to Image"),
+  ];
+  const layout = { ...EMPTY_MODEL_LAYOUT, hidden: ["img-a"] };
+  expect(pickSelectedModel(models, "img-a", layout)?.id).toBe("img-b");
+  expect(pickSelectedModel(models, "img-a", { ...layout, hidden: ["img-a", "img-b"] })?.id).toBe(
+    "chat-a",
+  );
+  expect(
+    pickSelectedModel(models, "chat-a", { ...EMPTY_MODEL_LAYOUT, hidden: ["chat-a"] })?.id,
+  ).toBe("img-a");
+  expect(
+    pickSelectedModel(models, "missing", { ...EMPTY_MODEL_LAYOUT, hidden: ["chat-a"] })?.id,
+  ).toBe("img-a");
+  expect(
+    pickSelectedModel(models, undefined, {
+      ...EMPTY_MODEL_LAYOUT,
+      hidden: models.map((m) => m.id),
+    }),
+  ).toBeUndefined();
 });

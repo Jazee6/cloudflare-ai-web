@@ -4,7 +4,8 @@ import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ContextIndicator from "@/components/context-indicator";
 import ChatList from "@/components/chat-list";
-import { useModelCatalog, useSelectedModel } from "@/components/model-catalog-provider";
+import { useModelCatalog } from "@/components/model-catalog-provider";
+import { useSelectedModel } from "@/components/model-layout-provider";
 import { useConversation } from "@/hooks/use-conversation";
 import { useImageTurn } from "@/hooks/use-image-turn";
 

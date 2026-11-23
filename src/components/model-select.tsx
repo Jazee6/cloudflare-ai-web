@@ -23,32 +23,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getImageModelProfile } from "@/lib/image-models";
+import type { ModelLayoutGroup } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
-import { getModelGroup } from "@/lib/models";
-
-const getGroupedModels = (models: Model[]) => {
-  const groups = new Map<string, Model[]>();
-
-  for (const model of models) {
-    const group = getModelGroup(model);
-    groups.set(group, [...(groups.get(group) ?? []), model]);
-  }
-
-  return Array.from(groups, ([name, groupModels]) => ({
-    name,
-    models: groupModels,
-  }));
-};
 
 const ModelSelect = ({
-  models,
+  groups,
   selectedModel,
   onSelectModel,
   loading = false,
   error = null,
   onReload,
 }: {
-  models: Model[];
+  /** Model Groups in layout order; hidden models must already be left out. */
+  groups: ModelLayoutGroup[];
   selectedModel?: Model;
   onSelectModel: (model: Model) => void;
   loading?: boolean;
@@ -57,15 +44,16 @@ const ModelSelect = ({
 }) => {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const groupedModels = useMemo(() => getGroupedModels(models), [models]);
+  const groupedModels = useMemo(() => groups.filter((group) => group.models.length > 0), [groups]);
+  const modelCount = groupedModels.reduce((count, group) => count + group.models.length, 0);
 
   const commandPicker = (
     <Command>
       <CommandInput placeholder="Filter models..." />
       <CommandList className="max-h-[60vh]">
         <CommandEmpty>No models found.</CommandEmpty>
-        {groupedModels.map(({ name, models: groupModels }) => (
-          <CommandGroup key={name} heading={name}>
+        {groupedModels.map(({ key, name, models: groupModels }) => (
+          <CommandGroup key={key} heading={name}>
             {groupModels.map((model) => (
               <CommandItem
                 key={`${model.provider}:${model.id}`}
@@ -140,11 +128,11 @@ const ModelSelect = ({
     </Command>
   );
 
-  if (loading && models.length === 0) {
+  if (loading && modelCount === 0) {
     return <Skeleton className="h-8 w-36 rounded-md" />;
   }
 
-  if (!loading && error && models.length === 0 && onReload) {
+  if (!loading && error && modelCount === 0 && onReload) {
     return (
       <Button type="button" variant="ghost" size="sm" onClick={onReload}>
         <RefreshCw />
@@ -159,7 +147,7 @@ const ModelSelect = ({
         type="button"
         variant="ghost"
         className="min-w-0 shrink text-primary hover:text-primary aria-expanded:text-primary"
-        disabled={models.length === 0}
+        disabled={modelCount === 0}
         onClick={() => setOpen(true)}
       >
         {selectedModel ? (
@@ -169,7 +157,7 @@ const ModelSelect = ({
             </span>
             <span className="truncate">{selectedModel.name}</span>
           </>
-        ) : models.length > 0 ? (
+        ) : modelCount > 0 ? (
           <span className="truncate">Select a model</span>
         ) : (
           <span className="truncate">No models available</span>
