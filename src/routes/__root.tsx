@@ -14,6 +14,8 @@ import { Toaster } from "@/components/ui/toast";
 import { useTheme } from "@/hooks/use-theme";
 import { themeScript } from "@/lib/theme";
 import appStyles from "@/styles.css?url";
+import { useDocumentLanguage } from "@/hooks/use-i18n";
+import { languageScript } from "@/lib/locale";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -38,6 +40,7 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning className="font-sans">
       <head>
         <ScriptOnce>{themeScript}</ScriptOnce>
+        <ScriptOnce>{languageScript}</ScriptOnce>
         <HeadContent />
       </head>
       <body className="scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent">
@@ -51,6 +54,8 @@ function RootDocument({ children }: { children: ReactNode }) {
 function RootLayout() {
   // Subscribes to theme changes and follows the system scheme for the whole app.
   useTheme();
+  // Keeps <html lang> on the app language for screen readers, fonts and spell checking.
+  useDocumentLanguage();
 
   return (
     <>

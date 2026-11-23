@@ -1,3 +1,4 @@
+import { appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { parseAiGatewayOptions } from "ai-gateway-provider";
@@ -29,7 +30,8 @@ export interface PersonalGateway {
 }
 
 export type PersonalGatewayResult =
-  { ok: true; gateway: PersonalGateway } | { ok: false; status: number; message: string };
+  | { ok: true; gateway: PersonalGateway }
+  | { ok: false; status: number; message: string; code?: ErrorCode; params?: ErrorParams };
 
 /**
  * Applies the Personal Provider routing rules. Through the deployment's gateway the visitor must
@@ -60,21 +62,21 @@ export const resolvePersonalGateway = (
     return {
       ok: false,
       status: 400,
-      message: "This deployment has no AI Gateway for Personal Providers. Add your own AI Gateway.",
+      ...appError("personalNoGateway"),
     };
   }
   if (!credentials.apiKey) {
     return {
       ok: false,
       status: 400,
-      message: "Personal Providers need their own API key to use this deployment's AI Gateway.",
+      ...appError("personalKeyRequired"),
     };
   }
   if (modelId && isDynamicRoute(modelId)) {
     return {
       ok: false,
       status: 400,
-      message: "Dynamic Routes are only available through your own AI Gateway.",
+      ...appError("dynamicRoutesOwnGateway"),
     };
   }
   return {
@@ -311,43 +313,40 @@ export const mapPersonalFailure = (
   status: number | undefined,
   body = "",
   headers?: Headers | Record<string, string | undefined>,
-): { status: number; message: string } => {
+): { status: number; message: string; code?: ErrorCode; params?: ErrorParams } => {
   if (/\b(2001|2009)\b|gateway does not exist|authentication active/i.test(body)) {
     return gateway.own
       ? {
           status: 400,
-          message:
-            "Your AI Gateway does not exist or rejected its token. Check the Personal Provider settings.",
+          ...appError("personalGatewayInvalid"),
         }
       : {
           status: 502,
-          message:
-            "AI Gateway configuration is invalid or the gateway does not exist. Please check server environment variables.",
+          ...appError("gatewayInvalid"),
         };
   }
   if (isDlpOrGuardrailsBlock(status, body, headers)) {
     return {
       status: 422,
-      message: "The request or response was blocked by Cloudflare AI Gateway security/DLP policy.",
+      ...appError("dlpBlocked"),
     };
   }
   if (status === 401 || status === 403) {
     return {
       status: 400,
-      message:
-        "The Personal Provider rejected its credentials. Check the API key and gateway settings.",
+      ...appError("personalCredentialsRejected"),
     };
   }
   if (status === 404) {
-    return { status: 400, message: "The Personal Provider does not offer this model." };
+    return { status: 400, ...appError("personalModelNotOffered") };
   }
   if (status === 429) {
-    return { status: 429, message: "The Personal Provider's rate limit or quota was reached." };
+    return { status: 429, ...appError("personalRateLimited") };
   }
   if (status !== undefined && status >= 400 && status < 500) {
-    return { status: 400, message: "The Personal Provider rejected the request." };
+    return { status: 400, ...appError("personalRejected") };
   }
-  return { status: 502, message: "The Personal Provider returned an error. Please try again." };
+  return { status: 502, ...appError("personalProviderError") };
 };
 
 const openAIModelListSchema = v.object({
@@ -363,7 +362,7 @@ const MAX_LISTED_MODELS = 500;
 export type PersonalModelListResult =
   | { ok: true; supported: false }
   | { ok: true; supported: true; models: { modelId: string; name?: string }[] }
-  | { ok: false; status: number; message: string };
+  | { ok: false; status: number; message: string; code?: ErrorCode; params?: ErrorParams };
 
 /** Lists the models a Personal Provider offers, for the visitor to pick from. */
 export const listPersonalModels = async (
@@ -391,7 +390,7 @@ export const listPersonalModels = async (
       signal: AbortSignal.timeout(10_000),
     });
   } catch {
-    return { ok: false, status: 502, message: "Unable to reach the Personal Provider." };
+    return { ok: false, status: 502, ...appError("personalUnreachable") };
   }
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -423,6 +422,6 @@ export const listPersonalModels = async (
   return {
     ok: false,
     status: 502,
-    message: "The Personal Provider returned an unexpected model list.",
+    ...appError("personalModelListInvalid"),
   };
 };

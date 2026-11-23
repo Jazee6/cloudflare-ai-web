@@ -36,18 +36,20 @@ import {
 } from "@/components/ui/sidebar";
 import { deleteConversation, listRecentSessions } from "@/lib/conversation-store";
 import type { Session } from "@/lib/db";
+import { useI18n } from "@/hooks/use-i18n";
 
 /** Fixed widths so the server and client render the same skeleton. */
 const SKELETON_WIDTHS = ["72%", "56%", "84%", "64%", "48%", "76%"];
 
 interface GroupedSessions {
-  type: "today" | "last 7 days" | "last 30 days" | "earlier";
+  type: "today" | "last7Days" | "last30Days" | "earlier";
   sessions: Session[];
 }
 
 const AppSidebar = () => {
   const sessionId = useParams({ strict: false, select: (params) => params.sessionId });
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -66,9 +68,9 @@ const AppSidebar = () => {
         if (diffDays === 0) {
           groupType = "today";
         } else if (diffDays <= 7) {
-          groupType = "last 7 days";
+          groupType = "last7Days";
         } else if (diffDays <= 30) {
-          groupType = "last 30 days";
+          groupType = "last30Days";
         } else {
           groupType = "earlier";
         }
@@ -118,7 +120,7 @@ const AppSidebar = () => {
           )}
           {groupedSessions.map(({ type, sessions }) => (
             <SidebarGroup key={type}>
-              <SidebarGroupLabel>{type}</SidebarGroupLabel>
+              <SidebarGroupLabel>{t(`sidebar.${type}`)}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {sessions.map(({ id, name }) => (
@@ -143,7 +145,7 @@ const AppSidebar = () => {
                                 setDeleteTarget(id);
                               }}
                             >
-                              <span className="text-destructive">Delete</span>
+                              <span className="text-destructive">{t("common.delete")}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -161,7 +163,7 @@ const AppSidebar = () => {
               <Button
                 size="icon"
                 variant="ghost"
-                aria-label="Settings"
+                aria-label={t("sidebar.settings")}
                 render={<Link to="/settings" />}
                 nativeButton={false}
               >
@@ -170,7 +172,7 @@ const AppSidebar = () => {
 
               <Link to="/" className="ml-auto">
                 <Button variant="ghost">
-                  New Chat
+                  {t("sidebar.newChat")}
                   <Plus />
                 </Button>
               </Link>
@@ -189,14 +191,14 @@ const AppSidebar = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this session?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{t("sidebar.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("sidebar.deleteDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction disabled={deleting} onClick={() => void handleDelete()}>
               {deleting && <Spinner />}
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

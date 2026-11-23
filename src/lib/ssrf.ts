@@ -1,3 +1,4 @@
+import { appError, type AppError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import { isIP } from "node:net";
 import * as v from "valibot";
 import { MAX_DOCUMENT_BYTES } from "@/lib/context-attachments";
@@ -19,9 +20,14 @@ const BLOCKED_HOSTNAMES = new Set([
 
 export class SsrfError extends Error {
   readonly status: 400 | 403 | 413 | 502 | 504;
+  readonly code?: ErrorCode;
+  readonly params?: ErrorParams;
 
-  constructor(message: string, status: 400 | 403 | 413 | 502 | 504) {
-    super(message);
+  constructor(error: string | AppError, status: 400 | 403 | 413 | 502 | 504) {
+    const detail = typeof error === "string" ? { message: error } : error;
+    super(detail.message);
+    this.code = detail.code;
+    this.params = detail.params;
     this.name = "SsrfError";
     this.status = status;
   }
@@ -230,24 +236,24 @@ export const validatePublicUrl = (rawUrl: string): URL => {
   try {
     url = new URL(rawUrl.trim());
   } catch {
-    throw new SsrfError("Invalid URL.", 400);
+    throw new SsrfError(appError("invalidUrl"), 400);
   }
 
   if (!ALLOWED_PROTOCOLS.has(url.protocol)) {
-    throw new SsrfError("Only http and https URLs are allowed.", 400);
+    throw new SsrfError(appError("httpOnly"), 400);
   }
 
   if (url.username || url.password) {
-    throw new SsrfError("URLs containing credentials are not allowed.", 400);
+    throw new SsrfError(appError("urlCredentials"), 400);
   }
 
   if (!ALLOWED_PORTS.has(url.port)) {
-    throw new SsrfError("Only standard HTTP/HTTPS ports (80, 443) are allowed.", 403);
+    throw new SsrfError(appError("standardPortsOnly"), 403);
   }
 
   const hostname = normalizeHostname(url.hostname);
   if (!hostname) {
-    throw new SsrfError("Invalid URL hostname.", 400);
+    throw new SsrfError(appError("invalidHostname"), 400);
   }
 
   if (
@@ -256,7 +262,7 @@ export const validatePublicUrl = (rawUrl: string): URL => {
     hostname.endsWith(".local") ||
     hostname.endsWith(".internal")
   ) {
-    throw new SsrfError("Access to local or internal hosts is not allowed.", 403);
+    throw new SsrfError(appError("internalHost"), 403);
   }
 
   return url;
@@ -275,7 +281,7 @@ const queryCloudflareDoh = async (
     signal: AbortSignal.timeout(3_000),
   });
   if (!response.ok) {
-    throw new SsrfError("Unable to resolve target hostname.", 400);
+    throw new SsrfError(appError("hostnameResolveFailed"), 400);
   }
 
   const parsed = v.safeParse(dohResponseSchema, await response.json());
@@ -297,7 +303,7 @@ const defaultDnsLookup: DnsLookupFn = async (hostname) => {
     const code = (error as NodeJS.ErrnoException | undefined)?.code;
     // Workers without node:dns support fall back to Cloudflare DoH; ENOTFOUND/EAI_NONAME fail closed.
     if (code === "ENOTFOUND" || code === "EAI_NONAME" || code === "EAI_AGAIN") {
-      throw new SsrfError("Target hostname could not be resolved.", 400);
+      throw new SsrfError(appError("hostnameUnresolved"), 400);
     }
     const [aRecords, aaaaRecords] = await Promise.all([
       queryCloudflareDoh(hostname, "A"),
@@ -317,7 +323,7 @@ export const assertSafePublicUrl = async (
 
   if (isIP(hostname) > 0 || parseIpv4(hostname) !== null || hostname.includes(":")) {
     if (isPrivateOrReservedIp(hostname)) {
-      throw new SsrfError("Access to private or reserved IP addresses is not allowed.", 403);
+      throw new SsrfError(appError("privateIp"), 403);
     }
     return url;
   }
@@ -330,16 +336,16 @@ export const assertSafePublicUrl = async (
     if (error instanceof SsrfError) {
       throw error;
     }
-    throw new SsrfError("Target hostname could not be resolved.", 400);
+    throw new SsrfError(appError("hostnameUnresolved"), 400);
   }
 
   if (records.length === 0) {
-    throw new SsrfError("Target hostname could not be resolved.", 400);
+    throw new SsrfError(appError("hostnameUnresolved"), 400);
   }
 
   for (const record of records) {
     if (isPrivateOrReservedIp(record.address)) {
-      throw new SsrfError("Target hostname resolves to a private or reserved IP address.", 403);
+      throw new SsrfError(appError("hostnameResolvesPrivate"), 403);
     }
   }
 
@@ -353,14 +359,14 @@ const readBoundedResponseBytes = async (
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
     await response.body?.cancel();
-    throw new SsrfError("Target webpage exceeds the 4 MiB size limit.", 413);
+    throw new SsrfError(appError("webpageTooLarge"), 413);
   }
 
   const reader = response.body?.getReader();
   if (!reader) {
     const buffer = new Uint8Array(await response.arrayBuffer());
     if (buffer.byteLength > maxBytes) {
-      throw new SsrfError("Target webpage exceeds the 4 MiB size limit.", 413);
+      throw new SsrfError(appError("webpageTooLarge"), 413);
     }
     return buffer;
   }
@@ -379,7 +385,7 @@ const readBoundedResponseBytes = async (
     totalBytes += value.byteLength;
     if (totalBytes > maxBytes) {
       await reader.cancel();
-      throw new SsrfError("Target webpage exceeds the 4 MiB size limit.", 413);
+      throw new SsrfError(appError("webpageTooLarge"), 413);
     }
     chunks.push(value);
   }
@@ -432,26 +438,26 @@ export const safeFetchUrl = async (
       });
     } catch (error) {
       if (deadlineSignal.aborted || (error as Error | undefined)?.name === "TimeoutError") {
-        throw new SsrfError("Timed out while fetching the target URL.", 504);
+        throw new SsrfError(appError("fetchTimeout"), 504);
       }
-      throw new SsrfError("Failed to fetch the target URL.", 502);
+      throw new SsrfError(appError("fetchFailed"), 502);
     }
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       await response.body?.cancel();
       if (!location) {
-        throw new SsrfError("Invalid redirect response from target URL.", 400);
+        throw new SsrfError(appError("invalidRedirect"), 400);
       }
       if (redirects >= maxRedirects) {
-        throw new SsrfError("Target URL exceeded the maximum number of redirects.", 400);
+        throw new SsrfError(appError("tooManyRedirects"), 400);
       }
 
       let nextUrl: string;
       try {
         nextUrl = new URL(location, currentUrl).toString();
       } catch {
-        throw new SsrfError("Invalid redirect location from target URL.", 400);
+        throw new SsrfError(appError("invalidRedirectLocation"), 400);
       }
       currentUrl = (await assertSafePublicUrl(nextUrl, { lookup: options?.lookup })).toString();
       continue;
@@ -465,9 +471,9 @@ export const safeFetchUrl = async (
         throw error;
       }
       if (deadlineSignal.aborted || (error as Error | undefined)?.name === "TimeoutError") {
-        throw new SsrfError("Timed out while reading the target URL.", 504);
+        throw new SsrfError(appError("readTimeout"), 504);
       }
-      throw new SsrfError("Failed to read the target URL response.", 502);
+      throw new SsrfError(appError("readFailed"), 502);
     }
     const contentType =
       response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";

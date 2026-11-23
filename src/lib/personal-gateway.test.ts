@@ -173,6 +173,7 @@ test("image responses are read from b64_json or inline data, never from URLs", (
 test("credential rejections are client errors without upstream details", () => {
   expect(mapPersonalFailure({ own: false }, 401, "Incorrect API key sk-visitor")).toEqual({
     status: 400,
+    code: "personalCredentialsRejected",
     message:
       "The Personal Provider rejected its credentials. Check the API key and gateway settings.",
   });

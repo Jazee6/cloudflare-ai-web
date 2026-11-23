@@ -1,7 +1,14 @@
 import type { UIMessage } from "ai";
 import * as v from "valibot";
-import { db, type Session, type StoredImagesData, type StoredMessage } from "@/lib/db";
+import {
+  db,
+  type Session,
+  type StoredImagesData,
+  type StoredMessage,
+  type UsageRecord,
+} from "@/lib/db";
 import { blobToDataUrl } from "@/lib/image-compression";
+import type { MessageKey } from "@/locales/en";
 
 export const CONVERSATION_BACKUP_VERSION = 1;
 /**
@@ -9,7 +16,7 @@ export const CONVERSATION_BACKUP_VERSION = 1;
  * images, which are exported as data URLs about a third larger than the images themselves.
  */
 export const MAX_BACKUP_IMPORT_BYTES = 200 * 1024 * 1024;
-export const BACKUP_TOO_LARGE_MESSAGE = "Backup file exceeds the 200 MiB import limit.";
+export const BACKUP_TOO_LARGE_MESSAGE = "backup.tooLarge" satisfies MessageKey;
 
 export const exceedsBackupImportLimit = (json: string) =>
   new TextEncoder().encode(json).byteLength > MAX_BACKUP_IMPORT_BYTES;
@@ -37,6 +44,23 @@ const exportedSessionSchema = v.object({
   messages: v.array(exportedMessageSchema),
 });
 
+const isoDate = v.pipe(
+  v.string(),
+  v.check((value) => !Number.isNaN(Date.parse(value))),
+);
+const tokenCount = v.pipe(v.number(), v.integer(), v.minValue(0));
+
+const exportedUsageRecordSchema = v.object({
+  id: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
+  sessionId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
+  createdAt: isoDate,
+  modelId: v.pipe(v.string(), v.minLength(1), v.maxLength(512)),
+  modelName: v.pipe(v.string(), v.maxLength(512)),
+  inputTokens: tokenCount,
+  outputTokens: tokenCount,
+  cost: v.optional(v.pipe(v.number(), v.finite(), v.minValue(0))),
+});
+
 export const conversationBackupSchema = v.object({
   version: v.literal(CONVERSATION_BACKUP_VERSION),
   exportedAt: v.pipe(
@@ -44,6 +68,8 @@ export const conversationBackupSchema = v.object({
     v.check((value) => !Number.isNaN(Date.parse(value))),
   ),
   sessions: v.array(exportedSessionSchema),
+  /** The Usage Ledger; absent from backups made before it existed. */
+  usage: v.optional(v.array(exportedUsageRecordSchema)),
 });
 
 export type ConversationBackup = v.InferOutput<typeof conversationBackupSchema>;
@@ -157,10 +183,16 @@ export const exportConversationHistory = async (
     });
   }
 
+  const usage = await db.usage.orderBy("createdAt").toArray();
+
   return {
     version: CONVERSATION_BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     sessions: exportedSessions,
+    usage: usage.map((record) => ({
+      ...record,
+      createdAt: new Date(record.createdAt).toISOString(),
+    })),
   };
 };
 
@@ -177,7 +209,8 @@ export type ImportConversationResult =
     }
   | {
       ok: false;
-      error: string;
+      /** Message key for why the backup was rejected. */
+      error: MessageKey;
     };
 
 /**
@@ -194,12 +227,12 @@ export const importConversationHistory = async (
   try {
     parsedJson = JSON.parse(rawJson);
   } catch {
-    return { ok: false, error: "Invalid JSON backup file." };
+    return { ok: false, error: "backup.invalidJson" };
   }
 
   const validated = v.safeParse(conversationBackupSchema, parsedJson);
   if (!validated.success) {
-    return { ok: false, error: "Backup file format is invalid or unsupported." };
+    return { ok: false, error: "backup.invalidFormat" };
   }
 
   const importedParts = new Map<object, UIMessage["parts"]>();
@@ -207,7 +240,7 @@ export const importConversationHistory = async (
     for (const message of session.messages) {
       const parts = importParts(message.parts);
       if (!parts) {
-        return { ok: false, error: "Backup file format is invalid or unsupported." };
+        return { ok: false, error: "backup.invalidFormat" };
       }
       importedParts.set(message, parts);
     }
@@ -217,7 +250,17 @@ export const importConversationHistory = async (
   let skippedSessions = 0;
   let importedMessages = 0;
 
-  await db.transaction("rw", db.session, db.message, async () => {
+  await db.transaction("rw", db.session, db.message, db.usage, async () => {
+    // Ledger entries already present are kept; the ledger is merged, never overwritten.
+    const existingUsageIds = new Set(await db.usage.toCollection().primaryKeys());
+    const usageToAdd: UsageRecord[] = (validated.output.usage ?? [])
+      .filter((record) => !existingUsageIds.has(record.id))
+      .map((record) => ({ ...record, createdAt: new Date(record.createdAt) }));
+    const uniqueUsage = [...new Map(usageToAdd.map((record) => [record.id, record])).values()];
+    if (uniqueUsage.length > 0) {
+      await db.usage.bulkAdd(uniqueUsage);
+    }
+
     const existingIds = new Set(await db.session.toCollection().primaryKeys());
     const existingMessageIds = new Set(await db.message.toCollection().primaryKeys());
     const sessionsToAdd: Session[] = [];

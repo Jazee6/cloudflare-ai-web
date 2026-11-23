@@ -36,6 +36,7 @@ import type { StoredImagesData } from "@/lib/db";
 import { getImageEntryMetadata } from "@/lib/image-models";
 import { getImageBlobs } from "@/lib/image-turn";
 import { getResponseMetadata } from "@/lib/response-metadata";
+import { useI18n } from "@/hooks/use-i18n";
 
 /** Starts as a plain line and opens while the model thinks; the reader's own toggle wins. */
 const Reasoning = ({
@@ -47,13 +48,14 @@ const Reasoning = ({
   running: boolean;
   seconds?: number | null;
 }) => {
+  const { t } = useI18n();
   const [open, setOpen] = useState<boolean>();
   const line = (
     <TraceLine status={running ? "running" : undefined}>
       <TraceIcon>{running ? <Spinner /> : <BrainIcon />}</TraceIcon>
-      <TraceTitle>{running ? "Thinking" : "Thought"}</TraceTitle>
+      <TraceTitle>{running ? t("reasoning.thinking") : t("reasoning.thought")}</TraceTitle>
       {!running && typeof seconds === "number" && (
-        <TraceDescription>for {seconds}s</TraceDescription>
+        <TraceDescription>{t("reasoning.duration", { seconds })}</TraceDescription>
       )}
     </TraceLine>
   );
@@ -73,6 +75,7 @@ const Reasoning = ({
 };
 
 const CopyAction = ({ text }: { text: string }) => {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -85,7 +88,7 @@ const CopyAction = ({ text }: { text: string }) => {
 
   return (
     <ActionButton
-      label={copied ? "Copied" : "Copy"}
+      label={copied ? t("message.copied") : t("message.copy")}
       onClick={() => {
         navigator.clipboard
           .writeText(text)
@@ -127,6 +130,7 @@ const AssistantChatItem = ({
   onRetry?: () => void;
   onUseAsReference?: (image: Blob) => void;
 }) => {
+  const { t } = useI18n();
   const metadata = getResponseMetadata(message);
   const imageMeta = getImageEntryMetadata(message);
   const {
@@ -230,7 +234,7 @@ const AssistantChatItem = ({
               }
             >
               <BookOpenIcon className="size-3.5" />
-              <span>Sources ({citations.length})</span>
+              <span>{t("message.sources", { count: citations.length })}</span>
               <ChevronRightIcon className="size-3.5 transition-transform group-data-[open]/sources:rotate-90" />
             </CollapsibleTrigger>
             <CollapsibleContent className="flex flex-wrap gap-1.5">
@@ -274,7 +278,7 @@ const AssistantChatItem = ({
             {text && <CopyAction text={text} />}
             {text && ttsSupported && (
               <ActionButton
-                label={isSpeaking ? "Stop" : "Read aloud"}
+                label={isSpeaking ? t("message.stopReading") : t("message.readAloud")}
                 onClick={() => {
                   if (isSpeaking) {
                     stopSpeech();
@@ -287,7 +291,7 @@ const AssistantChatItem = ({
               </ActionButton>
             )}
             {onRetry && (
-              <ActionButton label="Retry" onClick={onRetry}>
+              <ActionButton label={t("common.retry")} onClick={onRetry}>
                 <RefreshCcwIcon />
               </ActionButton>
             )}
@@ -296,8 +300,8 @@ const AssistantChatItem = ({
                 key={index}
                 label={
                   referenceImages.length > 1
-                    ? `Use image ${index + 1} as reference`
-                    : "Use as reference"
+                    ? t("message.useImageAsReference", { index: index + 1 })
+                    : t("message.useAsReference")
                 }
                 onClick={() => onUseAsReference?.(image)}
               >
@@ -310,15 +314,15 @@ const AssistantChatItem = ({
                 {modelName && <Badge variant="secondary">{modelName}</Badge>}
                 {imageSeed !== undefined && (
                   <Badge variant="outline" className="tabular-nums">
-                    Seed {imageSeed}
+                    {t("message.seed", { seed: imageSeed })}
                   </Badge>
                 )}
                 {gatewayCacheHit && (
                   <Tooltip>
-                    <TooltipTrigger render={<Badge variant="secondary">Cached</Badge>} />
-                    <TooltipContent>
-                      Served from Cloudflare AI Gateway cache. Retry to bypass cache.
-                    </TooltipContent>
+                    <TooltipTrigger
+                      render={<Badge variant="secondary">{t("message.cached")}</Badge>}
+                    />
+                    <TooltipContent>{t("message.cachedHint")}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -326,7 +330,7 @@ const AssistantChatItem = ({
             {gatewayDlpAction && (
               <Tooltip>
                 <TooltipTrigger render={<Badge variant="outline">DLP: {gatewayDlpAction}</Badge>} />
-                <TooltipContent>Cloudflare AI Gateway DLP policy applied.</TooltipContent>
+                <TooltipContent>{t("message.dlpHint")}</TooltipContent>
               </Tooltip>
             )}
           </MessageFooter>

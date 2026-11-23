@@ -65,14 +65,14 @@ const trimmedOptional = (max: number) =>
 export const modelIdSchema = v.pipe(
   v.string(),
   v.trim(),
-  v.minLength(1, "Enter a model ID."),
-  v.maxLength(200, "Use at most 200 characters."),
-  v.regex(/^[\w.:@/-]+$/, "Use letters, digits and . _ - : @ / only."),
+  v.minLength(1, "personal.modelIdRequired"),
+  v.maxLength(200, "personal.modelIdTooLong"),
+  v.regex(/^[\w.:@/-]+$/, "personal.modelIdCharacters"),
   // Model IDs reach upstream URL paths, so they must not climb out of the provider's path.
   v.check(
     (id) =>
       !id.startsWith("/") && !id.endsWith("/") && !id.split("/").some((part) => /^\.*$/.test(part)),
-    "Model ID segments cannot be empty, . or ..",
+    "personal.modelIdSegments",
   ),
 );
 
@@ -80,13 +80,13 @@ export const gatewaySchema = v.object({
   accountId: v.pipe(
     v.string(),
     v.trim(),
-    v.regex(/^[a-f0-9]{32}$/i, "Account ID is 32 hexadecimal characters."),
+    v.regex(/^[a-f0-9]{32}$/i, "personal.accountIdInvalid"),
     v.toLowerCase(),
   ),
   gatewayId: v.pipe(
     v.string(),
     v.trim(),
-    v.regex(/^[a-z0-9-]{1,64}$/, "Use lowercase letters, digits and hyphens."),
+    v.regex(/^[a-z0-9-]{1,64}$/, "personal.gatewayIdInvalid"),
   ),
   token: trimmedOptional(512),
 });
@@ -105,7 +105,7 @@ export const personalModelDeclarationSchema = v.pipe(
   }),
   v.check(
     (declaration) => (declaration.type === "Text to Image") === Boolean(declaration.imageProtocol),
-    "Image models need an image protocol; chat models must not have one.",
+    "personal.imageProtocolMismatch",
   ),
 );
 
@@ -148,7 +148,7 @@ export const personalRequestSchema = v.pipe(
   }),
   v.check(
     (request) => declarationsFitProvider(request.provider, [request.declaration]),
-    "The model declares a capability this provider does not support.",
+    "personal.unsupportedCapability",
   ),
 );
 

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   BrushCleaningIcon,
+  CircleDollarSignIcon,
+  EyeIcon,
   EyeOffIcon,
   FolderInputIcon,
   FolderPlusIcon,
@@ -20,6 +22,7 @@ import { useModelCatalogState } from "@/components/model-catalog-provider";
 import { ModelGroupDialog } from "@/components/model-group-dialog";
 import { useModelGroups, useModelLayout } from "@/components/model-layout-provider";
 import { ModelLogo } from "@/components/model-logo";
+import { ModelPriceDialog } from "@/components/model-price-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -58,6 +62,7 @@ import {
   defaultGroupKey,
   defaultGroupName,
   deleteCustomGroup,
+  EXTERNAL_GROUP_KEY,
   hasStaleLayoutEntries,
   type ModelLayoutGroup,
   moveModel,
@@ -65,9 +70,13 @@ import {
   renameCustomGroup,
   reorderGroupModels,
   reorderGroups,
+  setGroupHidden,
   setModelHidden,
 } from "@/lib/model-layout";
+import { canDeclareModelPrice } from "@/lib/model-prices";
 import type { Model } from "@/lib/models";
+import { cn } from "@/lib/utils";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const Route = createFileRoute("/settings/models")({ component: ModelSettings });
 
@@ -91,12 +100,14 @@ const DragHandle = ({ controls, label }: { controls: DragControls; label: string
 );
 
 function ModelSettings() {
+  const { t } = useI18n();
   const { models: catalog, loading, error, reload } = useModelCatalogState();
   const { layout, ready, updateLayout } = useModelLayout();
-  const shownGroups = useModelGroups();
+  // Hidden Groups stay listed here so they can be shown again; Hidden Models do not.
+  const shownGroups = useModelGroups({ includeHiddenGroups: true });
   const allGroups = useModelGroups({ includeHidden: true });
   const hidden = new Set(layout.hidden);
-  const hiddenGroups = allGroups
+  const groupsWithHiddenModels = allGroups
     .map((group) => ({ ...group, models: group.models.filter((model) => hidden.has(model.id)) }))
     .filter((group) => group.models.length > 0);
   // Default groups whose models are all hidden have nothing to show; custom groups always do.
@@ -108,6 +119,7 @@ function ModelSettings() {
   const addDialog = useDialogState<true>();
   const groupDialog = useDialogState<GroupDialogData>();
   const deleteDialog = useDialogState<ModelLayoutGroup>();
+  const priceDialog = useDialogState<Model>();
 
   // Order shown while a group is dragged; committed when the drag ends.
   const [draftGroupOrder, setDraftGroupOrder] = useState<string[] | null>(null);
@@ -131,13 +143,13 @@ function ModelSettings() {
           <EmptyMedia variant="icon">
             <LayersIcon />
           </EmptyMedia>
-          <EmptyTitle>No models available</EmptyTitle>
+          <EmptyTitle>{t("modelSelect.none")}</EmptyTitle>
           {error && <EmptyDescription>{error}</EmptyDescription>}
         </EmptyHeader>
         <EmptyContent>
           <Button variant="outline" onClick={reload}>
             <RefreshCwIcon />
-            Retry
+            {t("common.retry")}
           </Button>
         </EmptyContent>
       </Empty>
@@ -157,26 +169,26 @@ function ModelSettings() {
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
-          disabled={hiddenGroups.length === 0}
+          disabled={groupsWithHiddenModels.length === 0}
           onClick={() => addDialog.show(true)}
         >
           <PlusIcon />
-          Add models
+          {t("addModels.title")}
         </Button>
         <Button variant="outline" onClick={() => groupDialog.show({ mode: "create" })}>
           <FolderPlusIcon />
-          New group
+          {t("settings.models.newGroup")}
         </Button>
         {showCleanup && (
           <Button
             variant="ghost"
             onClick={() => {
               updateLayout((current) => pruneModelLayout(current, catalog));
-              toast.add({ title: "Removed entries for unavailable models.", type: "success" });
+              toast.add({ title: t("settings.models.cleanedUp"), type: "success" });
             }}
           >
             <BrushCleaningIcon />
-            Clean up unavailable models
+            {t("settings.models.cleanUp")}
           </Button>
         )}
       </div>
@@ -206,6 +218,10 @@ function ModelSettings() {
                 onHide={(model) =>
                   updateLayout((current) => setModelHidden(current, model.id, true))
                 }
+                onSetPrice={(model) => priceDialog.show(model)}
+                onToggleHidden={() =>
+                  updateLayout((current) => setGroupHidden(current, key, !group.hidden))
+                }
                 onRename={() =>
                   groupDialog.show({ mode: "rename", id: groupIdOf(key), name: group.name })
                 }
@@ -219,7 +235,7 @@ function ModelSettings() {
       <AddModelsDialog
         open={addDialog.open}
         onOpenChange={addDialog.onOpenChange}
-        groups={hiddenGroups}
+        groups={groupsWithHiddenModels}
         onAdd={(ids) =>
           updateLayout((current) =>
             ids.reduce((next, id) => setModelHidden(next, id, false), current),
@@ -227,11 +243,25 @@ function ModelSettings() {
         }
       />
 
+      <ModelPriceDialog
+        model={priceDialog.data ?? undefined}
+        open={priceDialog.open}
+        onOpenChange={priceDialog.onOpenChange}
+      />
+
       <ModelGroupDialog
         open={groupDialog.open}
         onOpenChange={groupDialog.onOpenChange}
-        title={groupDialog.data?.mode === "rename" ? "Rename group" : "New group"}
-        submitLabel={groupDialog.data?.mode === "rename" ? "Rename" : "Create"}
+        title={
+          groupDialog.data?.mode === "rename"
+            ? t("settings.models.renameGroup")
+            : t("settings.models.newGroup")
+        }
+        submitLabel={
+          groupDialog.data?.mode === "rename"
+            ? t("settings.models.rename")
+            : t("settings.models.create")
+        }
         initialName={groupDialog.data?.mode === "rename" ? groupDialog.data.name : ""}
         onSubmit={(name) => {
           const data = groupDialog.data;
@@ -247,13 +277,15 @@ function ModelSettings() {
       <AlertDialog open={deleteDialog.open} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{deleteDialog.data?.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("settings.models.deleteGroupTitle", { name: deleteDialog.data?.name ?? "" })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Its models return to their default groups.
+              {t("settings.models.deleteGroupDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -266,7 +298,7 @@ function ModelSettings() {
                 deleteDialog.close();
               }}
             >
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -282,6 +314,8 @@ function GroupCard({
   onReorder,
   onMove,
   onHide,
+  onSetPrice,
+  onToggleHidden,
   onRename,
   onDelete,
 }: {
@@ -291,9 +325,12 @@ function GroupCard({
   onReorder: (ids: string[]) => void;
   onMove: (model: Model, targetKey: string) => void;
   onHide: (model: Model) => void;
+  onSetPrice: (model: Model) => void;
+  onToggleHidden: () => void;
   onRename: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const controls = useDragControls();
   // Order shown while a model is dragged; committed when the drag ends.
   const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
@@ -319,41 +356,62 @@ function GroupCard({
       className="relative flex flex-col rounded-lg border bg-background"
     >
       <header className="flex h-10 items-center gap-2 border-b pr-2 pl-1">
-        <DragHandle controls={controls} label={`Reorder ${group.name}`} />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</h2>
-        {group.custom && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" size="icon-sm" aria-label={`${group.name} options`} />
-              }
-            >
-              <MoreHorizontalIcon />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onRename}>
-                <PencilIcon />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2Icon />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <DragHandle
+          controls={controls}
+          label={t("settings.models.reorder", { name: group.name })}
+        />
+        <h2
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-medium",
+            group.hidden && "text-muted-foreground",
+          )}
+        >
+          {group.name}
+        </h2>
+        {group.hidden && <Badge variant="secondary">{t("settings.models.hidden")}</Badge>}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("settings.models.options", { name: group.name })}
+              />
+            }
+          >
+            <MoreHorizontalIcon />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onToggleHidden}>
+              {group.hidden ? <EyeIcon /> : <EyeOffIcon />}
+              {group.hidden ? t("settings.models.showGroup") : t("settings.models.hideGroup")}
+            </DropdownMenuItem>
+            {group.custom && (
+              <>
+                <DropdownMenuItem onClick={onRename}>
+                  <PencilIcon />
+                  {t("settings.models.rename")}
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2Icon />
+                  {t("common.delete")}
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {group.models.length === 0 ? (
         <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-          Move models here from their menu.
+          {t("settings.models.emptyGroup")}
         </p>
       ) : (
         <Reorder.Group
           axis="y"
           values={modelIds}
           onReorder={setDraftOrder}
-          className="flex flex-col py-1"
+          className={cn("flex flex-col py-1", group.hidden && "opacity-60")}
         >
           {modelIds.map((id) => {
             const model = modelsById.get(id);
@@ -364,12 +422,19 @@ function GroupCard({
                   model={model}
                   groupKey={group.key}
                   groupOptions={[
-                    { key: defaultGroupKey(model), name: defaultGroupName(model) },
+                    {
+                      key: defaultGroupKey(model),
+                      name:
+                        defaultGroupKey(model) === EXTERNAL_GROUP_KEY
+                          ? t("modelGroups.external")
+                          : defaultGroupName(model),
+                    },
                     ...customGroups,
                   ]}
                   onDragEnd={commitOrder}
                   onMove={(target) => onMove(model, target)}
                   onHide={() => onHide(model)}
+                  onSetPrice={() => onSetPrice(model)}
                 />
               )
             );
@@ -387,6 +452,7 @@ function ModelRow({
   onDragEnd,
   onMove,
   onHide,
+  onSetPrice,
 }: {
   model: Model;
   groupKey: string;
@@ -394,7 +460,9 @@ function ModelRow({
   onDragEnd: () => void;
   onMove: (targetKey: string) => void;
   onHide: () => void;
+  onSetPrice: () => void;
 }) {
+  const { t } = useI18n();
   const controls = useDragControls();
   const canMove = groupOptions.length > 1;
 
@@ -408,7 +476,7 @@ function ModelRow({
       whileDrag={WHILE_DRAG}
       className="relative flex h-9 items-center gap-2 rounded-md bg-background pr-2 pl-1"
     >
-      <DragHandle controls={controls} label={`Reorder ${model.name}`} />
+      <DragHandle controls={controls} label={t("settings.models.reorder", { name: model.name })} />
       <span className="flex size-4 shrink-0 items-center justify-center">
         <ModelLogo model={model} />
       </span>
@@ -418,7 +486,13 @@ function ModelRow({
       )}
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={<Button variant="ghost" size="icon-sm" aria-label={`${model.name} options`} />}
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("settings.models.options", { name: model.name })}
+            />
+          }
         >
           <MoreHorizontalIcon />
         </DropdownMenuTrigger>
@@ -427,7 +501,7 @@ function ModelRow({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <FolderInputIcon />
-                Move to
+                {t("settings.models.moveTo")}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuRadioGroup
@@ -447,9 +521,15 @@ function ModelRow({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
+          {canDeclareModelPrice(model) && (
+            <DropdownMenuItem onClick={onSetPrice}>
+              <CircleDollarSignIcon />
+              {t("settings.models.setPrice")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={onHide}>
             <EyeOffIcon />
-            Hide
+            {t("settings.models.hide")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

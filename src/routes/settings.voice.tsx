@@ -23,18 +23,26 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useSpeechSynthesis, useSpeechVoices } from "@/hooks/use-speech-synthesis";
-import { ASR_LOCALE_OPTIONS, type AsrLocale } from "@/lib/settings";
+import { ASR_LOCALES, type AsrLocale } from "@/lib/settings";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const Route = createFileRoute("/settings/voice")({ component: VoiceSettings });
 
 const SYSTEM_VOICE_VALUE = "__system__";
 const VOICE_PREVIEW_ID = "__settings_voice_preview__";
-const ASR_LOCALE_ITEMS: Record<string, string> = Object.fromEntries(
-  ASR_LOCALE_OPTIONS.map((option) => [option.value, option.label]),
-);
 
 function VoiceSettings() {
+  const { locale, t } = useI18n();
   const { settings, updateSettings } = useSettings();
+  const languageNames = new Intl.DisplayNames([locale], { type: "language" });
+  const asrLocaleItems: Record<string, string> = Object.fromEntries(
+    ASR_LOCALES.map((value) => [
+      value,
+      value === "auto"
+        ? t("settings.voice.asrAuto")
+        : `${languageNames.of(value) ?? value} (${value})`,
+    ]),
+  );
   const { supported: ttsSupported, voices } = useSpeechVoices();
   const { activeId: activeSpeechId, speak, stop: stopSpeech } = useSpeechSynthesis();
   const isPreviewing = activeSpeechId === VOICE_PREVIEW_ID;
@@ -45,26 +53,26 @@ function VoiceSettings() {
   const groupedVoices = useMemo(() => {
     const groups = new Map<string, SpeechSynthesisVoice[]>();
     for (const voice of voices) {
-      const lang = voice.lang || "Other";
+      const lang = voice.lang || t("settings.voice.otherLanguage");
       groups.set(lang, [...(groups.get(lang) ?? []), voice]);
     }
     return Array.from(groups, ([lang, items]) => ({ lang, items }));
-  }, [voices]);
+  }, [voices, t]);
 
   const ttsVoiceItems = useMemo<Record<string, string>>(
     () => ({
-      [SYSTEM_VOICE_VALUE]: "System default",
+      [SYSTEM_VOICE_VALUE]: t("settings.voice.systemDefault"),
       ...Object.fromEntries(voices.map((voice) => [voice.voiceURI, voice.name])),
     }),
-    [voices],
+    [voices, t],
   );
 
   return (
     <FieldGroup className="gap-5">
       <Field>
-        <FieldLabel>Voice Input Language</FieldLabel>
+        <FieldLabel>{t("settings.voice.asrLanguage")}</FieldLabel>
         <Select
-          items={ASR_LOCALE_ITEMS}
+          items={asrLocaleItems}
           value={settings.asrLocale}
           onValueChange={(value) => {
             if (typeof value === "string") {
@@ -76,9 +84,9 @@ function VoiceSettings() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ASR_LOCALE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
+            {ASR_LOCALES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {asrLocaleItems[value]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -91,16 +99,14 @@ function VoiceSettings() {
             <EmptyMedia variant="icon">
               <VolumeXIcon />
             </EmptyMedia>
-            <EmptyTitle>Speech synthesis unavailable</EmptyTitle>
-            <EmptyDescription>
-              This browser does not expose Web Speech Synthesis voices.
-            </EmptyDescription>
+            <EmptyTitle>{t("settings.voice.ttsUnavailable")}</EmptyTitle>
+            <EmptyDescription>{t("settings.voice.ttsUnavailableDescription")}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <>
           <Field>
-            <FieldLabel>Read Aloud Voice</FieldLabel>
+            <FieldLabel>{t("settings.voice.ttsVoice")}</FieldLabel>
             <Select
               items={ttsVoiceItems}
               value={settings.ttsVoiceURI || SYSTEM_VOICE_VALUE}
@@ -114,7 +120,9 @@ function VoiceSettings() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={SYSTEM_VOICE_VALUE}>System default</SelectItem>
+                <SelectItem value={SYSTEM_VOICE_VALUE}>
+                  {t("settings.voice.systemDefault")}
+                </SelectItem>
                 {groupedVoices.map(({ lang, items }) => (
                   <SelectGroup key={lang}>
                     <SelectLabel>{lang}</SelectLabel>
@@ -131,7 +139,7 @@ function VoiceSettings() {
 
           <Field>
             <div className="flex items-center justify-between gap-2">
-              <FieldLabel>Reading Speed</FieldLabel>
+              <FieldLabel>{t("settings.voice.rate")}</FieldLabel>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {settings.ttsRate.toFixed(1)}x
               </span>
@@ -156,22 +164,19 @@ function VoiceSettings() {
                   if (isPreviewing) {
                     stopSpeech();
                   } else {
-                    speak(
-                      VOICE_PREVIEW_ID,
-                      "This is a preview of the selected voice and reading speed.",
-                    );
+                    speak(VOICE_PREVIEW_ID, t("settings.voice.previewText"));
                   }
                 }}
               >
                 {isPreviewing ? <SquareIcon /> : <PlayIcon />}
-                {isPreviewing ? "Stop" : "Test"}
+                {isPreviewing ? t("settings.voice.stop") : t("settings.voice.test")}
               </Button>
             </div>
           </Field>
 
           <Field orientation="horizontal" className="justify-between">
             <FieldLabel htmlFor="settings-skip-code-blocks">
-              Skip code blocks when reading
+              {t("settings.voice.skipCodeBlocks")}
             </FieldLabel>
             <Switch
               id="settings-skip-code-blocks"

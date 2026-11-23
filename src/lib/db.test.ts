@@ -23,10 +23,16 @@ test("Dexie schema has session table with &id primary key", () => {
   expect(sessionSchema.primKey.unique).toBe(true);
 });
 
-test("Dexie schema version 4 indexes messages by session and creation time", () => {
-  expect(db.verno).toBe(4);
+test("Dexie schema version 5 indexes messages by session and creation time", () => {
+  expect(db.verno).toBe(5);
   const compoundIndex = db
     .table("message")
     .schema.indexes.find((idx) => idx.name === "[sessionId+createdAt]");
   expect(compoundIndex?.keyPath).toEqual(["sessionId", "createdAt"]);
+});
+
+test("Dexie schema version 5 keeps the Usage Ledger by response id, session and time", () => {
+  const usage = db.table("usage").schema;
+  expect(usage.primKey.keyPath).toBe("id");
+  expect(usage.indexes.map((idx) => idx.name).sort()).toEqual(["createdAt", "sessionId"]);
 });

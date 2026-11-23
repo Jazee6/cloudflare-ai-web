@@ -1,3 +1,4 @@
+import type { MessageKey } from "@/locales/en";
 export interface SpeechPreprocessOptions {
   skipCodeBlocks?: boolean;
 }
@@ -162,18 +163,18 @@ export const isSpeechSynthesisSupported = (): boolean =>
   "speechSynthesis" in window &&
   typeof SpeechSynthesisUtterance !== "undefined";
 
-export const mapSpeechRecognitionError = (errorCode: string): string => {
+export const mapSpeechRecognitionError = (errorCode: string): MessageKey => {
   switch (errorCode) {
     case "not-allowed":
     case "service-not-allowed":
-      return "Microphone permission was denied. Allow microphone access in your browser settings.";
+      return "speech.permissionDenied";
     case "audio-capture":
-      return "No microphone was detected on this device.";
+      return "speech.noMicrophone";
     case "network":
-      return "Browser speech recognition service is unavailable right now.";
+      return "speech.serviceUnavailable";
     case "no-speech":
-      return "No speech was detected. Please try again.";
+      return "speech.noSpeech";
     default:
-      return "Voice input failed. Please try again.";
+      return "speech.failed";
   }
 };

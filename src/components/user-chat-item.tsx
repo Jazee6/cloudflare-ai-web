@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/toast";
 import ZoomableImage from "@/components/zoomable-image";
 import { isContextAttachmentPart } from "@/lib/context-attachments";
 import { getImageBlobs } from "@/lib/image-turn";
+import { useI18n } from "@/hooks/use-i18n";
 
 const loadImage = async (url: string) => (await fetch(url)).blob();
 
@@ -19,6 +20,7 @@ const UserChatItem = ({
   message: UIMessage;
   onUseAsReference?: (image: Blob) => void;
 }) => {
+  const { t } = useI18n();
   const { parts } = message;
   const attachments = parts.filter(isContextAttachmentPart);
   const referenceImages = getImageBlobs(message, "data-reference-images");
@@ -30,7 +32,7 @@ const UserChatItem = ({
     loadImage(url)
       .then((image) => onUseAsReference?.(image))
       .catch(() => {
-        toast.add({ title: "Unable to load this image as a reference.", type: "error" });
+        toast.add({ title: t("message.referenceLoadFailed"), type: "error" });
       });
   };
 
@@ -92,8 +94,8 @@ const UserChatItem = ({
                     key={`file-${index}`}
                     label={
                       uploadedImages.length > 1
-                        ? `Use image ${index + 1} as reference`
-                        : "Use as reference"
+                        ? t("message.useImageAsReference", { index: index + 1 })
+                        : t("message.useAsReference")
                     }
                     onClick={() => referenceUploadedImage(part.url)}
                   >
@@ -104,7 +106,7 @@ const UserChatItem = ({
             {referenceImages.map((image, index) => (
               <ActionButton
                 key={`reference-${index}`}
-                label={`Use reference ${index + 1} again`}
+                label={t("message.reuseReference", { index: index + 1 })}
                 onClick={() => onUseAsReference(image)}
               >
                 <ImagePlusIcon />

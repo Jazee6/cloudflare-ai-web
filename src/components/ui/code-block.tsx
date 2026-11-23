@@ -4,6 +4,7 @@ import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
 import { CheckIcon, CopyIcon } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n";
 
 const codeBlockVariants = cva(
   "group/code-block relative flex w-full min-w-0 flex-col overflow-hidden rounded-lg text-sm has-[>[data-slot=code-block-content]:focus-visible]:ring-3 has-[>[data-slot=code-block-content]:focus-visible]:ring-ring/50 data-[size=sm]:text-xs",
@@ -86,6 +87,7 @@ function CodeBlockCopyButton({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button> & { value: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
@@ -104,7 +106,7 @@ function CodeBlockCopyButton({
         data-copied={copied || undefined}
         variant={variant}
         size={size}
-        aria-label={copied ? "Copied" : "Copy"}
+        aria-label={copied ? t("message.copied") : t("message.copy")}
         className={cn(className)}
         onClick={(event) => {
           onClick?.(event);
@@ -118,7 +120,7 @@ function CodeBlockCopyButton({
         {copied ? <CheckIcon /> : <CopyIcon />}
       </Button>
       <span aria-live="polite" className="sr-only">
-        {copied ? "Copied" : ""}
+        {copied ? t("message.copied") : ""}
       </span>
     </>
   );

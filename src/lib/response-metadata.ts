@@ -15,6 +15,8 @@ const responseMetadataSchema = v.object({
   reasoningSeconds: v.optional(v.array(v.nullable(v.number()))),
   /** Tokens occupied by the final inference step, as reported by the model. */
   usage: v.optional(v.object({ inputTokens: v.number(), outputTokens: v.number() })),
+  /** Tokens consumed across every inference step of the response, as reported by the model. */
+  totalUsage: v.optional(v.object({ inputTokens: v.number(), outputTokens: v.number() })),
   /** The context window of the model that produced the response. */
   contextWindow: v.optional(v.number()),
   /** Cloudflare AI Gateway response metadata (cache status, DLP action). */

@@ -14,6 +14,7 @@ import {
   replaceConversationResponse,
 } from "@/lib/conversation-store";
 import type { ContextAttachmentData } from "@/lib/context-attachments";
+import { createFailedResponse, isFailedResponse } from "@/lib/failed-response";
 import { fitImagePartsWithinLimit } from "@/lib/image-compression";
 import { getImageEntryMetadata } from "@/lib/image-models";
 import {
@@ -24,22 +25,42 @@ import {
   requestImage,
   resolveImageSeed,
 } from "@/lib/image-turn";
-import { buildModelContext, encodeGeneratedImages, expandImageTurns } from "@/lib/model-context";
+import { type AppError, appError, parseAppError } from "@/lib/error-codes";
+import { translateErrorNow, translateNow } from "@/lib/i18n";
+import {
+  buildModelContext,
+  encodeGeneratedImages,
+  expandImageTurns,
+  MODEL_CONTEXT_MAX_CHARS,
+} from "@/lib/model-context";
 import type { Model } from "@/lib/models";
+import { readDeclaredModelPrices, resolveModelPrice } from "@/lib/model-prices";
 import { getPersonalRequest, readPersonalProviders } from "@/lib/personal-providers";
 import { getStoredModel, readPreferences } from "@/lib/preferences";
+import { getResponseMetadata } from "@/lib/response-metadata";
+import { estimateCost, recordUsage } from "@/lib/usage-ledger";
 
 const MAX_TOAST_LENGTH = 100;
 
-const showError = (message: string) => {
+/** A failure found before a request was sent; it is only toasted, never kept as a Failed Response. */
+class RequestNotSentError extends Error {
+  constructor(readonly detail: AppError) {
+    super(detail.message);
+  }
+}
+
+const showToast = (text: string) => {
   toast.add({
-    title:
-      message.length > MAX_TOAST_LENGTH
-        ? `${message.slice(0, MAX_TOAST_LENGTH)}...`
-        : message || "Unknown error occurred. Please try again.",
+    title: text.length > MAX_TOAST_LENGTH ? `${text.slice(0, MAX_TOAST_LENGTH)}...` : text,
     type: "error",
   });
 };
+
+const showError = (error: AppError) => showToast(translateErrorNow(error));
+
+/** The error behind a failed request: a serialized app error or raw upstream text. */
+const toAppError = (error: Error): AppError =>
+  error instanceof RequestNotSentError ? error.detail : parseAppError(error.message);
 
 /**
  * Drives one Conversation History: loads its newest messages, persists each finished
@@ -64,7 +85,7 @@ export const useConversation = ({
   const [activeTurn, setActiveTurn] = useState<"chat" | "image">("chat");
   const [imageStatus, setImageStatus] = useState<ChatStatus>("ready");
   // The latest failure, kept so an unanswered prompt can show why once the toast is gone.
-  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<AppError | null>(null);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const startedPendingRef = useRef(false);
@@ -78,8 +99,12 @@ export const useConversation = ({
   const retryRequestRef = useRef(false);
   // The stored response a Retry will replace once the new response succeeds.
   const retriedRef = useRef<UIMessage | null>(null);
-  // A failed response that is shown but was never saved, so retrying it replaces nothing.
+  // A response that is shown but was never saved, so retrying it replaces nothing.
   const unsavedIdRef = useRef<string | null>(null);
+  // The error behind the request that is finishing; `onError` runs just before `onFinish`.
+  const requestErrorRef = useRef<Error | null>(null);
+  // The model the latest chat request was sent to, for the Usage Ledger.
+  const requestModelRef = useRef<Model | null>(null);
 
   const {
     messages,
@@ -98,19 +123,24 @@ export const useConversation = ({
 
         const selectedModel = getStoredModel(modelsRef.current);
         if (!selectedModel) {
-          throw new Error("No chat models are currently available");
+          throw new RequestNotSentError(appError("noChatModels"));
         }
         if (selectedModel.type !== "Text Generation") {
-          throw new Error("Select a chat model to continue this response.");
+          throw new RequestNotSentError(appError("selectChatModel"));
         }
+        requestModelRef.current = selectedModel;
 
         const { messages: expanded, generatedImages } = expandImageTurns(
           messages,
           selectedModel.input?.includes("image") === true,
         );
-        const modelContext = buildModelContext(expanded);
+        const modelContext = buildModelContext(expanded, {
+          maxMessages: settingsRef.current.contextMessageLimit,
+        });
         if (!modelContext) {
-          throw new Error("The latest message exceeds the 64,000-character context limit.");
+          throw new RequestNotSentError(
+            appError("contextLimitExceeded", { max: MODEL_CONTEXT_MAX_CHARS.toLocaleString("en") }),
+          );
         }
 
         const preferences = readPreferences();
@@ -120,7 +150,7 @@ export const useConversation = ({
         const customInstructions = settingsRef.current.customInstructions.trim();
         const personal = getPersonalRequest(selectedModel, readPersonalProviders());
         if (selectedModel.source === "personal" && !personal) {
-          throw new Error("This Personal Model is no longer configured. Select another model.");
+          throw new RequestNotSentError(appError("personalModelMissing"));
         }
 
         return {
@@ -146,6 +176,25 @@ export const useConversation = ({
       const isVisible = messages.some((candidate) => candidate.id === message.id);
       const retried = retriedRef.current;
       retriedRef.current = null;
+      const error = requestErrorRef.current;
+      requestErrorRef.current = null;
+      if (isError && error && !(error instanceof RequestNotSentError)) {
+        const detail = toAppError(error);
+        const unauthorized = detail.code === "unauthorized";
+        if (unauthorized || (retried && !isFailedResponse(retried))) {
+          // The prompt still has its response (or will be retried after signing in).
+          setMessages((current) => [
+            ...current.filter((candidate) => candidate.id !== message.id),
+            ...(retried ? [retried] : []),
+          ]);
+          if (!unauthorized) {
+            showError(detail);
+          }
+          return;
+        }
+        keepFailure(detail, { replaced: retried, partialId: message.id });
+        return;
+      }
       if (isError || !isVisible || message.parts.length === 0) {
         if (isVisible) {
           unsavedIdRef.current = message.id;
@@ -165,18 +214,72 @@ export const useConversation = ({
         ? replaceConversationResponse(sessionId, retried.id, message)
         : appendConversationMessage(sessionId, message);
       save.catch(() => {
-        showError("Unable to save the response to chat history.");
+        showToast(translateNow("chat.saveResponseFailed"));
       });
+      recordResponseUsage(message, sessionId);
     },
     onError: (error) => {
-      if (error.message === "Unauthorized") {
+      requestErrorRef.current = error;
+      const detail = toAppError(error);
+      if (detail.code === "unauthorized") {
         handleUnauthorized();
         return;
       }
-      setLastError(error.message);
-      showError(error.message);
+      if (error instanceof RequestNotSentError) {
+        setLastError(detail);
+        showError(detail);
+      }
     },
   });
+
+  /** Adds a finished response to the Usage Ledger with its Estimated Cost, when it has usage. */
+  const recordResponseUsage = (message: UIMessage, turnSessionId: string) => {
+    const model = requestModelRef.current;
+    const metadata = getResponseMetadata(message);
+    const used = metadata?.totalUsage ?? metadata?.usage;
+    if (!model || !used) {
+      return;
+    }
+    const price = resolveModelPrice(model, readDeclaredModelPrices());
+    recordUsage({
+      id: message.id,
+      sessionId: turnSessionId,
+      createdAt: new Date(),
+      modelId: model.id,
+      modelName: metadata?.modelName ?? model.name,
+      inputTokens: used.inputTokens,
+      outputTokens: used.outputTokens,
+      ...(price
+        ? {
+            cost: estimateCost(used, price, { cacheHit: metadata?.gateway?.cacheStatus === "HIT" }),
+          }
+        : {}),
+    }).catch(() => {
+      // The ledger is best effort; the response itself is already saved.
+    });
+  };
+
+  /**
+   * Keeps a failed request as a Failed Response in place of the response it was retried from, if
+   * that was itself a Failed Response. A partially streamed response is dropped.
+   */
+  const keepFailure = (
+    error: AppError,
+    { replaced, partialId }: { replaced?: UIMessage | null; partialId?: string } = {},
+  ) => {
+    const failure = createFailedResponse(error);
+    const turnSessionId = sessionIdRef.current;
+    const save = replaced
+      ? replaceConversationResponse(turnSessionId, replaced.id, failure)
+      : appendConversationMessage(turnSessionId, failure);
+    save.catch(() => {
+      showError(error);
+    });
+    setMessages((current) => [
+      ...current.filter((candidate) => candidate.id !== partialId && candidate.id !== replaced?.id),
+      failure,
+    ]);
+  };
 
   /**
    * Generates the image for a prompt already in Conversation History and saves it, in place of
@@ -185,8 +288,9 @@ export const useConversation = ({
    */
   const runImageTurn = async (
     prompt: UIMessage,
-    { replacedId, retry = false }: { replacedId?: string; retry?: boolean } = {},
+    { replaced, retry = false }: { replaced?: UIMessage; retry?: boolean } = {},
   ) => {
+    const replacedId = replaced?.id;
     const turnSessionId = sessionId;
     const isCurrent = () => sessionIdRef.current === turnSessionId;
     const metadata = getImageEntryMetadata(prompt);
@@ -201,12 +305,10 @@ export const useConversation = ({
 
     setActiveTurn("image");
     if (!text || !metadata?.params || !model) {
-      const message = model
-        ? "No prompt to retry."
-        : "Select an image model to generate this image.";
+      const error = appError(model ? "noPromptToRetry" : "selectImageModelToRetry");
       setImageStatus("error");
-      setLastError(message);
-      showError(message);
+      setLastError(error);
+      showError(error);
       return;
     }
 
@@ -222,12 +324,16 @@ export const useConversation = ({
       if (!isCurrent()) {
         return;
       }
-      setImageStatus("error");
       if (result.unauthorized) {
+        setImageStatus("error");
         handleUnauthorized();
+      } else if (replaced && !isFailedResponse(replaced)) {
+        // The prompt keeps the image it already has.
+        setImageStatus("error");
+        showError(result.error);
       } else {
-        setLastError(result.message);
-        showError(result.message);
+        keepFailure(result.error, { replaced });
+        setImageStatus("ready");
       }
       return;
     }
@@ -239,7 +345,7 @@ export const useConversation = ({
         ? replaceConversationResponse(turnSessionId, replacedId, response)
         : appendConversationMessage(turnSessionId, response));
     } catch {
-      showError("Unable to save the generated image.");
+      showToast(translateNow("chat.saveImageFailed"));
     }
     if (isCurrent()) {
       setMessages((current) => [
@@ -258,7 +364,7 @@ export const useConversation = ({
     const latestPrompt = messages.findLast((message) => message.role === "user");
     if (latestPrompt && isImageTurn(latestPrompt)) {
       return runImageTurn(latestPrompt, {
-        replacedId: latest?.role === "assistant" ? latest.id : undefined,
+        replaced: latest?.role === "assistant" ? latest : undefined,
         retry: true,
       });
     }
@@ -295,7 +401,7 @@ export const useConversation = ({
       })
       .catch(() => {
         if (!cancelled) {
-          showError("Unable to load chat history.");
+          showToast(translateNow("chat.loadHistoryFailed"));
         }
       });
 
@@ -352,7 +458,7 @@ export const useConversation = ({
     try {
       await appendConversationMessage(sessionId, message);
     } catch {
-      showError("Unable to save the message to chat history.");
+      showToast(translateNow("chat.saveMessageFailed"));
       return;
     }
 
@@ -368,7 +474,7 @@ export const useConversation = ({
     try {
       await appendConversationMessage(sessionId, prompt);
     } catch {
-      showError("Unable to save the prompt to chat history.");
+      showToast(translateNow("chat.savePromptFailed"));
       return;
     }
 
@@ -388,7 +494,7 @@ export const useConversation = ({
   return {
     messages,
     status,
-    unansweredError: unanswered ? (lastError ?? "No response was received.") : null,
+    unansweredError: unanswered ? (lastError ?? appError("noResponse")) : null,
     send,
     sendImagePrompt,
     stop,

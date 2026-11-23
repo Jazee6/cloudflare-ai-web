@@ -5,6 +5,7 @@ import {
   customGroupKey,
   deleteCustomGroup,
   EMPTY_MODEL_LAYOUT,
+  getVisibleModels,
   hasStaleLayoutEntries,
   type ModelLayout,
   moveGroup,
@@ -14,6 +15,7 @@ import {
   renameCustomGroup,
   reorderGroupModels,
   reorderGroups,
+  setGroupHidden,
   setModelHidden,
 } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
@@ -229,5 +231,46 @@ test("reordering shown groups keeps the other groups in their slots", () => {
     "default:Qwen",
     "default:Meta",
     "default:Black Forest Labs",
+  ]);
+});
+
+test("a Hidden Group drops all its models, including new ones, and keeps model choices", () => {
+  let layout = setModelHidden(EMPTY_MODEL_LAYOUT, "meta-1", true);
+  layout = setGroupHidden(layout, "default:Meta", true);
+  expect(shape(layout).map(([key]) => key)).not.toContain("default:Meta");
+
+  const grown = [...catalog, cf("meta-3", "Meta")];
+  expect(getVisibleModels(grown, layout).map((model) => model.id)).not.toContain("meta-3");
+
+  const withGroups = applyModelLayout(catalog, layout, { includeHiddenGroups: true }).groups;
+  const meta = withGroups.find((group) => group.key === "default:Meta");
+  expect(meta?.hidden).toBe(true);
+  expect(meta?.models.map((model) => model.id)).toEqual(["meta-2"]);
+
+  const shown = setGroupHidden(layout, "default:Meta", false);
+  expect(shape(shown)[0]).toEqual(["default:Meta", ["meta-2"]]);
+});
+
+test("a model moved out of a Hidden Group into a shown group is shown", () => {
+  const key = customGroupKey("fav");
+  let layout = createCustomGroup(EMPTY_MODEL_LAYOUT, catalog, { id: "fav", name: "Fav" });
+  layout = setGroupHidden(layout, "default:Meta", true);
+  layout = moveModel(layout, catalog, "meta-1", key);
+  expect(getVisibleModels(catalog, layout).map((model) => model.id)).toContain("meta-1");
+  expect(getVisibleModels(catalog, layout).map((model) => model.id)).not.toContain("meta-2");
+});
+
+test("Hidden Groups survive pruning while live and go with their custom group", () => {
+  let layout = createCustomGroup(EMPTY_MODEL_LAYOUT, catalog, { id: "fav", name: "Fav" });
+  layout = setGroupHidden(layout, customGroupKey("fav"), true);
+  layout = setGroupHidden(layout, "default:Meta", true);
+  layout = setGroupHidden(layout, "default:Gone", true);
+  expect(pruneModelLayout(layout, catalog).hiddenGroups).toEqual([
+    customGroupKey("fav"),
+    "default:Meta",
+  ]);
+  expect(deleteCustomGroup(layout, catalog, "fav").hiddenGroups).toEqual([
+    "default:Meta",
+    "default:Gone",
   ]);
 });

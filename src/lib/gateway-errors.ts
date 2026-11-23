@@ -1,3 +1,4 @@
+import { appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import { APICallError } from "@ai-sdk/provider";
 import { RetryError } from "ai";
 import { AiGatewayDoesNotExist, AiGatewayUnauthorizedError } from "ai-gateway-provider";
@@ -109,14 +110,13 @@ export const isDlpOrGuardrailsBlock = (
 export const mapUpstreamError = (
   error: unknown,
   context: { provider: ModelProvider },
-): { status: number; message: string } => {
+): { status: number; message: string; code?: ErrorCode; params?: ErrorParams } => {
   const unwrapped = unwrapError(error);
 
   if (unwrapped instanceof ProviderConfigurationError) {
     return {
       status: 503,
-      message:
-        "AI Gateway or provider configuration is incomplete. Please check server environment variables.",
+      ...appError("gatewayConfigIncomplete"),
     };
   }
 
@@ -126,8 +126,7 @@ export const mapUpstreamError = (
   ) {
     return {
       status: 502,
-      message:
-        "AI Gateway configuration is invalid or the gateway does not exist. Please check server environment variables.",
+      ...appError("gatewayInvalid"),
     };
   }
 
@@ -138,31 +137,28 @@ export const mapUpstreamError = (
   if (/\b(2001|2009)\b|gateway does not exist|authentication active/i.test(errorText)) {
     return {
       status: 502,
-      message:
-        "AI Gateway configuration is invalid or the gateway does not exist. Please check server environment variables.",
+      ...appError("gatewayInvalid"),
     };
   }
 
   if (isDlpOrGuardrailsBlock(statusCode, errorText, headers)) {
     return {
       status: 422,
-      message: "The request or response was blocked by Cloudflare AI Gateway security/DLP policy.",
+      ...appError("dlpBlocked"),
     };
   }
 
   if (statusCode === 403 && /\b5035\b|workers paid|paid plan|requires a paid/i.test(errorText)) {
     return {
       status: 403,
-      message:
-        "This model requires a Cloudflare Workers Paid plan and is not available on Free accounts.",
+      ...appError("paidPlanRequired"),
     };
   }
 
   if (statusCode === 429 || /\b429\b|rate limit|neurons|quota/i.test(errorText)) {
     return {
       status: 429,
-      message:
-        "Daily free quota or gateway rate limit reached. Please try again later or switch models.",
+      ...appError("rateLimited"),
     };
   }
 
@@ -174,13 +170,12 @@ export const mapUpstreamError = (
   ) {
     return {
       status: 502,
-      message:
-        "This external model does not have a valid provider key (BYOK) configured in AI Gateway.",
+      ...appError("byokMissing"),
     };
   }
 
   return {
     status: 502,
-    message: "The AI provider returned an error. Please try again.",
+    ...appError("providerError"),
   };
 };

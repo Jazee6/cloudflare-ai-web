@@ -1,3 +1,4 @@
+import { type AppError, appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import * as v from "valibot";
 import { type ContextAttachmentData, truncateAttachmentContent } from "@/lib/context-attachments";
 import { ContextDocumentError, convertToMarkdownWithWorkersAi } from "@/lib/context-document";
@@ -10,9 +11,14 @@ export type WebFetchMode = "auto" | "zero-quota" | "browser";
 
 export class ContextUrlError extends Error {
   readonly status: number;
+  readonly code?: ErrorCode;
+  readonly params?: ErrorParams;
 
-  constructor(message: string, status: number) {
-    super(message);
+  constructor(error: string | AppError, status: number) {
+    const detail = typeof error === "string" ? { message: error } : error;
+    super(detail.message);
+    this.code = detail.code;
+    this.params = detail.params;
     this.name = "ContextUrlError";
     this.status = status;
   }
@@ -95,10 +101,7 @@ const fetchMarkdownWithBrowserRun = async (
   const accountId = deps?.accountId ?? process.env.CF_ACCOUNT_ID;
   const browserRunToken = deps?.browserRunToken ?? process.env.CF_BROWSER_RUN_TOKEN;
   if (!accountId || !browserRunToken) {
-    throw new ContextUrlError(
-      "Dynamic webpage rendering requires CF_ACCOUNT_ID and CF_BROWSER_RUN_TOKEN.",
-      503,
-    );
+    throw new ContextUrlError(appError("browserRunNotConfigured"), 503);
   }
 
   const fetchImpl = deps?.fetchImpl ?? fetch;
@@ -117,24 +120,21 @@ const fetchMarkdownWithBrowserRun = async (
       },
     );
   } catch {
-    throw new ContextUrlError("Cloudflare Browser Run service is unavailable.", 502);
+    throw new ContextUrlError(appError("browserRunUnavailable"), 502);
   }
 
   // Never retry on 429 to protect the Free plan 10 min/day and 1 req/10s budget.
   if (response.status === 429) {
-    throw new ContextUrlError(
-      "Browser Run free quota or rate limit reached (10 min/day, 1 req/10s). Please try again later.",
-      429,
-    );
+    throw new ContextUrlError(appError("browserRunRateLimited"), 429);
   }
 
   if (!response.ok) {
-    throw new ContextUrlError("Browser Run failed to render this webpage.", 502);
+    throw new ContextUrlError(appError("browserRunRenderFailed"), 502);
   }
 
   const parsed = v.safeParse(browserRunResponseSchema, await response.json().catch(() => null));
   if (!parsed.success) {
-    throw new ContextUrlError("Browser Run returned an invalid response.", 502);
+    throw new ContextUrlError(appError("browserRunInvalid"), 502);
   }
 
   return typeof parsed.output.result === "string"
@@ -151,7 +151,7 @@ const buildWebpageAttachment = (input: {
 }): ContextAttachmentData => {
   const truncated = truncateAttachmentContent(input.markdown);
   if (!truncated.content) {
-    throw new ContextUrlError("No readable content was found on this webpage.", 422);
+    throw new ContextUrlError(appError("noReadableWebpage"), 422);
   }
 
   return {
@@ -214,7 +214,7 @@ export const extractWebpageAttachment = async (
         markdown,
       });
     }
-    throw new ContextUrlError(`Target webpage returned HTTP ${direct.status}.`, 502);
+    throw new ContextUrlError(appError("webpageHttpStatus", { status: direct.status }), 502);
   }
 
   if (direct.contentType === "text/markdown") {
@@ -244,7 +244,10 @@ export const extractWebpageAttachment = async (
     direct.contentType !== "application/xhtml+xml" &&
     direct.contentType !== ""
   ) {
-    throw new ContextUrlError(`Unsupported webpage content type: ${direct.contentType}.`, 415);
+    throw new ContextUrlError(
+      appError("unsupportedWebpageType", { type: direct.contentType }),
+      415,
+    );
   }
 
   const html = new TextDecoder().decode(direct.bytes);
@@ -277,7 +280,7 @@ export const extractWebpageAttachment = async (
       }
     } catch (error) {
       if (error instanceof ContextDocumentError && error.status === 429) {
-        throw new ContextUrlError(error.message, 429);
+        throw new ContextUrlError(error, 429);
       }
       toMarkdownError = error;
     }
@@ -306,7 +309,7 @@ export const extractWebpageAttachment = async (
   }
 
   if (toMarkdownError instanceof ContextDocumentError) {
-    throw new ContextUrlError(toMarkdownError.message, toMarkdownError.status);
+    throw new ContextUrlError(toMarkdownError, toMarkdownError.status);
   }
   if (toMarkdownError instanceof Error && toMarkdownError.name !== "ContextDocumentError") {
     throw toMarkdownError;
@@ -314,8 +317,8 @@ export const extractWebpageAttachment = async (
 
   throw new ContextUrlError(
     mode === "zero-quota"
-      ? "This webpage requires dynamic JavaScript rendering, which is disabled by your zero-quota setting."
-      : "This webpage requires dynamic JavaScript rendering, and Browser Run is not configured.",
+      ? appError("dynamicRenderingZeroQuota")
+      : appError("dynamicRenderingUnavailable"),
     422,
   );
 };

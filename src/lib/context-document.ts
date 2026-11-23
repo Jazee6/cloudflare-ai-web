@@ -1,3 +1,4 @@
+import { type AppError, appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import {
   type ContextAttachmentData,
   MAX_DOCUMENT_BYTES,
@@ -123,9 +124,14 @@ export const DOCUMENT_FILE_ACCEPT = [
 
 export class ContextDocumentError extends Error {
   readonly status: number;
+  readonly code?: ErrorCode;
+  readonly params?: ErrorParams;
 
-  constructor(message: string, status: number) {
-    super(message);
+  constructor(error: string | AppError, status: number) {
+    const detail = typeof error === "string" ? { message: error } : error;
+    super(detail.message);
+    this.code = detail.code;
+    this.params = detail.params;
     this.name = "ContextDocumentError";
     this.status = status;
   }
@@ -192,17 +198,17 @@ export const classifyDocumentFile = (
     return { kind: "to-markdown", mediaType };
   }
 
-  throw new ContextDocumentError("Unsupported document format.", 415);
+  throw new ContextDocumentError(appError("unsupportedDocument"), 415);
 };
 
 export const decodeUtf8Text = (bytes: Uint8Array): string => {
   if (bytes.includes(0)) {
-    throw new ContextDocumentError("Binary files cannot be read as plain text.", 400);
+    throw new ContextDocumentError(appError("binaryDocument"), 400);
   }
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
-    throw new ContextDocumentError("Plain-text documents must be valid UTF-8.", 400);
+    throw new ContextDocumentError(appError("invalidUtf8"), 400);
   }
 };
 
@@ -220,7 +226,7 @@ export const convertToMarkdownWithWorkersAi = async (
   const accountId = deps?.accountId ?? process.env.CF_ACCOUNT_ID;
   const apiToken = deps?.apiToken ?? process.env.CF_WORKERS_AI_TOKEN;
   if (!accountId || !apiToken) {
-    throw new ContextDocumentError("Document conversion is not configured on the server.", 503);
+    throw new ContextDocumentError(appError("documentConversionNotConfigured"), 503);
   }
 
   const fetchImpl = deps?.fetchImpl ?? fetch;
@@ -244,7 +250,7 @@ export const convertToMarkdownWithWorkersAi = async (
       },
     );
   } catch {
-    throw new ContextDocumentError("Document conversion service is unavailable.", 502);
+    throw new ContextDocumentError(appError("documentConversionUnavailable"), 502);
   }
 
   if (response.status === 429) {
@@ -255,12 +261,12 @@ export const convertToMarkdownWithWorkersAi = async (
   }
 
   if (!response.ok) {
-    throw new ContextDocumentError("Failed to convert document to Markdown.", 502);
+    throw new ContextDocumentError(appError("documentConversionFailed"), 502);
   }
 
   const parsed = v.safeParse(toMarkdownResponseSchema, await response.json().catch(() => null));
   if (!parsed.success || parsed.output.result.length === 0) {
-    throw new ContextDocumentError("Document conversion returned an invalid response.", 502);
+    throw new ContextDocumentError(appError("documentConversionInvalid"), 502);
   }
 
   const first = parsed.output.result[0];
@@ -280,10 +286,10 @@ export const extractDocumentAttachment = async (
   deps?: WorkersAiDocumentDeps,
 ): Promise<ContextAttachmentData> => {
   if (file.size <= 0) {
-    throw new ContextDocumentError("Uploaded document is empty.", 400);
+    throw new ContextDocumentError(appError("emptyDocument"), 400);
   }
   if (file.size > MAX_DOCUMENT_BYTES) {
-    throw new ContextDocumentError("Document exceeds the 4 MiB upload limit.", 413);
+    throw new ContextDocumentError(appError("documentTooLarge"), 413);
   }
 
   const filename = file.name || "document";
@@ -306,7 +312,7 @@ export const extractDocumentAttachment = async (
 
   const truncated = truncateAttachmentContent(markdown);
   if (!truncated.content) {
-    throw new ContextDocumentError("No readable text could be extracted from this document.", 422);
+    throw new ContextDocumentError(appError("noReadableDocumentText"), 422);
   }
 
   return {

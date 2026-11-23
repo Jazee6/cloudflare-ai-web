@@ -1,3 +1,4 @@
+import { appError, type AppError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 import type { Citation } from "@/lib/response-metadata";
@@ -18,9 +19,14 @@ export interface KnowledgeBaseInstance {
 
 export class KnowledgeBaseError extends Error {
   readonly status: number;
+  readonly code?: ErrorCode;
+  readonly params?: ErrorParams;
 
-  constructor(message: string, status: number) {
-    super(message);
+  constructor(error: string | AppError, status: number) {
+    const detail = typeof error === "string" ? { message: error } : error;
+    super(detail.message);
+    this.code = detail.code;
+    this.params = detail.params;
     this.name = "KnowledgeBaseError";
     this.status = status;
   }
@@ -176,7 +182,7 @@ export const searchKnowledgeBase = async (
 ): Promise<KnowledgeBaseSearchResult> => {
   const allowedInstances = getConfiguredKnowledgeBases(env);
   if (allowedInstances.length === 0) {
-    throw new KnowledgeBaseError("Knowledge Base search is not configured on the server.", 503);
+    throw new KnowledgeBaseError(appError("knowledgeBaseNotConfigured"), 503);
   }
 
   const instance = allowedInstances.find((entry) => entry.id === input.instanceId);
@@ -222,7 +228,7 @@ export const searchKnowledgeBase = async (
       },
     );
   } catch {
-    throw new KnowledgeBaseError("Knowledge Base search service is unavailable.", 502);
+    throw new KnowledgeBaseError(appError("knowledgeBaseUnavailable"), 502);
   }
 
   if (response.status === 429) {
@@ -240,12 +246,12 @@ export const searchKnowledgeBase = async (
   }
 
   if (!response.ok) {
-    throw new KnowledgeBaseError("Knowledge Base search failed. Please try again.", 502);
+    throw new KnowledgeBaseError(appError("knowledgeBaseFailed"), 502);
   }
 
   const parsed = v.safeParse(aiSearchResponseSchema, await response.json().catch(() => null));
   if (!parsed.success) {
-    throw new KnowledgeBaseError("Knowledge Base search returned an invalid response.", 502);
+    throw new KnowledgeBaseError(appError("knowledgeBaseInvalid"), 502);
   }
 
   const chunks = (parsed.output.result.chunks ?? [])

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { createContextAttachmentPart } from "@/lib/context-attachments";
 import type { UIMessage } from "ai";
+import { createFailedResponse } from "@/lib/failed-response";
 import {
   buildModelContext,
   encodeGeneratedImages,
@@ -171,4 +172,38 @@ test("generated images count toward the most recent image limit", () => {
   const files = context.flatMap((message) => message.parts.filter((part) => part.type === "file"));
   expect(files).toHaveLength(5);
   expect(context.at(-1)?.parts[0].type).toBe("file");
+});
+
+test("keeps at most the Context Message Limit of recent messages", () => {
+  const messages = ["1", "2", "3", "4", "5"].map((id, index) =>
+    makeMessage(id, id, index % 2 === 0 ? "user" : "assistant"),
+  );
+  const result = buildModelContext(messages, { maxMessages: 3 });
+  expect(result!.map((message) => message.id)).toEqual(["3", "4", "5"]);
+});
+
+test("never starts a Model Context with an assistant message", () => {
+  const messages = ["1", "2", "3", "4", "5"].map((id, index) =>
+    makeMessage(id, id, index % 2 === 0 ? "user" : "assistant"),
+  );
+  const result = buildModelContext(messages, { maxMessages: 2 });
+  expect(result!.map((message) => message.id)).toEqual(["5"]);
+});
+
+test("leaves Failed Responses out of the Model Context and the limit", () => {
+  const failed: Message = {
+    ...createFailedResponse({ message: "boom" }),
+    sessionId: "test",
+    createdAt: new Date(),
+  } as Message;
+  const messages = [
+    makeMessage("1", "a"),
+    makeMessage("2", "b", "assistant"),
+    makeMessage("3", "c"),
+    failed,
+    makeMessage("4", "d"),
+  ];
+  const result = buildModelContext(messages, { maxMessages: 3 });
+  // The last three are 2, 3 and 4; the leading assistant message is dropped.
+  expect(result!.map((message) => message.id)).toEqual(["3", "4"]);
 });

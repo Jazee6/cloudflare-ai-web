@@ -17,9 +17,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ContextAttachmentData } from "@/lib/context-attachments";
-
-const formatChars = (count: number) =>
-  count >= 1000 ? `${(count / 1000).toFixed(1)}k chars` : `${count} chars`;
+import { useI18n } from "@/hooks/use-i18n";
 
 const getSafeHttpUrl = (rawUrl: string | undefined): string | undefined => {
   if (!rawUrl) {
@@ -44,8 +42,16 @@ export const ContextAttachmentItem = ({
   onRemove?: () => void;
   className?: string;
 }) => {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  const formatChars = (count: number) =>
+    t("attachment.chars", {
+      count: new Intl.NumberFormat(locale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(count),
+    });
   const preview =
     attachment.content.length > 360
       ? `${attachment.content.slice(0, 360).trimEnd()}…`
@@ -62,7 +68,7 @@ export const ContextAttachmentItem = ({
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Badge variant="secondary">{attachment.method}</Badge>
         <span>{description}</span>
-        {attachment.truncated && <Badge variant="outline">Truncated</Badge>}
+        {attachment.truncated && <Badge variant="outline">{t("attachment.truncated")}</Badge>}
         {safeSourceUrl && (
           <a
             href={safeSourceUrl}
@@ -87,7 +93,7 @@ export const ContextAttachmentItem = ({
           <HoverCardTrigger
             render={
               <AttachmentTrigger
-                aria-label={`Preview ${attachment.title}`}
+                aria-label={t("attachment.preview", { name: attachment.title })}
                 onClick={() => setOpen(true)}
               />
             }
@@ -103,7 +109,7 @@ export const ContextAttachmentItem = ({
             <AttachmentActions>
               <AttachmentAction
                 type="button"
-                aria-label={`Remove ${attachment.title}`}
+                aria-label={t("attachment.remove", { name: attachment.title })}
                 onClick={onRemove}
               >
                 <X />
@@ -115,7 +121,7 @@ export const ContextAttachmentItem = ({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-xs font-medium">{attachment.title}</span>
-              {attachment.truncated && <Badge variant="outline">Truncated</Badge>}
+              {attachment.truncated && <Badge variant="outline">{t("attachment.truncated")}</Badge>}
             </div>
             <p className="line-clamp-6 whitespace-pre-wrap text-xs text-muted-foreground">
               {preview}

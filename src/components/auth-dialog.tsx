@@ -20,11 +20,12 @@ import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const AUTH_SESSION_UPDATED_EVENT = "cf-ai:authenticated";
 
 const formSchema = v.object({
-  password: v.pipe(v.string(), v.minLength(1, "Password is required.")),
+  password: v.pipe(v.string(), v.minLength(1, "auth.passwordRequired")),
 });
 
 const AuthDialog = ({
@@ -36,6 +37,7 @@ const AuthDialog = ({
   onOpenChange: (open: boolean) => void;
   onAuthenticated: () => void;
 }) => {
+  const { t, tText } = useI18n();
   const isMobile = useIsMobile();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -63,12 +65,12 @@ const AuthDialog = ({
           }
           onAuthenticated();
         } else if (res.status === 401) {
-          setError("Incorrect password.");
+          setError(t("auth.incorrectPassword"));
         } else {
-          setError("Authentication failed. Please try again.");
+          setError(t("auth.failed"));
         }
       } catch {
-        setError("Network error. Please try again.");
+        setError(t("auth.networkError"));
       } finally {
         setSubmitting(false);
       }
@@ -89,14 +91,14 @@ const AuthDialog = ({
           typeof firstError === "string"
             ? firstError
             : (firstError as { message?: string } | undefined)?.message;
-        const displayError = fieldMessage ?? error;
+        const displayError = fieldMessage ? tText(fieldMessage) : error;
         const invalid = Boolean(displayError);
 
         return (
           <Field data-invalid={invalid || undefined}>
             <Input
               aria-invalid={invalid || undefined}
-              placeholder="password"
+              placeholder={t("auth.password")}
               type="password"
               value={field.state.value}
               onBlur={field.handleBlur}
@@ -115,7 +117,7 @@ const AuthDialog = ({
   const submitButton = (
     <Button type="submit" disabled={submitting}>
       {submitting && <Spinner />}
-      Submit
+      {t("auth.submit")}
     </Button>
   );
 
@@ -125,7 +127,7 @@ const AuthDialog = ({
         <DrawerContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <DrawerHeader>
-              <DrawerTitle>Please enter your password to continue</DrawerTitle>
+              <DrawerTitle>{t("auth.title")}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4">{passwordField}</div>
             <DrawerFooter>{submitButton}</DrawerFooter>
@@ -139,7 +141,7 @@ const AuthDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Please enter your password to continue</DialogTitle>
+          <DialogTitle>{t("auth.title")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>

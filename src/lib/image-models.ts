@@ -1,6 +1,8 @@
+import { appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 import type { Model } from "@/lib/models";
+import type { MessageKey } from "@/locales/en";
 
 export const MAX_IMAGE_PROMPT_LENGTH = 8_000;
 export const MAX_REFERENCE_IMAGES = 4;
@@ -54,7 +56,8 @@ export interface ImageModelProfile {
   guidance?: ImageGuidanceSpec;
   supportsSeed: boolean;
   supportsNegativePrompt: boolean;
-  highCostHint?: string;
+  /** Message key for a warning that the model is slow or costly. */
+  highCostHint?: MessageKey;
 }
 
 const FLUX_2_DEV_PROFILE: ImageModelProfile = {
@@ -65,7 +68,7 @@ const FLUX_2_DEV_PROFILE: ImageModelProfile = {
   steps: { field: "steps", min: 4, max: 25, default: 20 },
   supportsSeed: true,
   supportsNegativePrompt: false,
-  highCostHint: "Slower (~50s) and consumes more free daily Neurons.",
+  highCostHint: "imageParams.slowAndCostly",
 };
 
 const FLUX_2_KLEIN_PROFILE: ImageModelProfile = {
@@ -227,13 +230,15 @@ export interface NormalizedImageParams {
 const validateDimension = (
   value: number,
   spec: ImageDimensionSpec,
-  label: "Width" | "Height",
-): { ok: true; value: number } | { ok: false; message: string } => {
+  label: "width" | "height",
+):
+  | { ok: true; value: number }
+  | { ok: false; message: string; code?: ErrorCode; params?: ErrorParams } => {
   if (!Number.isInteger(value) || value < spec.min || value > spec.max) {
-    return { ok: false, message: `${label} must be between ${spec.min} and ${spec.max}.` };
+    return { ok: false, ...appError(`${label}Range`, { min: spec.min, max: spec.max }) };
   }
   if (value % spec.step !== 0) {
-    return { ok: false, message: `${label} must be a multiple of ${spec.step}.` };
+    return { ok: false, ...appError(`${label}Step`, { step: spec.step }) };
   }
   return { ok: true, value };
 };
@@ -245,14 +250,16 @@ const validateDimension = (
 export const sanitizeImageParams = (
   model: ImageModelRef,
   rawParams: unknown,
-): { ok: true; params: NormalizedImageParams } | { ok: false; message: string } => {
+):
+  | { ok: true; params: NormalizedImageParams }
+  | { ok: false; message: string; code?: ErrorCode; params?: ErrorParams } => {
   if (rawParams === undefined || rawParams === null) {
     return { ok: true, params: {} };
   }
 
   const parsed = v.safeParse(imageGenerationParamsSchema, rawParams);
   if (!parsed.success) {
-    return { ok: false, message: "Invalid image generation parameters." };
+    return { ok: false, ...appError("invalidImageGenerationParams") };
   }
 
   const profile = getImageModelProfile(model);
@@ -263,7 +270,7 @@ export const sanitizeImageParams = (
     if (!profile.aspectRatios.includes(input.aspectRatio)) {
       return {
         ok: false,
-        message: `Aspect ratio must be one of ${profile.aspectRatios.join(", ")}.`,
+        ...appError("aspectRatioOptions", { options: profile.aspectRatios.join(", ") }),
       };
     }
     normalized.aspectRatio = input.aspectRatio;
@@ -271,14 +278,14 @@ export const sanitizeImageParams = (
 
   if (profile.dimensions) {
     if (input.width !== undefined) {
-      const check = validateDimension(input.width, profile.dimensions, "Width");
+      const check = validateDimension(input.width, profile.dimensions, "width");
       if (!check.ok) {
         return check;
       }
       normalized.width = check.value;
     }
     if (input.height !== undefined) {
-      const check = validateDimension(input.height, profile.dimensions, "Height");
+      const check = validateDimension(input.height, profile.dimensions, "height");
       if (!check.ok) {
         return check;
       }
@@ -294,7 +301,7 @@ export const sanitizeImageParams = (
     ) {
       return {
         ok: false,
-        message: `Steps must be between ${profile.steps.min} and ${profile.steps.max}.`,
+        ...appError("stepsRange", { min: profile.steps.min, max: profile.steps.max }),
       };
     }
     normalized.steps = input.steps;
@@ -308,7 +315,10 @@ export const sanitizeImageParams = (
     ) {
       return {
         ok: false,
-        message: `Guidance must be between ${profile.guidance.min} and ${profile.guidance.max}.`,
+        ...appError("guidanceRange", {
+          min: profile.guidance.min,
+          max: profile.guidance.max,
+        }),
       };
     }
     normalized.guidance = Math.round(input.guidance * 100) / 100;
@@ -316,7 +326,7 @@ export const sanitizeImageParams = (
 
   if (profile.supportsSeed && input.seed !== undefined) {
     if (!Number.isInteger(input.seed) || input.seed < 0 || input.seed > MAX_SEED) {
-      return { ok: false, message: `Seed must be an integer between 0 and ${MAX_SEED}.` };
+      return { ok: false, ...appError("seedRange", { max: MAX_SEED }) };
     }
     normalized.seed = input.seed;
   }
@@ -326,7 +336,7 @@ export const sanitizeImageParams = (
     if (trimmed.length > MAX_NEGATIVE_PROMPT_LENGTH) {
       return {
         ok: false,
-        message: `Negative prompt must be at most ${MAX_NEGATIVE_PROMPT_LENGTH} characters.`,
+        ...appError("negativePromptTooLong", { max: MAX_NEGATIVE_PROMPT_LENGTH }),
       };
     }
     if (trimmed.length > 0) {
@@ -359,13 +369,13 @@ export const adaptImageParamsForModel = (
   if (profile.dimensions) {
     if (
       rawParams.width !== undefined &&
-      validateDimension(rawParams.width, profile.dimensions, "Width").ok
+      validateDimension(rawParams.width, profile.dimensions, "width").ok
     ) {
       adapted.width = rawParams.width;
     }
     if (
       rawParams.height !== undefined &&
-      validateDimension(rawParams.height, profile.dimensions, "Height").ok
+      validateDimension(rawParams.height, profile.dimensions, "height").ok
     ) {
       adapted.height = rawParams.height;
     }

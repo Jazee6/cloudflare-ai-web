@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
+import { translateNow } from "@/lib/i18n";
 
 export interface AuthDialogState {
   open: boolean;
@@ -36,7 +37,7 @@ export const useAuthRetry = (retry: () => unknown) => {
     pendingActionRef.current = null;
     if (retriedRef.current) {
       retriedRef.current = false;
-      toast.add({ title: "Authentication failed. Please try again.", type: "error" });
+      toast.add({ title: translateNow("auth.failed"), type: "error" });
       return;
     }
     setOpen(true);

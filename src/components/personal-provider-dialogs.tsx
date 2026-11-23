@@ -39,23 +39,24 @@ import {
   type PersonalProvider,
   personalProviderSchema,
 } from "@/lib/personal-providers";
+import { useI18n } from "@/hooks/use-i18n";
+import { type AppError, appError, parseAppError } from "@/lib/error-codes";
+import { translateNow } from "@/lib/i18n";
 
 type Connection = "deployment" | "own";
 
 const ACCOUNT_ID_RE = /^[a-f0-9]{32}$/i;
 const GATEWAY_ID_RE = /^[a-z0-9-]{1,64}$/;
 
+/** Schema messages are message keys, translated where the error is shown. */
 const providerFormSchema = (deploymentAvailable: boolean) =>
   v.pipe(
     v.object({
       label: v.pipe(
         v.string(),
         v.trim(),
-        v.minLength(1, "Enter a name."),
-        v.maxLength(
-          MAX_PROVIDER_LABEL_LENGTH,
-          `Use at most ${MAX_PROVIDER_LABEL_LENGTH} characters.`,
-        ),
+        v.minLength(1, "personal.nameRequired"),
+        v.maxLength(MAX_PROVIDER_LABEL_LENGTH, "personal.nameTooLong"),
       ),
       provider: v.picklist(GATEWAY_PROVIDER_IDS),
       connection: v.picklist(["deployment", "own"]),
@@ -68,7 +69,7 @@ const providerFormSchema = (deploymentAvailable: boolean) =>
       v.partialCheck(
         [["connection"]],
         (input) => input.connection === "own" || deploymentAvailable,
-        "This deployment has no AI Gateway for Personal Providers.",
+        "personal.noDeploymentGateway",
       ),
       ["connection"],
     ),
@@ -76,7 +77,7 @@ const providerFormSchema = (deploymentAvailable: boolean) =>
       v.partialCheck(
         [["connection"], ["apiKey"]],
         (input) => input.connection === "own" || input.apiKey.trim().length > 0,
-        "Enter your API key to use this deployment's gateway.",
+        "personal.apiKeyRequired",
       ),
       ["apiKey"],
     ),
@@ -84,7 +85,7 @@ const providerFormSchema = (deploymentAvailable: boolean) =>
       v.partialCheck(
         [["connection"], ["accountId"]],
         (input) => input.connection === "deployment" || ACCOUNT_ID_RE.test(input.accountId.trim()),
-        "Account ID is 32 hexadecimal characters.",
+        "personal.accountIdInvalid",
       ),
       ["accountId"],
     ),
@@ -92,7 +93,7 @@ const providerFormSchema = (deploymentAvailable: boolean) =>
       v.partialCheck(
         [["connection"], ["gatewayId"]],
         (input) => input.connection === "deployment" || GATEWAY_ID_RE.test(input.gatewayId.trim()),
-        "Use lowercase letters, digits and hyphens.",
+        "personal.gatewayIdInvalid",
       ),
       ["gatewayId"],
     ),
@@ -132,6 +133,11 @@ export const PersonalProviderDialog = ({
   deploymentAvailable: boolean;
   onSave: (provider: PersonalProvider) => void;
 }) => {
+  const { t, tText } = useI18n();
+  const fieldError = (errors: unknown[]) => {
+    const message = firstErrorMessage(errors);
+    return message ? tText(message).replace("{max}", String(MAX_PROVIDER_LABEL_LENGTH)) : undefined;
+  };
   const form = useForm({
     defaultValues: getProviderDefaults(provider, deploymentAvailable),
     validators: { onSubmit: providerFormSchema(deploymentAvailable) },
@@ -176,36 +182,34 @@ export const PersonalProviderDialog = ({
     <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={provider ? "Edit provider" : "Add provider"}
+      title={provider ? t("personal.editProvider") : t("providers.add")}
       onSubmit={() => void form.handleSubmit()}
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
-          <Button type="submit">{provider ? "Save" : "Add"}</Button>
+          <Button type="submit">{provider ? t("common.save") : t("addModels.add")}</Button>
         </>
       }
     >
       <FieldGroup className="gap-4">
         <form.Field name="label">
           {(field) => {
-            const error = firstErrorMessage(field.state.meta.errors);
+            const error = fieldError(field.state.meta.errors);
             return (
               <Field data-invalid={error ? "true" : undefined}>
-                <FieldLabel htmlFor="provider-label">Name</FieldLabel>
+                <FieldLabel htmlFor="provider-label">{t("personal.name")}</FieldLabel>
                 <Input
                   id="provider-label"
-                  placeholder="My OpenAI"
+                  placeholder={t("personal.namePlaceholder")}
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(event) => field.handleChange(event.target.value)}
                   aria-invalid={Boolean(error)}
                   autoFocus
                 />
-                <FieldDescription>
-                  Also names the provider's group in the model picker.
-                </FieldDescription>
+                <FieldDescription>{t("personal.nameDescription")}</FieldDescription>
                 {error && <FieldError>{error}</FieldError>}
               </Field>
             );
@@ -215,7 +219,7 @@ export const PersonalProviderDialog = ({
         <form.Field name="provider">
           {(field) => (
             <Field>
-              <FieldLabel>Service</FieldLabel>
+              <FieldLabel>{t("personal.service")}</FieldLabel>
               <Select
                 items={GATEWAY_PROVIDERS}
                 value={field.state.value}
@@ -237,19 +241,17 @@ export const PersonalProviderDialog = ({
                   ))}
                 </SelectContent>
               </Select>
-              {providerLocked && (
-                <FieldDescription>Remove its models to switch to another service.</FieldDescription>
-              )}
+              {providerLocked && <FieldDescription>{t("personal.serviceLocked")}</FieldDescription>}
             </Field>
           )}
         </form.Field>
 
         <form.Field name="connection">
           {(field) => {
-            const error = firstErrorMessage(field.state.meta.errors);
+            const error = fieldError(field.state.meta.errors);
             return (
               <Field data-invalid={error ? "true" : undefined}>
-                <FieldLabel>AI Gateway</FieldLabel>
+                <FieldLabel>{t("personal.gateway")}</FieldLabel>
                 <ToggleGroup
                   multiple={false}
                   variant="outline"
@@ -261,14 +263,14 @@ export const PersonalProviderDialog = ({
                   }}
                 >
                   <ToggleGroupItem value="deployment" disabled={!deploymentAvailable}>
-                    This deployment's
+                    {t("personal.deploymentGateway")}
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="own">My own</ToggleGroupItem>
+                  <ToggleGroupItem value="own">{t("personal.ownGateway")}</ToggleGroupItem>
                 </ToggleGroup>
                 <FieldDescription>
                   {deploymentAvailable
-                    ? "This deployment's gateway requires your own API key."
-                    : "This deployment offers no gateway, so add your own."}
+                    ? t("personal.deploymentGatewayHint")
+                    : t("personal.noDeploymentGatewayHint")}
                 </FieldDescription>
                 {error && <FieldError>{error}</FieldError>}
               </Field>
@@ -283,10 +285,12 @@ export const PersonalProviderDialog = ({
                 <>
                   <form.Field name="accountId">
                     {(field) => {
-                      const error = firstErrorMessage(field.state.meta.errors);
+                      const error = fieldError(field.state.meta.errors);
                       return (
                         <Field data-invalid={error ? "true" : undefined}>
-                          <FieldLabel htmlFor="provider-account">Account ID</FieldLabel>
+                          <FieldLabel htmlFor="provider-account">
+                            {t("personal.accountId")}
+                          </FieldLabel>
                           <Input
                             id="provider-account"
                             autoComplete="off"
@@ -303,10 +307,12 @@ export const PersonalProviderDialog = ({
                   </form.Field>
                   <form.Field name="gatewayId">
                     {(field) => {
-                      const error = firstErrorMessage(field.state.meta.errors);
+                      const error = fieldError(field.state.meta.errors);
                       return (
                         <Field data-invalid={error ? "true" : undefined}>
-                          <FieldLabel htmlFor="provider-gateway">Gateway name</FieldLabel>
+                          <FieldLabel htmlFor="provider-gateway">
+                            {t("personal.gatewayName")}
+                          </FieldLabel>
                           <Input
                             id="provider-gateway"
                             autoComplete="off"
@@ -324,19 +330,19 @@ export const PersonalProviderDialog = ({
                   <form.Field name="token">
                     {(field) => (
                       <Field>
-                        <FieldLabel htmlFor="provider-token">Gateway token</FieldLabel>
+                        <FieldLabel htmlFor="provider-token">
+                          {t("personal.gatewayToken")}
+                        </FieldLabel>
                         <Input
                           id="provider-token"
                           type="password"
                           autoComplete="off"
-                          placeholder="Optional"
+                          placeholder={t("personal.optional")}
                           value={field.state.value}
                           onBlur={field.handleBlur}
                           onChange={(event) => field.handleChange(event.target.value)}
                         />
-                        <FieldDescription>
-                          Needed when the gateway has authentication on.
-                        </FieldDescription>
+                        <FieldDescription>{t("personal.gatewayTokenHint")}</FieldDescription>
                       </Field>
                     )}
                   </form.Field>
@@ -344,24 +350,22 @@ export const PersonalProviderDialog = ({
               )}
               <form.Field name="apiKey">
                 {(field) => {
-                  const error = firstErrorMessage(field.state.meta.errors);
+                  const error = fieldError(field.state.meta.errors);
                   return (
                     <Field data-invalid={error ? "true" : undefined}>
-                      <FieldLabel htmlFor="provider-key">API key</FieldLabel>
+                      <FieldLabel htmlFor="provider-key">{t("personal.apiKey")}</FieldLabel>
                       <Input
                         id="provider-key"
                         type="password"
                         autoComplete="off"
-                        placeholder={connection === "own" ? "Optional" : undefined}
+                        placeholder={connection === "own" ? t("personal.optional") : undefined}
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(event.target.value)}
                         aria-invalid={Boolean(error)}
                       />
                       {connection === "own" && (
-                        <FieldDescription>
-                          Leave empty to use the gateway's stored keys or Unified Billing.
-                        </FieldDescription>
+                        <FieldDescription>{t("personal.apiKeyOwnHint")}</FieldDescription>
                       )}
                       {error && <FieldError>{error}</FieldError>}
                     </Field>
@@ -373,7 +377,7 @@ export const PersonalProviderDialog = ({
         </form.Subscribe>
 
         <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
-          {(error) => (typeof error === "string" ? <FieldError>{error}</FieldError> : null)}
+          {(error) => (typeof error === "string" ? <FieldError>{tText(error)}</FieldError> : null)}
         </form.Subscribe>
       </FieldGroup>
     </ResponsiveFormDialog>
@@ -390,13 +394,13 @@ const modelFormSchema = ({
   v.object({
     modelId: v.pipe(
       modelIdSchema,
-      v.check((id) => !takenIds.has(id), "This model is already added."),
+      v.check((id) => !takenIds.has(id), "personal.modelTaken"),
       v.check(
         (id) => dynamicAllowed || !isDynamicRoute(id),
-        "Dynamic Routes need your own AI Gateway.",
+        "personal.dynamicRouteNeedsOwnGateway",
       ),
     ),
-    name: v.pipe(v.string(), v.maxLength(100, "Use at most 100 characters.")),
+    name: v.pipe(v.string(), v.maxLength(100, "personal.displayNameTooLong")),
     type: v.picklist(["Text Generation", "Text to Image"]),
     image: v.boolean(),
     search: v.boolean(),
@@ -407,7 +411,7 @@ const modelFormSchema = ({
       v.check(
         (value) =>
           value === "" || (/^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value))),
-        "Enter a whole number of tokens.",
+        "personal.contextWindowInvalid",
       ),
     ),
   });
@@ -440,6 +444,7 @@ export const PersonalModelDialog = ({
   model?: PersonalModelDeclaration;
   onSave: (model: PersonalModelDeclaration) => void;
 }) => {
+  const { t, tText } = useI18n();
   const imageProtocol = IMAGE_PROTOCOLS[provider.provider];
   const supportsSearch = provider.provider === "google-ai-studio";
   const takenIds = useMemo(
@@ -490,7 +495,8 @@ export const PersonalModelDialog = ({
   ) => (
     <form.Field name={name}>
       {(field) => {
-        const error = firstErrorMessage(field.state.meta.errors);
+        const message = firstErrorMessage(field.state.meta.errors);
+        const error = message ? tText(message) : undefined;
         return (
           <Field data-invalid={error ? "true" : undefined}>
             <FieldLabel htmlFor={`personal-model-${name}`}>{label}</FieldLabel>
@@ -532,32 +538,32 @@ export const PersonalModelDialog = ({
     <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={model ? "Edit model" : "Add model"}
-      description="Only the capabilities you turn on are used."
+      title={model ? t("personal.editModel") : t("providers.addModel")}
+      description={t("personal.modelDescription")}
       onSubmit={() => void form.handleSubmit()}
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
-          <Button type="submit">{model ? "Save" : "Add"}</Button>
+          <Button type="submit">{model ? t("common.save") : t("addModels.add")}</Button>
         </>
       }
     >
       <FieldGroup className="gap-4">
-        {textField("modelId", "Model ID", {
-          placeholder: provider.gateway ? "gpt-5 or dynamic/route" : "gpt-5",
+        {textField("modelId", t("personal.modelId"), {
+          placeholder: provider.gateway ? t("personal.modelIdPlaceholderDynamic") : "gpt-5",
           description: provider.gateway
-            ? "The provider's model ID, or dynamic/<route> for a Dynamic Route."
-            : "The provider's model ID.",
+            ? t("personal.modelIdHintDynamic")
+            : t("personal.modelIdHint"),
         })}
-        {textField("name", "Display name", { placeholder: "Optional" })}
+        {textField("name", t("personal.displayName"), { placeholder: t("personal.optional") })}
 
         {imageProtocol && (
           <form.Field name="type">
             {(field) => (
               <Field>
-                <FieldLabel>Type</FieldLabel>
+                <FieldLabel>{t("personal.type")}</FieldLabel>
                 <ToggleGroup
                   multiple={false}
                   variant="outline"
@@ -568,8 +574,10 @@ export const PersonalModelDialog = ({
                     }
                   }}
                 >
-                  <ToggleGroupItem value="Text Generation">Chat</ToggleGroupItem>
-                  <ToggleGroupItem value="Text to Image">Image generation</ToggleGroupItem>
+                  <ToggleGroupItem value="Text Generation">
+                    {t("personal.typeChat")}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="Text to Image">{t("personal.typeImage")}</ToggleGroupItem>
                 </ToggleGroup>
               </Field>
             )}
@@ -580,11 +588,11 @@ export const PersonalModelDialog = ({
           {(type) =>
             type === "Text Generation" && (
               <>
-                {switchField("image", "Accepts images")}
-                {supportsSearch && switchField("search", "Google Search grounding")}
-                {switchField("reasoning", "Reasoning model")}
-                {textField("contextWindow", "Context window", {
-                  placeholder: "Optional, in tokens",
+                {switchField("image", t("personal.acceptsImages"))}
+                {supportsSearch && switchField("search", t("personal.searchGrounding"))}
+                {switchField("reasoning", t("personal.reasoningModel"))}
+                {textField("contextWindow", t("personal.contextWindow"), {
+                  placeholder: t("personal.contextWindowPlaceholder"),
                   inputMode: "numeric",
                 })}
               </>
@@ -598,7 +606,7 @@ export const PersonalModelDialog = ({
 
 type FetchState =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; error: AppError }
   | { status: "unsupported" }
   | { status: "ready"; models: { modelId: string; name?: string }[] };
 
@@ -614,6 +622,7 @@ export const FetchModelsDialog = ({
   provider: PersonalProvider;
   onAdd: (models: PersonalModelDeclaration[]) => void;
 }) => {
+  const { t, tError } = useI18n();
   const [state, setState] = useState<FetchState>({ status: "loading" });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -645,12 +654,15 @@ export const FetchModelsDialog = ({
           signal: controller.signal,
         });
         if (!response.ok) {
+          const text = response.status === 401 ? "" : await response.text();
           setState({
             status: "error",
-            message:
+            error:
               response.status === 401
-                ? "Sign in to this deployment first."
-                : (await response.text()) || "Unable to fetch models.",
+                ? { message: translateNow("personal.signInFirst") }
+                : text.trim()
+                  ? parseAppError(text)
+                  : { message: translateNow("personal.fetchFailed") },
           });
           return;
         }
@@ -669,7 +681,7 @@ export const FetchModelsDialog = ({
         );
       } catch {
         if (!controller.signal.aborted) {
-          setState({ status: "error", message: "Network error. Please try again." });
+          setState({ status: "error", error: appError("networkError") });
         }
       }
     })();
@@ -708,10 +720,11 @@ export const FetchModelsDialog = ({
         return (
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>No model list</EmptyTitle>
+              <EmptyTitle>{t("personal.noModelList")}</EmptyTitle>
               <EmptyDescription>
-                {GATEWAY_PROVIDERS[provider.provider]} does not publish its models here. Add them by
-                ID.
+                {t("personal.noModelListDescription", {
+                  service: GATEWAY_PROVIDERS[provider.provider],
+                })}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -723,13 +736,13 @@ export const FetchModelsDialog = ({
               <EmptyMedia variant="icon">
                 <TriangleAlertIcon />
               </EmptyMedia>
-              <EmptyTitle>Unable to fetch models</EmptyTitle>
-              <EmptyDescription>{state.message}</EmptyDescription>
+              <EmptyTitle>{t("personal.fetchFailed")}</EmptyTitle>
+              <EmptyDescription>{tError(state.error)}</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button type="button" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
                 <RefreshCwIcon />
-                Retry
+                {t("common.retry")}
               </Button>
             </EmptyContent>
           </Empty>
@@ -739,7 +752,7 @@ export const FetchModelsDialog = ({
           <div className="flex flex-col gap-2">
             <InputGroup>
               <InputGroupInput
-                placeholder="Filter models"
+                placeholder={t("addModels.filter")}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -749,7 +762,9 @@ export const FetchModelsDialog = ({
             </InputGroup>
             <div className="flex max-h-72 flex-col overflow-y-auto rounded-lg border p-1">
               {visible.length === 0 ? (
-                <p className="p-3 text-center text-sm text-muted-foreground">No matching models.</p>
+                <p className="p-3 text-center text-sm text-muted-foreground">
+                  {t("addModels.empty")}
+                </p>
               ) : (
                 visible.map((model) => {
                   const added = existing.has(model.modelId);
@@ -774,10 +789,7 @@ export const FetchModelsDialog = ({
                 })
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Models are added as chat models with no extra capabilities. Edit them to turn
-              capabilities on.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("personal.fetchHint")}</p>
           </div>
         );
     }
@@ -787,7 +799,7 @@ export const FetchModelsDialog = ({
     <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Fetch models"
+      title={t("providers.fetchModels")}
       onSubmit={() => {
         const models = (state.status === "ready" ? state.models : [])
           .filter((model) => selected.has(model.modelId))
@@ -803,14 +815,14 @@ export const FetchModelsDialog = ({
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button type="submit" disabled={selected.size === 0 || selected.size > remaining}>
             {selected.size > remaining
-              ? `Up to ${remaining} more`
+              ? t("personal.upToMore", { count: remaining })
               : selected.size > 0
-                ? `Add ${selected.size}`
-                : "Add"}
+                ? t("addModels.addCount", { count: selected.size })
+                : t("addModels.add")}
           </Button>
         </>
       }

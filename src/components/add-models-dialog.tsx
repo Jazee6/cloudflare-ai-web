@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import type { ModelLayoutGroup } from "@/lib/model-layout";
+import { useI18n } from "@/hooks/use-i18n";
 
 /** Picks Hidden Models to show in the model picker again. */
 export const AddModelsDialog = ({
@@ -20,6 +21,7 @@ export const AddModelsDialog = ({
   groups: ModelLayoutGroup[];
   onAdd: (modelIds: string[]) => void;
 }) => {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
 
@@ -55,7 +57,7 @@ export const AddModelsDialog = ({
     <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Add models"
+      title={t("addModels.title")}
       onSubmit={() => {
         onAdd([...selected]);
         onOpenChange(false);
@@ -63,10 +65,12 @@ export const AddModelsDialog = ({
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button type="submit" disabled={selected.size === 0}>
-            {selected.size > 0 ? `Add ${selected.size}` : "Add"}
+            {selected.size > 0
+              ? t("addModels.addCount", { count: selected.size })
+              : t("addModels.add")}
           </Button>
         </>
       }
@@ -74,7 +78,7 @@ export const AddModelsDialog = ({
       <div className="flex flex-col gap-2">
         <InputGroup>
           <InputGroupInput
-            placeholder="Filter models"
+            placeholder={t("addModels.filter")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -84,7 +88,7 @@ export const AddModelsDialog = ({
         </InputGroup>
         <div className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg border p-1">
           {visible.length === 0 ? (
-            <p className="p-3 text-center text-sm text-muted-foreground">No matching models.</p>
+            <p className="p-3 text-center text-sm text-muted-foreground">{t("addModels.empty")}</p>
           ) : (
             visible.map((group) => (
               <div key={group.key} className="flex flex-col">

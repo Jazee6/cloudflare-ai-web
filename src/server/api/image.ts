@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import * as v from "valibot";
 import {
   createImageRunRequest,
@@ -62,7 +63,7 @@ type ParsedImagePayload =
 
 const invalidRequest = (): ParsedImagePayload => ({
   ok: false,
-  response: new Response("Invalid request data", { status: 400 }),
+  response: errorResponse(appError("invalidRequest"), { status: 400 }),
 });
 
 const parseMultipartImageRequest = async (request: Request): Promise<ParsedImagePayload> => {
@@ -70,7 +71,7 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
   if (!bytesResult.ok) {
     return {
       ok: false,
-      response: new Response(bytesResult.message, { status: bytesResult.status }),
+      response: errorResponse(bytesResult, { status: bytesResult.status }),
     };
   }
 
@@ -82,7 +83,7 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
       headers: { "content-type": contentType },
     }).formData();
   } catch {
-    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+    return { ok: false, response: errorResponse(appError("invalidRequest"), { status: 400 }) };
   }
 
   const promptEntry = formData.get("prompt");
@@ -92,7 +93,7 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
     model: typeof modelEntry === "string" ? modelEntry : "",
   });
   if (!parsedBase.success) {
-    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+    return { ok: false, response: errorResponse(appError("invalidRequest"), { status: 400 }) };
   }
 
   let rawParams: unknown;
@@ -101,7 +102,10 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
     try {
       rawParams = JSON.parse(paramsEntry);
     } catch {
-      return { ok: false, response: new Response("Invalid image parameters.", { status: 400 }) };
+      return {
+        ok: false,
+        response: errorResponse(appError("invalidImageParams"), { status: 400 }),
+      };
     }
   }
 
@@ -109,7 +113,7 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
   if (rawFiles.length > MAX_REFERENCE_IMAGES) {
     return {
       ok: false,
-      response: new Response(`Up to ${MAX_REFERENCE_IMAGES} reference images are allowed.`, {
+      response: errorResponse(appError("tooManyReferenceImages", { max: MAX_REFERENCE_IMAGES }), {
         status: 400,
       }),
     };
@@ -120,13 +124,13 @@ const parseMultipartImageRequest = async (request: Request): Promise<ParsedImage
     if (!(item instanceof Blob) || !item.type.startsWith("image/")) {
       return {
         ok: false,
-        response: new Response("Only image reference files are supported.", { status: 400 }),
+        response: errorResponse(appError("referenceImageType"), { status: 400 }),
       };
     }
     if (item.size === 0 || item.size > MAX_IMAGE_BYTES) {
       return {
         ok: false,
-        response: new Response("Reference image size exceeds the 512 KiB limit.", { status: 413 }),
+        response: errorResponse(appError("referenceImageTooLarge"), { status: 413 }),
       };
     }
     referenceImages.push({
@@ -213,20 +217,20 @@ const handlePersonalImage = async ({
 }): Promise<Response> => {
   const { declaration } = personal;
   if (declaration.type !== "Text to Image" || !declaration.imageProtocol) {
-    return new Response("Select an image model to generate images.", { status: 400 });
+    return errorResponse(appError("selectImageModel"), { status: 400 });
   }
   const resolved = resolvePersonalGateway(personal, declaration.modelId);
   if (!resolved.ok) {
-    return new Response(resolved.message, { status: resolved.status });
+    return errorResponse(resolved, { status: resolved.status });
   }
 
   const ref = { id: declaration.modelId, imageProtocol: declaration.imageProtocol };
   if (referenceImages.length > getImageModelProfile(ref).maxReferenceImages) {
-    return new Response("The selected model does not support reference images.", { status: 400 });
+    return errorResponse(appError("referenceImagesUnsupported"), { status: 400 });
   }
   const sanitized = sanitizeImageParams(ref, rawParams);
   if (!sanitized.ok) {
-    return new Response(sanitized.message, { status: 400 });
+    return errorResponse(sanitized, { status: 400 });
   }
 
   const gateway = resolved.gateway;
@@ -244,14 +248,14 @@ const handlePersonalImage = async ({
     response = await fetch(upstream.url, upstream.init);
   } catch {
     console.error("Personal image generation request failed");
-    return new Response("Image generation failed. Please try again.", { status: 502 });
+    return errorResponse(appError("imageGenerationFailed"), { status: 502 });
   }
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     const mapped = mapPersonalFailure(gateway, response.status, body, response.headers);
     // Only the outcome is logged; upstream bodies may echo request details.
     console.error(`Personal image generation failed: ${response.status}`);
-    return new Response(mapped.message, { status: mapped.status });
+    return errorResponse(mapped, { status: mapped.status });
   }
 
   const image = extractPersonalImage(
@@ -260,7 +264,7 @@ const handlePersonalImage = async ({
   );
   const bytes = image ? decodeBase64Image(image.base64) : null;
   if (!image || !bytes || bytes.length === 0) {
-    return new Response("The image provider returned no image.", { status: 502 });
+    return errorResponse(appError("imageProviderNoImage"), { status: 502 });
   }
   return new Response(bytes, {
     headers: { "Content-Type": image.mediaType ?? sniffImageMediaType(bytes) },
@@ -279,19 +283,19 @@ export async function POST(request: Request) {
   }
   const catalogModel = await getCatalogModel(model, "Text to Image", "workers-ai");
   if (!catalogModel) {
-    return new Response("The model catalog has changed. Refresh and select another model.", {
+    return errorResponse(appError("catalogChanged"), {
       status: 409,
     });
   }
 
   const profile = getImageModelProfile(model);
   if (referenceImages.length > profile.maxReferenceImages) {
-    return new Response("The selected model does not support reference images.", { status: 400 });
+    return errorResponse(appError("referenceImagesUnsupported"), { status: 400 });
   }
 
   const sanitized = sanitizeImageParams(model, rawParams);
   if (!sanitized.ok) {
-    return new Response(sanitized.message, { status: 400 });
+    return errorResponse(sanitized, { status: 400 });
   }
 
   let runRequest: ReturnType<typeof createImageRunRequest>;
@@ -308,7 +312,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
-      return new Response("Image generation is not configured.", { status: 503 });
+      return errorResponse(appError("imageGenerationNotConfigured"), { status: 503 });
     }
     throw error;
   }
@@ -318,7 +322,7 @@ export async function POST(request: Request) {
     response = await fetch(runRequest.url, runRequest.init);
   } catch (error) {
     console.error(`Image generation request failed for ${model}`, error);
-    return new Response("Image generation failed. Please try again.", { status: 502 });
+    return errorResponse(appError("imageGenerationFailed"), { status: 502 });
   }
   if (!response.ok) {
     console.error(`Image generation failed for ${model}: ${response.status}`);

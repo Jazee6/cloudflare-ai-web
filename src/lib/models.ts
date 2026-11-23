@@ -5,6 +5,12 @@ export type ModelProvider = "workers-ai" | "ai-gateway";
 export type ModelSource = "cloudflare" | "external" | "personal";
 export type ModelInput = "image" | "search";
 
+/** A Model Price in USD per million tokens. */
+export interface ModelPrice {
+  input: number;
+  output: number;
+}
+
 export interface Model {
   id: string;
   name: string;
@@ -16,6 +22,8 @@ export interface Model {
   reasoning?: boolean;
   /** The most tokens one inference request can occupy, when the provider publishes it. */
   contextWindow?: number;
+  /** Cloudflare Models only: the Model Price published by the remote catalog. */
+  price?: ModelPrice;
   tag?: string[];
   isGatewayRoute?: boolean;
   /** Server-only BYOK stored-key alias (`cf-aig-byok-alias`), stripped from public responses. */

@@ -24,9 +24,25 @@ export interface StoredImagesData {
 /** The session id 5.x used for Image History, which v4 turns into an ordinary session. */
 export const LEGACY_IMAGE_HISTORY_SESSION_ID = "image";
 
+/** One entry of the Usage Ledger: what a response consumed, kept apart from its conversation. */
+export interface UsageRecord {
+  /** The id of the response it was recorded for. */
+  id: string;
+  sessionId: string;
+  createdAt: Date;
+  modelId: string;
+  /** The model's name when the response was produced. */
+  modelName: string;
+  inputTokens: number;
+  outputTokens: number;
+  /** The Estimated Cost in USD, absent when the model had no Model Price. */
+  cost?: number;
+}
+
 export const db = new Dexie("CF_AI_DB") as Dexie & {
   session: EntityTable<Session, "id">;
   message: EntityTable<StoredMessage, "id">;
+  usage: EntityTable<UsageRecord, "id">;
 };
 
 // v1: initial schema (has a stray space and unique createdAt constraint)
@@ -87,3 +103,10 @@ db.version(4)
       });
     }
   });
+
+// v5: added the Usage Ledger. It starts empty: earlier responses lack a model id and a price.
+db.version(5).stores({
+  session: "&id, name, updatedAt",
+  message: "&id, sessionId, role, metadata, parts, createdAt, [sessionId+createdAt]",
+  usage: "&id, sessionId, createdAt",
+});

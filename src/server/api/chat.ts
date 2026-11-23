@@ -1,3 +1,4 @@
+import { appError, errorResponse, serializeError } from "@/lib/error-codes";
 import { APICallError } from "@ai-sdk/provider";
 import {
   convertToModelMessages,
@@ -61,22 +62,22 @@ export async function POST(request: Request) {
     !validatedMessages.success ||
     validatedMessages.data.some((message) => !["user", "assistant"].includes(message.role))
   ) {
-    return new Response("Invalid request data", { status: 400 });
+    return errorResponse(appError("invalidRequest"), { status: 400 });
   }
 
   const imageValidation = validateImageParts(validatedMessages.data);
   if (!imageValidation.ok) {
-    return new Response(imageValidation.message, { status: imageValidation.status });
+    return errorResponse(imageValidation, { status: imageValidation.status });
   }
 
   const attachmentValidation = validateContextAttachmentParts(validatedMessages.data);
   if (!attachmentValidation.ok) {
-    return new Response(attachmentValidation.message, { status: attachmentValidation.status });
+    return errorResponse(attachmentValidation, { status: attachmentValidation.status });
   }
 
   const modelContext = buildModelContext(validatedMessages.data);
   if (!modelContext) {
-    return new Response("The latest message is too long to process.", { status: 413 });
+    return errorResponse(appError("messageTooLong"), { status: 413 });
   }
 
   const {
@@ -94,11 +95,11 @@ export async function POST(request: Request) {
   let personalGateway: PersonalGateway | undefined;
   if (personal) {
     if (personal.declaration.type !== "Text Generation") {
-      return new Response("Select a chat model to continue this response.", { status: 400 });
+      return errorResponse(appError("selectChatModel"), { status: 400 });
     }
     const resolved = resolvePersonalGateway(personal, personal.declaration.modelId);
     if (!resolved.ok) {
-      return new Response(resolved.message, { status: resolved.status });
+      return errorResponse(resolved, { status: resolved.status });
     }
     personalGateway = resolved.gateway;
     catalogModel = toPersonalModel(personal);
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     catalogModel = await getCatalogModel(model, "Text Generation", provider);
   }
   if (!catalogModel) {
-    return new Response("The model catalog has changed. Refresh and select another model.", {
+    return errorResponse(appError("catalogChanged"), {
       status: 409,
     });
   }
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       citations = kbResult.citations;
     } catch (error) {
       if (error instanceof KnowledgeBaseError) {
-        return new Response(error.message, { status: error.status });
+        return errorResponse(error, { status: error.status });
       }
       throw error;
     }
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
     if (error instanceof ProviderConfigurationError) {
       console.error(error.message);
       const mapped = mapUpstreamError(error, { provider: catalogModel.provider });
-      return new Response(mapped.message, { status: mapped.status });
+      return errorResponse(mapped, { status: mapped.status });
     }
     throw error;
   }
@@ -207,7 +208,7 @@ export async function POST(request: Request) {
       } else {
         console.error(`Chat stream error for ${catalogModel.id}:`, error);
       }
-      return mapped.message;
+      return serializeError(mapped);
     },
     messageMetadata: ({ part }): ResponseMetadata | undefined => {
       switch (part.type) {
@@ -235,9 +236,15 @@ export async function POST(request: Request) {
           }
           return undefined;
         case "finish": {
+          const { inputTokens, outputTokens } = part.totalUsage;
+          const totalUsage =
+            inputTokens !== undefined || outputTokens !== undefined
+              ? { inputTokens: inputTokens ?? 0, outputTokens: outputTokens ?? 0 }
+              : undefined;
           return {
             modelName: catalogModel.name,
             ...(usage ? { usage, contextWindow: catalogModel.contextWindow } : {}),
+            ...(totalUsage ? { totalUsage } : {}),
             ...(gatewayMetadata ? { gateway: gatewayMetadata } : {}),
             ...(citations.length > 0 ? { citations } : {}),
           };

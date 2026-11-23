@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import * as v from "valibot";
 import { ContextDocumentError } from "@/lib/context-document";
 import { ContextUrlError, extractWebpageAttachment } from "@/lib/context-url";
@@ -24,9 +25,9 @@ export async function POST(request: Request) {
       error instanceof ContextUrlError ||
       error instanceof ContextDocumentError
     ) {
-      return new Response(error.message, { status: error.status });
+      return errorResponse(error, { status: error.status });
     }
     console.error("Unexpected URL extraction error:", error);
-    return new Response("Failed to extract webpage content.", { status: 500 });
+    return errorResponse(appError("webpageExtractFailed"), { status: 500 });
   }
 }

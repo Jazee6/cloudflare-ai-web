@@ -20,15 +20,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MAX_GROUP_NAME_LENGTH } from "@/lib/model-layout";
-
-const groupNameSchema = v.object({
-  name: v.pipe(
-    v.string(),
-    v.trim(),
-    v.minLength(1, "Enter a group name."),
-    v.maxLength(MAX_GROUP_NAME_LENGTH, `Use at most ${MAX_GROUP_NAME_LENGTH} characters.`),
-  ),
-});
+import { useI18n } from "@/hooks/use-i18n";
 
 /** Names a new Model Group or renames a custom one. */
 export const ModelGroupDialog = ({
@@ -46,7 +38,16 @@ export const ModelGroupDialog = ({
   initialName?: string;
   onSubmit: (name: string) => void;
 }) => {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
+  const groupNameSchema = v.object({
+    name: v.pipe(
+      v.string(),
+      v.trim(),
+      v.minLength(1, t("modelGroup.nameRequired")),
+      v.maxLength(MAX_GROUP_NAME_LENGTH, t("validation.maxLength", { max: MAX_GROUP_NAME_LENGTH })),
+    ),
+  });
   const form = useForm({
     defaultValues: { name: initialName },
     validators: { onSubmit: groupNameSchema },
@@ -72,7 +73,7 @@ export const ModelGroupDialog = ({
             : (firstError as { message?: string } | undefined)?.message;
         return (
           <Field data-invalid={errorMessage ? "true" : undefined}>
-            <FieldLabel htmlFor="model-group-name">Name</FieldLabel>
+            <FieldLabel htmlFor="model-group-name">{t("modelGroup.name")}</FieldLabel>
             <Input
               id="model-group-name"
               value={field.state.value}
@@ -91,7 +92,7 @@ export const ModelGroupDialog = ({
   const actions = (
     <>
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-        Cancel
+        {t("common.cancel")}
       </Button>
       <Button type="submit">{submitLabel}</Button>
     </>

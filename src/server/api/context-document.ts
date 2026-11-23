@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import { MAX_DOCUMENT_BYTES } from "@/lib/context-attachments";
 import { ContextDocumentError, extractDocumentAttachment } from "@/lib/context-document";
 import { readRequestBytes } from "@/lib/request-limits";
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     MAX_DOCUMENT_BYTES + MAX_MULTIPART_OVERHEAD_BYTES,
   );
   if (!bodyResult.ok) {
-    return new Response("Document exceeds the 4 MiB upload limit.", { status: 413 });
+    return errorResponse(appError("documentTooLarge"), { status: 413 });
   }
 
   let formData: FormData;
@@ -26,12 +27,12 @@ export async function POST(request: Request) {
       body: new Uint8Array(bodyResult.bytes),
     }).formData();
   } catch {
-    return new Response("Invalid multipart form data.", { status: 400 });
+    return errorResponse(appError("invalidMultipart"), { status: 400 });
   }
 
   const entry = formData.get("file");
   if (!(entry instanceof File)) {
-    return new Response("Missing document file.", { status: 400 });
+    return errorResponse(appError("missingDocument"), { status: 400 });
   }
 
   try {
@@ -39,9 +40,9 @@ export async function POST(request: Request) {
     return Response.json({ attachment });
   } catch (error) {
     if (error instanceof ContextDocumentError) {
-      return new Response(error.message, { status: error.status });
+      return errorResponse(error, { status: error.status });
     }
     console.error("Unexpected document extraction error:", error);
-    return new Response("Failed to extract document content.", { status: 500 });
+    return errorResponse(appError("documentExtractFailed"), { status: 500 });
   }
 }

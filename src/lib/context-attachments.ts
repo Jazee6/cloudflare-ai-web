@@ -1,3 +1,4 @@
+import { appError, type ErrorCode, type ErrorParams } from "@/lib/error-codes";
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 
@@ -90,7 +91,8 @@ export const isContextAttachmentPart = (
 };
 
 export type ContextAttachmentValidation =
-  { ok: true } | { ok: false; status: 400 | 413; message: string };
+  | { ok: true }
+  | { ok: false; status: 400 | 413; message: string; code?: ErrorCode; params?: ErrorParams };
 
 export const validateContextAttachmentParts = (
   messages: UIMessage[],
@@ -107,7 +109,9 @@ export const validateContextAttachmentParts = (
         return {
           ok: false,
           status: 400,
-          message: `Too many context attachments in one message (max ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE}).`,
+          ...appError("tooManyContextAttachments", {
+            max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE,
+          }),
         };
       }
 
@@ -116,11 +120,11 @@ export const validateContextAttachmentParts = (
         "data" in part ? part.data : undefined,
       );
       if (!parsed.success) {
-        return { ok: false, status: 400, message: "Invalid context attachment." };
+        return { ok: false, status: 400, ...appError("invalidContextAttachment") };
       }
 
       if (parsed.output.content.length > MAX_CONTEXT_ATTACHMENT_CHARS) {
-        return { ok: false, status: 413, message: "Context attachment exceeds size limit." };
+        return { ok: false, status: 413, ...appError("contextAttachmentTooLarge") };
       }
     }
   }

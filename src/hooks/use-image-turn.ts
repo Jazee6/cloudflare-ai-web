@@ -10,6 +10,7 @@ import {
 } from "@/lib/image-models";
 import { createImagePromptMessage, resolveImageSeed } from "@/lib/image-turn";
 import type { Model } from "@/lib/models";
+import { translateNow } from "@/lib/i18n";
 
 export interface ReferenceImageDraft {
   id: string;
@@ -75,7 +76,7 @@ export const useImageTurn = (selectedModel: Model | undefined): ImageTurn => {
     async (sources: Array<{ blob: Blob; filename?: string }>) => {
       if (profile.maxReferenceImages === 0) {
         toast.add({
-          title: "The selected model does not support reference images.",
+          title: translateNow("imageTurn.referencesUnsupported"),
           type: "warning",
         });
         return;
@@ -84,7 +85,7 @@ export const useImageTurn = (selectedModel: Model | undefined): ImageTurn => {
       const availableSlots = MAX_REFERENCE_IMAGES - referenceImagesRef.current.length;
       if (sources.length > availableSlots) {
         toast.add({
-          title: `You can attach up to ${MAX_REFERENCE_IMAGES} reference images.`,
+          title: translateNow("imageTurn.tooManyReferences", { max: MAX_REFERENCE_IMAGES }),
           type: "warning",
         });
       }
@@ -94,7 +95,9 @@ export const useImageTurn = (selectedModel: Model | undefined): ImageTurn => {
         const compressed = await compressImageToBlob(source.blob);
         if (!compressed) {
           toast.add({
-            title: `Unable to attach ${source.filename ?? "image"}: unsupported or too large.`,
+            title: translateNow("chatInput.imageUnsupported", {
+              name: source.filename ?? translateNow("chatInput.image"),
+            }),
             type: "warning",
           });
           continue;

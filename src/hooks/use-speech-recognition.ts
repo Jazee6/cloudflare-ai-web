@@ -7,6 +7,7 @@ import {
   isSpeechRecognitionSupported,
   mapSpeechRecognitionError,
 } from "@/lib/speech";
+import { translateNow } from "@/lib/i18n";
 
 /**
  * Drives browser-native SpeechRecognition (ASR) with live interim transcript updates
@@ -91,7 +92,7 @@ export const useSpeechRecognition = () => {
       recognition.onerror = (event) => {
         if (event.error !== "aborted") {
           toast.add({
-            title: mapSpeechRecognitionError(event.error),
+            title: translateNow(mapSpeechRecognitionError(event.error)),
             type: "error",
           });
         }
@@ -111,7 +112,7 @@ export const useSpeechRecognition = () => {
       } catch {
         recognitionRef.current = null;
         setListening(false);
-        toast.add({ title: "Unable to start voice input.", type: "error" });
+        toast.add({ title: translateNow("speech.startFailed"), type: "error" });
       }
     },
     [settings.asrLocale],

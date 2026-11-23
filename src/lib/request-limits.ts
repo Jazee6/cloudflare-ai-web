@@ -1,3 +1,4 @@
+import { appError, type ErrorCode, type ErrorParams, errorResponse } from "@/lib/error-codes";
 import type { UIMessage } from "ai";
 import * as v from "valibot";
 
@@ -16,6 +17,8 @@ export interface ReadBodyError {
   ok: false;
   status: 413;
   message: string;
+  code?: ErrorCode;
+  params?: ErrorParams;
 }
 
 /** Reads a request body as bytes while enforcing both declared and observed byte counts. */
@@ -25,14 +28,14 @@ export const readRequestBytes = async (
 ): Promise<{ ok: true; bytes: Uint8Array } | ReadBodyError> => {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > maxBytes) {
-    return { ok: false, status: 413, message: "Request body too large." };
+    return { ok: false, status: 413, ...appError("bodyTooLarge") };
   }
 
   const reader = request.body?.getReader();
   if (!reader) {
     const buffer = await request.arrayBuffer();
     if (buffer.byteLength > maxBytes) {
-      return { ok: false, status: 413, message: "Request body too large." };
+      return { ok: false, status: 413, ...appError("bodyTooLarge") };
     }
     return { ok: true, bytes: new Uint8Array(buffer) };
   }
@@ -51,7 +54,7 @@ export const readRequestBytes = async (
     bytesRead += value.byteLength;
     if (bytesRead > maxBytes) {
       await reader.cancel();
-      return { ok: false, status: 413, message: "Request body too large." };
+      return { ok: false, status: 413, ...appError("bodyTooLarge") };
     }
     chunks.push(value);
   }
@@ -89,7 +92,7 @@ export const parseJsonRequest = async <Schema extends v.GenericSchema>(
   if (!bodyResult.ok) {
     return {
       ok: false,
-      response: new Response(bodyResult.message, { status: bodyResult.status }),
+      response: errorResponse(bodyResult, { status: bodyResult.status }),
     };
   }
 
@@ -97,12 +100,12 @@ export const parseJsonRequest = async <Schema extends v.GenericSchema>(
   try {
     body = JSON.parse(bodyResult.text);
   } catch {
-    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+    return { ok: false, response: errorResponse(appError("invalidRequest"), { status: 400 }) };
   }
 
   const parsed = v.safeParse(schema, body);
   if (!parsed.success) {
-    return { ok: false, response: new Response("Invalid request data", { status: 400 }) };
+    return { ok: false, response: errorResponse(appError("invalidRequest"), { status: 400 }) };
   }
 
   return { ok: true, data: parsed.output };
@@ -122,7 +125,9 @@ export const getImageDataUrlSize = (url: string, declaredMediaType: string): num
   }
 };
 
-export type ImagePartsValidation = { ok: true } | { ok: false; status: 400 | 413; message: string };
+export type ImagePartsValidation =
+  | { ok: true }
+  | { ok: false; status: 400 | 413; message: string; code?: ErrorCode; params?: ErrorParams };
 
 export const validateImageParts = (messages: UIMessage[]): ImagePartsValidation => {
   let imageCount = 0;
@@ -134,18 +139,18 @@ export const validateImageParts = (messages: UIMessage[]): ImagePartsValidation 
 
       imageCount++;
       if (imageCount > MAX_IMAGE_PARTS) {
-        return { ok: false, status: 400, message: "Too many images." };
+        return { ok: false, status: 400, ...appError("tooManyImages") };
       }
       if (!part.mediaType.startsWith("image/")) {
-        return { ok: false, status: 400, message: "Only image attachments are supported." };
+        return { ok: false, status: 400, ...appError("imageAttachmentType") };
       }
 
       const imageSize = getImageDataUrlSize(part.url, part.mediaType);
       if (imageSize === null) {
-        return { ok: false, status: 400, message: "Invalid image attachment." };
+        return { ok: false, status: 400, ...appError("invalidImageAttachment") };
       }
       if (imageSize > MAX_IMAGE_BYTES) {
-        return { ok: false, status: 413, message: "Image attachment is too large." };
+        return { ok: false, status: 413, ...appError("imageAttachmentTooLarge") };
       }
     }
   }

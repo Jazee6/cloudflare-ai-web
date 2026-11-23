@@ -45,7 +45,7 @@ beforeEach(async () => {
 test("5.x Image History becomes an ordinary session of image turns", async () => {
   await upgradeFrom5x((legacy) => legacy.table("message").bulkAdd(legacyImageHistory));
 
-  expect(db.verno).toBe(4);
+  expect(db.verno).toBe(5);
   const session = await db.session.get("image");
   expect(session?.name).toBe("Image History");
   expect(session?.updatedAt).toEqual(legacyImageHistory[1].createdAt);
@@ -72,4 +72,19 @@ test("the upgrade keeps an existing session named by the image id", async () => 
   });
 
   expect(await db.session.get("image")).toEqual({ id: "image", name: "Mine", updatedAt });
+});
+
+test("upgrading 6.0 keeps its history and starts an empty Usage Ledger", async () => {
+  const v4 = new Dexie("CF_AI_DB");
+  v4.version(4).stores({
+    session: "&id, name, updatedAt",
+    message: "&id, sessionId, role, metadata, parts, createdAt, [sessionId+createdAt]",
+  });
+  await v4.table("session").add({ id: "s", name: "Chat", updatedAt: new Date() });
+  v4.close();
+  await db.open();
+
+  expect(db.verno).toBe(5);
+  expect(await db.session.count()).toBe(1);
+  expect(await db.usage.count()).toBe(0);
 });

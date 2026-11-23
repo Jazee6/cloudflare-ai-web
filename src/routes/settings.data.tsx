@@ -30,10 +30,12 @@ import {
   getStorageStats,
   type LocalStorageStats,
 } from "@/lib/conversation-store";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const Route = createFileRoute("/settings/data")({ component: DataSettings });
 
 function DataSettings() {
+  const { t, tc } = useI18n();
   const [stats, setStats] = useState<LocalStorageStats | null>(null);
   const [includeImages, setIncludeImages] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -65,15 +67,14 @@ function DataSettings() {
       await triggerBackupDownload(json, `cloudflare-ai-conversations-${dateTag}.json`);
       if (exceedsBackupImportLimit(json)) {
         toast.add({
-          title:
-            "Exported, but the backup exceeds the 200 MiB import limit. Export without images to restore it later.",
+          title: t("settings.data.exportTooLarge"),
           type: "warning",
         });
       } else {
-        toast.add({ title: "Conversation history exported.", type: "success" });
+        toast.add({ title: t("settings.data.exported"), type: "success" });
       }
     } catch {
-      toast.add({ title: "Failed to export conversation history.", type: "error" });
+      toast.add({ title: t("settings.data.exportFailed"), type: "error" });
     } finally {
       setExporting(false);
     }
@@ -85,7 +86,7 @@ function DataSettings() {
     }
     setImportError(null);
     if (file.size > MAX_BACKUP_IMPORT_BYTES) {
-      setImportError(BACKUP_TOO_LARGE_MESSAGE);
+      setImportError(t(BACKUP_TOO_LARGE_MESSAGE));
       resetImportInput();
       return;
     }
@@ -94,20 +95,26 @@ function DataSettings() {
     try {
       const result = await importConversationHistory(await file.text());
       if (!result.ok) {
-        setImportError(result.error);
-        toast.add({ title: result.error, type: "error" });
+        setImportError(t(result.error));
+        toast.add({ title: t(result.error), type: "error" });
         return;
       }
 
       toast.add({
-        title: `Imported ${result.importedSessions} conversation(s)${
-          result.skippedSessions > 0 ? `, skipped ${result.skippedSessions} existing` : ""
-        }.`,
+        title:
+          result.skippedSessions > 0
+            ? t("settings.data.importedWithSkipped", {
+                imported: tc("settings.data.conversations", result.importedSessions),
+                skipped: result.skippedSessions,
+              })
+            : t("settings.data.imported", {
+                imported: tc("settings.data.conversations", result.importedSessions),
+              }),
         type: "success",
       });
       await refreshStats();
     } catch {
-      setImportError("Unable to read the selected backup file.");
+      setImportError(t("settings.data.readFailed"));
     } finally {
       setImporting(false);
       resetImportInput();
@@ -118,11 +125,11 @@ function DataSettings() {
     setClearing(true);
     try {
       await clearAllConversations();
-      toast.add({ title: "All conversations cleared.", type: "success" });
+      toast.add({ title: t("settings.data.cleared"), type: "success" });
       setClearOpen(false);
       await refreshStats();
     } catch {
-      toast.add({ title: "Failed to clear local history.", type: "error" });
+      toast.add({ title: t("settings.data.clearFailed"), type: "error" });
     } finally {
       setClearing(false);
     }
@@ -131,15 +138,15 @@ function DataSettings() {
   return (
     <FieldGroup className="gap-5">
       <Field>
-        <FieldLabel>Local Storage</FieldLabel>
+        <FieldLabel>{t("settings.data.localStorage")}</FieldLabel>
         {stats ? (
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-0.5 rounded-lg border p-2.5">
-              <span className="text-xs text-muted-foreground">Chats</span>
+              <span className="text-xs text-muted-foreground">{t("settings.data.chats")}</span>
               <span className="text-base font-medium tabular-nums">{stats.sessionCount}</span>
             </div>
             <div className="flex flex-col gap-0.5 rounded-lg border p-2.5">
-              <span className="text-xs text-muted-foreground">Messages</span>
+              <span className="text-xs text-muted-foreground">{t("settings.data.messages")}</span>
               <span className="text-base font-medium tabular-nums">{stats.messageCount}</span>
             </div>
           </div>
@@ -152,10 +159,12 @@ function DataSettings() {
       </Field>
 
       <Field>
-        <FieldLabel>Conversation Backup</FieldLabel>
+        <FieldLabel>{t("settings.data.backup")}</FieldLabel>
         <div className="flex flex-col gap-3 rounded-lg border p-3">
           <Field orientation="horizontal" className="justify-between">
-            <FieldLabel htmlFor="settings-export-images">Include images in export</FieldLabel>
+            <FieldLabel htmlFor="settings-export-images">
+              {t("settings.data.includeImages")}
+            </FieldLabel>
             <Switch
               id="settings-export-images"
               checked={includeImages}
@@ -170,7 +179,7 @@ function DataSettings() {
               onClick={() => void handleExport()}
             >
               {exporting ? <Spinner /> : <DownloadIcon />}
-              Export JSON
+              {t("settings.data.export")}
             </Button>
             <Button
               type="button"
@@ -179,7 +188,7 @@ function DataSettings() {
               onClick={() => importInputRef.current?.click()}
             >
               {importing ? <Spinner /> : <UploadIcon />}
-              Import JSON
+              {t("settings.data.import")}
             </Button>
             <input
               ref={importInputRef}
@@ -196,11 +205,11 @@ function DataSettings() {
       </Field>
 
       <Field>
-        <FieldLabel>Danger Zone</FieldLabel>
+        <FieldLabel>{t("settings.data.dangerZone")}</FieldLabel>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="destructive" onClick={() => setClearOpen(true)}>
             <Trash2Icon />
-            Clear all conversations
+            {t("settings.data.clearAll")}
           </Button>
         </div>
       </Field>
@@ -215,20 +224,18 @@ function DataSettings() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear all conversations?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes stored local history from this browser and cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("settings.data.clearTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("settings.data.clearDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={clearing}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={clearing}
               onClick={() => void handleConfirmClear()}
             >
               {clearing && <Spinner />}
-              Confirm
+              {t("common.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

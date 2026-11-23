@@ -4,6 +4,12 @@ import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n";
+
+function SheetCloseLabel() {
+  const { t } = useI18n();
+  return <span className="sr-only">{t("common.close")}</span>;
+}
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -63,7 +69,7 @@ function SheetContent({
             render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <SheetCloseLabel />
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>

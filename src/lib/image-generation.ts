@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import * as v from "valibot";
 import { extractGatewayMetadata } from "@/lib/gateway-errors";
 import { getImageModelProfile, type NormalizedImageParams } from "@/lib/image-models";
@@ -123,10 +124,7 @@ export const mapImageFailureResponse = async (response: Response): Promise<Respo
   const gatewayMeta = extractGatewayMetadata(response.headers);
 
   if (/\b(2001|2009)\b|gateway does not exist|authentication active/i.test(body)) {
-    return new Response(
-      "AI Gateway configuration is invalid or the gateway does not exist. Please check server environment variables.",
-      { status: 502 },
-    );
+    return errorResponse(appError("gatewayInvalid"), { status: 502 });
   }
 
   if (
@@ -134,27 +132,18 @@ export const mapImageFailureResponse = async (response: Response): Promise<Respo
     ((gatewayMeta?.dlpAction && !/^(log|redact|mask|allow)$/i.test(gatewayMeta.dlpAction)) ||
       /\b(2016|2017)\b|guardrail|cf-aig-dlp|\bdlp\b/i.test(body))
   ) {
-    return new Response(
-      "The request or response was blocked by Cloudflare AI Gateway security/DLP policy.",
-      { status: 422 },
-    );
+    return errorResponse(appError("dlpBlocked"), { status: 422 });
   }
 
   if (response.status === 403 && /\b5035\b|workers paid|paid plan|requires a paid/i.test(body)) {
-    return new Response(
-      "This model requires a Cloudflare Workers Paid plan and is not available on Free accounts.",
-      { status: 403 },
-    );
+    return errorResponse(appError("paidPlanRequired"), { status: 403 });
   }
 
   if (response.status === 429) {
-    return new Response(
-      "Daily free quota or gateway rate limit reached. Please try again later or switch models.",
-      { status: 429 },
-    );
+    return errorResponse(appError("rateLimited"), { status: 429 });
   }
 
-  return new Response("Image generation failed. Please try again.", {
+  return errorResponse(appError("imageGenerationFailed"), {
     status: getImageFailureStatus(response.status),
   });
 };
@@ -184,18 +173,18 @@ export const toImageResponse = async (response: Response): Promise<Response> => 
   try {
     json = await response.json();
   } catch {
-    return new Response("The image provider returned an unsupported response.", { status: 502 });
+    return errorResponse(appError("imageUnsupportedResponse"), { status: 502 });
   }
 
   const imageResult = v.safeParse(imageResponseSchema, json);
   if (!imageResult.success) {
-    return new Response("The image provider returned an unsupported response.", { status: 502 });
+    return errorResponse(appError("imageUnsupportedResponse"), { status: 502 });
   }
 
   const payload = "result" in imageResult.output ? imageResult.output.result : imageResult.output;
   const image = decodeImage(payload.image);
   if (!image) {
-    return new Response("The image provider returned invalid image data.", { status: 502 });
+    return errorResponse(appError("imageInvalidData"), { status: 502 });
   }
 
   return new Response(image.bytes, {

@@ -8,6 +8,7 @@ import {
   getModelName,
   type Model,
   type ModelInput,
+  type ModelPrice,
   type ModelType,
   toPublicModel,
 } from "@/lib/models";
@@ -104,6 +105,40 @@ const getContextWindow = (model: CloudflareModel) => {
   return Number.isSafeInteger(contextWindow) && contextWindow > 0 ? contextWindow : undefined;
 };
 
+const priceEntrySchema = v.object({
+  unit: v.string(),
+  price: v.pipe(v.number(), v.finite(), v.minValue(0)),
+  currency: v.optional(v.string()),
+});
+
+/** The Model Price from the catalog's `price` property, in USD per million tokens. */
+export const getModelPrice = (model: CloudflareModel): ModelPrice | undefined => {
+  const value = model.properties.find(
+    (property) => normalizeSignal(property.property_id) === "price",
+  )?.value;
+  const parsed = v.safeParse(v.array(v.unknown()), value);
+  if (!parsed.success) {
+    return undefined;
+  }
+  let input: number | undefined;
+  let output: number | undefined;
+  for (const raw of parsed.output) {
+    const entry = v.safeParse(priceEntrySchema, raw);
+    if (!entry.success || (entry.output.currency ?? "USD").toUpperCase() !== "USD") {
+      continue;
+    }
+    const unit = normalizeSignal(entry.output.unit);
+    if (unit === "per m input tokens") {
+      input = entry.output.price;
+    } else if (unit === "per m output tokens") {
+      output = entry.output.price;
+    }
+  }
+  return input === undefined && output === undefined
+    ? undefined
+    : { input: input ?? 0, output: output ?? 0 };
+};
+
 const toModel = (model: CloudflareModel, type: ModelType): Model => {
   const input: ModelInput[] = [];
   if (
@@ -117,6 +152,7 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
     type === "Text Generation" && hasSignal(model, ["reasoning", "reasoning model"]);
   const experimental = hasSignal(model, ["experimental", "beta"]);
   const contextWindow = type === "Text Generation" ? getContextWindow(model) : undefined;
+  const price = type === "Text Generation" ? getModelPrice(model) : undefined;
 
   return {
     id: model.name,
@@ -128,6 +164,7 @@ const toModel = (model: CloudflareModel, type: ModelType): Model => {
     ...(input.length > 0 ? { input } : {}),
     ...(reasoning ? { reasoning: true } : {}),
     ...(contextWindow ? { contextWindow } : {}),
+    ...(price ? { price } : {}),
     ...(experimental ? { tag: ["experimental"] } : {}),
   };
 };

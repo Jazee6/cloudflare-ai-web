@@ -49,7 +49,7 @@ function Page() {
           status={status}
           onStop={stop}
           onRetry={retry}
-          addon={<ContextIndicator messages={messages} />}
+          addon={<ContextIndicator sessionId={sessionId} messages={messages} />}
         />
       }
     >

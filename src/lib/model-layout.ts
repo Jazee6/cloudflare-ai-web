@@ -6,6 +6,8 @@ export const MODEL_LAYOUT_STORAGE_KEY = "cf-ai-model-layout-v1";
 const modelLayoutSchema = v.object({
   /** Model Catalog IDs the visitor has hidden from the model picker. */
   hidden: v.optional(v.array(v.string()), []),
+  /** Keys of the Hidden Groups: groups whose models are all left out of the model picker. */
+  hiddenGroups: v.optional(v.array(v.string()), []),
   /** Group keys: `default:<brand>` | `default:external` | `personal:<id>` | `custom:<uuid>`. */
   groupOrder: v.optional(v.array(v.string()), []),
   customGroups: v.optional(v.array(v.object({ id: v.string(), name: v.string() })), []),
@@ -21,11 +23,14 @@ export interface ModelLayoutGroup {
   key: string;
   name: string;
   custom: boolean;
+  /** Whether this is a Hidden Group. */
+  hidden: boolean;
   models: Model[];
 }
 
 export const EMPTY_MODEL_LAYOUT: ModelLayout = {
   hidden: [],
+  hiddenGroups: [],
   groupOrder: [],
   customGroups: [],
   assignments: {},
@@ -41,11 +46,14 @@ export const defaultGroupKey = (model: Model) => {
     case "personal":
       return `personal:${model.personalProviderId}`;
     case "external":
-      return "default:external";
+      return EXTERNAL_GROUP_KEY;
     default:
       return `default:${model.brand}`;
   }
 };
+
+/** The default group of External Models; its name is translated where it is shown. */
+export const EXTERNAL_GROUP_KEY = "default:external";
 
 export const defaultGroupName = (model: Model) => {
   switch (model.source) {
@@ -66,12 +74,17 @@ const resolveGroupKey = (model: Model, layout: ModelLayout, customKeys: Set<stri
 /**
  * Arranges the Model Catalog into the visitor's ordered Model Groups. Layout entries for models
  * or groups that are not in the catalog are ignored, so a catalog that fails to load temporarily
- * does not lose the layout. Empty custom groups are kept; hidden models are dropped unless asked.
+ * does not lose the layout. Empty custom groups are kept. Hidden Models and Hidden Groups are
+ * dropped unless `includeHidden` asks for both; `includeHiddenGroups` keeps Hidden Groups but
+ * still drops individually Hidden Models.
  */
 export const applyModelLayout = (
   catalog: Model[],
   layout: ModelLayout,
-  { includeHidden = false }: { includeHidden?: boolean } = {},
+  {
+    includeHidden = false,
+    includeHiddenGroups = includeHidden,
+  }: { includeHidden?: boolean; includeHiddenGroups?: boolean } = {},
 ): { groups: ModelLayoutGroup[] } => {
   const customKeys = new Set(layout.customGroups.map((group) => customGroupKey(group.id)));
   const buckets = new Map<string, ModelLayoutGroup>();
@@ -80,7 +93,7 @@ export const applyModelLayout = (
   for (const group of layout.customGroups) {
     const key = customGroupKey(group.id);
     if (!buckets.has(key)) {
-      buckets.set(key, { key, name: group.name, custom: true, models: [] });
+      buckets.set(key, { key, name: group.name, custom: true, hidden: false, models: [] });
     }
   }
 
@@ -88,7 +101,7 @@ export const applyModelLayout = (
     const key = resolveGroupKey(model, layout, customKeys);
     let bucket = buckets.get(key);
     if (!bucket) {
-      bucket = { key, name: defaultGroupName(model), custom: false, models: [] };
+      bucket = { key, name: defaultGroupName(model), custom: false, hidden: false, models: [] };
       buckets.set(key, bucket);
       defaultKeys.push(key);
     }
@@ -105,6 +118,7 @@ export const applyModelLayout = (
   }
 
   const hidden = new Set(layout.hidden);
+  const hiddenGroups = new Set(layout.hiddenGroups);
   const groups = orderedKeys.map((key) => {
     const bucket = buckets.get(key)!;
     const rank = new Map((layout.modelOrder[key] ?? []).map((id, index) => [id, index]));
@@ -114,10 +128,10 @@ export const applyModelLayout = (
       .sort((a, b) => a.rank - b.rank)
       .map(({ model }) => model)
       .filter((model) => includeHidden || !hidden.has(model.id));
-    return { ...bucket, models };
+    return { ...bucket, hidden: hiddenGroups.has(key), models };
   });
 
-  return { groups };
+  return { groups: includeHiddenGroups ? groups : groups.filter((group) => !group.hidden) };
 };
 
 /** Visible models in layout order. */
@@ -148,6 +162,12 @@ const insertAt = <T>(items: T[], item: T, index = items.length) => {
 export const setModelHidden = (layout: ModelLayout, modelId: string, hidden: boolean) => {
   const rest = layout.hidden.filter((id) => id !== modelId);
   return { ...layout, hidden: hidden ? [...rest, modelId] : rest };
+};
+
+/** Hides or shows a whole Model Group, leaving each model's own Hidden Model choice as it is. */
+export const setGroupHidden = (layout: ModelLayout, key: string, hidden: boolean) => {
+  const rest = layout.hiddenGroups.filter((candidate) => candidate !== key);
+  return { ...layout, hiddenGroups: hidden ? [...rest, key] : rest };
 };
 
 /**
@@ -302,6 +322,7 @@ export const deleteCustomGroup = (
     ...layout,
     customGroups: layout.customGroups.filter((group) => group.id !== id),
     groupOrder: layout.groupOrder.filter((candidate) => candidate !== key),
+    hiddenGroups: layout.hiddenGroups.filter((candidate) => candidate !== key),
     assignments: Object.fromEntries(
       Object.entries(layout.assignments).filter(([, assigned]) => assigned !== key),
     ),
@@ -324,6 +345,7 @@ export const pruneModelLayout = (layout: ModelLayout, catalog: Model[]): ModelLa
 
   return {
     hidden: layout.hidden.filter((id) => catalogIds.has(id)),
+    hiddenGroups: layout.hiddenGroups.filter((key) => groupKeys.has(key)),
     groupOrder: layout.groupOrder.filter((key) => groupKeys.has(key)),
     customGroups: layout.customGroups,
     assignments: Object.fromEntries(

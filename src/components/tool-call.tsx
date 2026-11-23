@@ -14,6 +14,7 @@ import {
   TraceLine,
   TraceTitle,
 } from "@/components/ui/trace";
+import { useI18n } from "@/hooks/use-i18n";
 
 const ToolJson = ({ title, value }: { title: string; value: unknown }) => (
   <CodeBlock size="sm">
@@ -43,10 +44,11 @@ const ToolCall = ({
   part: ToolUIPart | DynamicToolUIPart;
   streaming: boolean;
 }) => {
+  const { t } = useI18n();
   const name = getToolName(part);
 
   if (part.state === "output-denied") {
-    return <ToolLine title={`Denied ${name}`} />;
+    return <ToolLine title={t("tool.denied", { name })} />;
   }
 
   if (part.state === "output-available" || part.state === "output-error") {
@@ -55,12 +57,12 @@ const ToolCall = ({
       <TraceCollapsible>
         <TraceCollapsibleTrigger>
           <ToolLine
-            title={`${failed ? "Failed to run" : "Ran"} ${name}`}
+            title={t(failed ? "tool.failed" : "tool.ran", { name })}
             status={failed ? "error" : undefined}
           />
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent className="flex flex-col gap-2">
-          {part.input !== undefined && <ToolJson title="Input" value={part.input} />}
+          {part.input !== undefined && <ToolJson title={t("tool.input")} value={part.input} />}
           {failed ? (
             <CodeBlock size="sm" variant="destructive">
               <CodeBlockContent wrap className="max-h-64">
@@ -68,7 +70,7 @@ const ToolCall = ({
               </CodeBlockContent>
             </CodeBlock>
           ) : (
-            <ToolJson title="Output" value={part.output} />
+            <ToolJson title={t("tool.output")} value={part.output} />
           )}
         </TraceCollapsibleContent>
       </TraceCollapsible>
@@ -78,7 +80,7 @@ const ToolCall = ({
   // A tool still waiting for output after the response ended never finished.
   return (
     <ToolLine
-      title={`${streaming ? "Running" : "Failed to run"} ${name}`}
+      title={t(streaming ? "tool.running" : "tool.failed", { name })}
       status={streaming ? "running" : "error"}
     />
   );

@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import * as v from "valibot";
 import { buildCookieHeader, constantTimeCompare, createSessionToken } from "@/lib/auth";
 import { parseJsonRequest } from "@/lib/request-limits";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     return new Response("Authentication is not required for this deployment.", { status: 200 });
   }
   if (isCrossSiteRequest(request)) {
-    return new Response("Forbidden", { status: 403 });
+    return errorResponse(appError("forbidden"), { status: 403 });
   }
 
   const parsed = await parseJsonRequest(request, authSchema, MAX_AUTH_BODY_BYTES);
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   if (!(await constantTimeCompare(parsed.data.password, password))) {
-    return new Response("Invalid password.", { status: 401 });
+    return errorResponse(appError("invalidPassword"), { status: 401 });
   }
 
   const token = await createSessionToken(password);

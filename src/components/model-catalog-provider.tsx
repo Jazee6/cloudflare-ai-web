@@ -19,6 +19,7 @@ import {
   readPreferences,
   writePreferences,
 } from "@/lib/preferences";
+import { translateNow } from "@/lib/i18n";
 
 const CATALOG_STORAGE_KEY = "cf-ai-model-catalog-v1";
 
@@ -30,7 +31,7 @@ const DEFAULT_CAPABILITIES: AppCapabilities = {
   personalViaDeploymentGateway: false,
 };
 
-const modelSchema = v.object({
+export const modelSchema = v.object({
   id: v.string(),
   name: v.string(),
   brand: v.string(),
@@ -40,11 +41,13 @@ const modelSchema = v.object({
   input: v.optional(v.array(v.picklist(["image", "search"]))),
   reasoning: v.optional(v.boolean()),
   contextWindow: v.optional(v.number()),
+  /** The Model Price, USD per million tokens. */
+  price: v.optional(v.object({ input: v.number(), output: v.number() })),
   tag: v.optional(v.array(v.string())),
   isGatewayRoute: v.optional(v.boolean()),
 });
 
-const catalogResponseSchema = v.object({
+export const catalogResponseSchema = v.object({
   models: v.array(modelSchema),
   capabilities: v.object({
     documents: v.boolean(),
@@ -192,11 +195,11 @@ export const ModelCatalogProvider = ({
         if (!hasModelsRef.current) {
           setModels([]);
           setCapabilities(parsed.output.capabilities);
-          setError("No models are currently available.");
+          setError(translateNow("catalog.empty"));
           // A deployment without Cloudflare models may still serve the visitor's Personal Models.
           if (!hasPersonalModelsRef.current) {
             toast.add({
-              title: "No models are currently available. Please retry.",
+              title: translateNow("catalog.emptyRetry"),
               type: "error",
             });
           }
@@ -214,9 +217,9 @@ export const ModelCatalogProvider = ({
         return;
       }
       if (!hasModelsRef.current) {
-        setError("Failed to load models.");
+        setError(translateNow("catalog.loadFailed"));
         toast.add({
-          title: "Failed to load models. Please try again.",
+          title: translateNow("catalog.loadFailedRetry"),
           type: "error",
         });
       } else {

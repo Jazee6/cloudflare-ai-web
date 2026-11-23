@@ -25,6 +25,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getImageModelProfile } from "@/lib/image-models";
 import type { ModelLayoutGroup } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
+import { useI18n } from "@/hooks/use-i18n";
 
 const ModelSelect = ({
   groups,
@@ -42,6 +43,7 @@ const ModelSelect = ({
   error?: string | null;
   onReload?: () => void;
 }) => {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const groupedModels = useMemo(() => groups.filter((group) => group.models.length > 0), [groups]);
@@ -49,9 +51,9 @@ const ModelSelect = ({
 
   const commandPicker = (
     <Command>
-      <CommandInput placeholder="Filter models..." />
+      <CommandInput placeholder={t("modelSelect.filter")} />
       <CommandList className="max-h-[60vh]">
-        <CommandEmpty>No models found.</CommandEmpty>
+        <CommandEmpty>{t("modelSelect.empty")}</CommandEmpty>
         {groupedModels.map(({ key, name, models: groupModels }) => (
           <CommandGroup key={key} heading={name}>
             {groupModels.map((model) => (
@@ -93,7 +95,7 @@ const ModelSelect = ({
                               </span>
                             }
                           />
-                          <TooltipContent>Generates images</TooltipContent>
+                          <TooltipContent>{t("modelSelect.generatesImages")}</TooltipContent>
                         </Tooltip>
                       )}
                       {highCostHint && (
@@ -105,7 +107,7 @@ const ModelSelect = ({
                               </span>
                             }
                           />
-                          <TooltipContent>{highCostHint}</TooltipContent>
+                          <TooltipContent>{t(highCostHint)}</TooltipContent>
                         </Tooltip>
                       )}
                       {model.tag?.map((tag) => (
@@ -114,7 +116,7 @@ const ModelSelect = ({
                         </Badge>
                       ))}
                       {model.isGatewayRoute ? (
-                        <Badge variant="secondary">Route</Badge>
+                        <Badge variant="secondary">{t("modelSelect.route")}</Badge>
                       ) : model.source === "external" ? (
                         <Badge variant="secondary">{model.brand}</Badge>
                       ) : null}
@@ -137,7 +139,7 @@ const ModelSelect = ({
     return (
       <Button type="button" variant="ghost" onClick={onReload}>
         <RefreshCw />
-        Retry
+        {t("common.retry")}
       </Button>
     );
   }
@@ -159,9 +161,9 @@ const ModelSelect = ({
             <span className="truncate">{selectedModel.name}</span>
           </>
         ) : modelCount > 0 ? (
-          <span className="truncate">Select a model</span>
+          <span className="truncate">{t("modelSelect.title")}</span>
         ) : (
-          <span className="truncate">No models available</span>
+          <span className="truncate">{t("modelSelect.none")}</span>
         )}
         <ChevronsUpDown className="shrink-0" />
       </Button>
@@ -170,8 +172,8 @@ const ModelSelect = ({
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent>
             <DrawerHeader className="sr-only">
-              <DrawerTitle>Select a model</DrawerTitle>
-              <DrawerDescription>Search models by name or brand</DrawerDescription>
+              <DrawerTitle>{t("modelSelect.title")}</DrawerTitle>
+              <DrawerDescription>{t("modelSelect.description")}</DrawerDescription>
             </DrawerHeader>
             <div className="p-2 pb-4">{commandPicker}</div>
           </DrawerContent>
@@ -180,8 +182,8 @@ const ModelSelect = ({
         <CommandDialog
           open={open}
           onOpenChange={setOpen}
-          title="Select a model"
-          description="Search models by name or brand"
+          title={t("modelSelect.title")}
+          description={t("modelSelect.description")}
           className="max-w-xl"
         >
           {commandPicker}

@@ -48,8 +48,12 @@ _Avoid_: Beta model, community model
 A named, ordered section of the model picker in a visitor's browser. Default groups come from Model Brands, the deployment's External Models, and each Personal Provider; a visitor may also create, rename, and delete their own groups and move models into them. Every model belongs to exactly one group, and models outside any visitor-created group fall back to their default group.
 _Avoid_: Category, folder, tag
 
+**Hidden Group**:
+A Model Group a visitor has chosen not to show in the model picker. Every model currently in it is hidden, including models that newly appear in it later, while each model's own Hidden Model choice is kept for when the group is shown again.
+_Avoid_: Collapsed group, disabled group
+
 **Hidden Model**:
-A model in the Model Catalog that a visitor has chosen not to show in the model picker in their browser. Models are shown unless hidden, so newly available models appear without any action.
+A model in the Model Catalog that a visitor has chosen not to show in the model picker in their browser, either individually or because its Model Group is a Hidden Group. Models are shown unless hidden, so newly available models appear without any action.
 _Avoid_: Disabled model, removed model, allowlist
 
 **Conversation History**:
@@ -57,8 +61,12 @@ The locally retained sequence of messages belonging to a chat session, including
 _Avoid_: Chat records, message cache, chat log, Image History, image session
 
 **Model Context**:
-The bounded subset of a Conversation History supplied to a model for one inference request. It may include Context Attachments, downscaled copies of stored images, and ephemeral Knowledge Base excerpts injected for that single request.
+The bounded subset of a Conversation History supplied to a model for one inference request, limited to the most recent messages up to a visitor-chosen Context Message Limit and a fixed size ceiling. It may include Context Attachments, downscaled copies of stored images, and ephemeral Knowledge Base excerpts injected for that single request.
 _Avoid_: Full history, chat records, request history
+
+**Context Message Limit**:
+The visitor's single, browser-wide choice of how many recent messages a Model Context may include at most.
+_Avoid_: Context size, context window, history length
 
 **Context Attachment**:
 A user-supplied document or webpage converted into bounded readable text and retained with a user message in Conversation History so any chat model can read it inside Model Context.
@@ -76,6 +84,22 @@ _Avoid_: Retrieval chunk, RAG context, footnote
 The share of a model's context window occupied by the latest inference request, as reported by the model itself. It is independent of the Model Context, which is selected by the application before the request.
 _Avoid_: Model Context, context budget, token count
 
+**Failed Response**:
+The retained record that an inference request for a prompt was sent but failed (including image generation), kept in Conversation History in place of a response so the failure stays visible. It is never part of any Model Context, and a successful Retry replaces it.
+_Avoid_: Error message, error toast, unanswered prompt
+
+**Model Price**:
+The per-token price of a model, taken from the remote catalog for Cloudflare Models or declared by the visitor for other models.
+_Avoid_: Rate, cost, billing
+
+**Estimated Cost**:
+The approximate money a response consumed, derived from its reported token usage and its model's Model Price. It is an estimate and not the provider's bill.
+_Avoid_: Bill, charge, spend, Neurons
+
+**Usage Ledger**:
+The visitor's browser-local record of every response's token usage and Estimated Cost, kept independently of Conversation History so that deleting a conversation does not erase what it consumed.
+_Avoid_: Billing history, usage log, stats
+
 **Retry**:
 Producing a new response for the latest prompt that replaces the latest response in its Conversation History once the new response succeeds. Earlier responses cannot be retried.
 _Avoid_: Regenerate, rerun, redo
@@ -87,3 +111,7 @@ _Avoid_: Image context, input history, mask
 **Access Session**:
 A time-bounded proof that a visitor supplied the deployment access password and may use protected inference APIs.
 _Avoid_: Password cookie, user account, login session
+
+**Interface Language**:
+The language the application's own text is shown in, either following the visitor's system or chosen explicitly. It never changes model responses, prompts, or names the visitor entered; a Failed Response the application describes is shown in the current Interface Language, while failure text relayed from a provider is shown as received.
+_Avoid_: Locale, response language, translation

@@ -9,6 +9,7 @@ import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
 import { ArrowDownIcon } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n";
 
 function MessageScrollerProvider(
   props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>,
@@ -36,9 +37,11 @@ function MessageScrollerViewport({
   className,
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Viewport>) {
+  const { t } = useI18n();
   return (
     <MessageScrollerPrimitive.Viewport
       data-slot="message-scroller-viewport"
+      aria-label={t("ui.messages")}
       className={cn(
         "size-full min-h-0 min-w-0 scroll-fade-b scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain contain-content data-autoscrolling:scrollbar-thumb-transparent data-autoscrolling:scrollbar-track-transparent data-pending-scroll:invisible",
         className,
@@ -89,6 +92,7 @@ function MessageScrollerButton({
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Button> &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
+  const { t } = useI18n();
   return (
     <MessageScrollerPrimitive.Button
       data-slot="message-scroller-button"
@@ -107,7 +111,7 @@ function MessageScrollerButton({
         <>
           <ArrowDownIcon />
           <span className="sr-only">
-            {direction === "end" ? "Scroll to end" : "Scroll to start"}
+            {direction === "end" ? t("ui.scrollToEnd") : t("ui.scrollToStart")}
           </span>
         </>
       )}

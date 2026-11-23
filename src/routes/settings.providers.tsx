@@ -53,6 +53,7 @@ import {
   type PersonalModelDeclaration,
   type PersonalProvider,
 } from "@/lib/personal-providers";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const Route = createFileRoute("/settings/providers")({ component: ProviderSettings });
 
@@ -63,6 +64,7 @@ type DeleteTarget =
   | { kind: "model"; providerId: string; model: PersonalModelDeclaration };
 
 function ProviderSettings() {
+  const { t } = useI18n();
   const { providers, ready, updateProviders } = usePersonalProviders();
   const { capabilities } = useModelCatalogState();
   const deploymentAvailable = capabilities.personalViaDeploymentGateway;
@@ -120,11 +122,8 @@ function ProviderSettings() {
     <div className="flex flex-col gap-4">
       <Alert>
         <ShieldAlertIcon />
-        <AlertTitle>Keys stay in this browser</AlertTitle>
-        <AlertDescription>
-          API keys and gateway tokens are stored unencrypted in this browser and sent with each
-          request through AI Gateway. They are never saved on the server or included in backups.
-        </AlertDescription>
+        <AlertTitle>{t("providers.keysNoticeTitle")}</AlertTitle>
+        <AlertDescription>{t("providers.keysNotice")}</AlertDescription>
       </Alert>
 
       {!ready ? (
@@ -138,15 +137,13 @@ function ProviderSettings() {
             <EmptyMedia variant="icon">
               <KeyRoundIcon />
             </EmptyMedia>
-            <EmptyTitle>No Personal Providers</EmptyTitle>
-            <EmptyDescription>
-              Use your own provider key, or your own AI Gateway, to add models to the picker.
-            </EmptyDescription>
+            <EmptyTitle>{t("providers.empty")}</EmptyTitle>
+            <EmptyDescription>{t("providers.emptyDescription")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button onClick={() => providerDialog.show({})}>
               <PlusIcon />
-              Add provider
+              {t("providers.add")}
             </Button>
           </EmptyContent>
         </Empty>
@@ -159,7 +156,7 @@ function ProviderSettings() {
               onClick={() => providerDialog.show({})}
             >
               <PlusIcon />
-              Add provider
+              {t("providers.add")}
             </Button>
           </div>
 
@@ -173,14 +170,18 @@ function ProviderSettings() {
                     <span className="truncate text-xs text-muted-foreground">
                       {GATEWAY_PROVIDERS[provider.provider]} ·{" "}
                       {provider.gateway
-                        ? `Own gateway ${provider.gateway.gatewayId}`
-                        : "This deployment's gateway"}
+                        ? t("providers.ownGateway", { id: provider.gateway.gatewayId })
+                        : t("providers.deploymentGateway")}
                     </span>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
-                        <Button variant="ghost" size="icon-sm" aria-label="Provider actions" />
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t("providers.providerActions")}
+                        />
                       }
                     >
                       <MoreHorizontalIcon />
@@ -188,21 +189,23 @@ function ProviderSettings() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => providerDialog.show({ provider })}>
                         <PencilIcon />
-                        Edit
+                        {t("common.edit")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => deleteDialog.show({ kind: "provider", provider })}
                       >
                         <Trash2Icon />
-                        Delete
+                        {t("common.delete")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </header>
 
                 {provider.models.length === 0 ? (
-                  <p className="px-3 py-4 text-sm text-muted-foreground">No models yet.</p>
+                  <p className="px-3 py-4 text-sm text-muted-foreground">
+                    {t("providers.noModels")}
+                  </p>
                 ) : (
                   <ul className="flex flex-col py-1">
                     {provider.models.map((model) => (
@@ -218,13 +221,23 @@ function ProviderSettings() {
                         {model.type === "Text to Image" && (
                           <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
                         )}
-                        {model.input?.includes("image") && <Badge variant="outline">Vision</Badge>}
-                        {model.input?.includes("search") && <Badge variant="outline">Search</Badge>}
-                        {model.reasoning && <Badge variant="outline">Reasoning</Badge>}
+                        {model.input?.includes("image") && (
+                          <Badge variant="outline">{t("providers.vision")}</Badge>
+                        )}
+                        {model.input?.includes("search") && (
+                          <Badge variant="outline">{t("providers.search")}</Badge>
+                        )}
+                        {model.reasoning && (
+                          <Badge variant="outline">{t("providers.reasoning")}</Badge>
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={
-                              <Button variant="ghost" size="icon-sm" aria-label="Model actions" />
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t("providers.modelActions")}
+                              />
                             }
                           >
                             <MoreHorizontalIcon />
@@ -234,7 +247,7 @@ function ProviderSettings() {
                               onClick={() => modelDialog.show({ providerId: provider.id, model })}
                             >
                               <PencilIcon />
-                              Edit
+                              {t("common.edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
@@ -243,7 +256,7 @@ function ProviderSettings() {
                               }
                             >
                               <Trash2Icon />
-                              Remove
+                              {t("common.remove")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -259,7 +272,7 @@ function ProviderSettings() {
                     onClick={() => modelDialog.show({ providerId: provider.id })}
                   >
                     <PlusIcon />
-                    Add model
+                    {t("providers.addModel")}
                   </Button>
                   {MODEL_LIST_PATHS[provider.provider] && (
                     <Button
@@ -268,7 +281,7 @@ function ProviderSettings() {
                       onClick={() => fetchDialog.show(provider.id)}
                     >
                       <DownloadCloudIcon />
-                      Fetch models
+                      {t("providers.fetchModels")}
                     </Button>
                   )}
                 </footer>
@@ -317,19 +330,24 @@ function ProviderSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {deleteTarget?.kind === "provider"
-                ? `Delete ${deleteTarget.provider.label}?`
-                : `Remove ${deleteTarget?.model.name ?? deleteTarget?.model.modelId ?? "model"}?`}
+                ? t("providers.deleteProviderTitle", { name: deleteTarget.provider.label })
+                : t("providers.removeModelTitle", {
+                    name:
+                      deleteTarget?.model.name ??
+                      deleteTarget?.model.modelId ??
+                      t("providers.model"),
+                  })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.kind === "provider"
-                ? "Its key and models are removed from this browser. Conversations are kept."
-                : "The model is removed from the picker. Conversations are kept."}
+                ? t("providers.deleteProviderDescription")
+                : t("providers.removeModelDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={confirmDelete}>
-              {deleteTarget?.kind === "provider" ? "Delete" : "Remove"}
+              {deleteTarget?.kind === "provider" ? t("common.delete") : t("common.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

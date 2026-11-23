@@ -60,6 +60,8 @@ import { MAX_IMAGE_PROMPT_LENGTH } from "@/lib/image-models";
 import { getMessageContentLength, MODEL_CONTEXT_MAX_CHARS } from "@/lib/model-context";
 import type { Model } from "@/lib/models";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
+import { useI18n } from "@/hooks/use-i18n";
+import { parseAppError } from "@/lib/error-codes";
 
 export interface onSendMessageProps {
   text: string;
@@ -96,6 +98,7 @@ const ChatInput = ({
   /** Extra controls shown next to the model selector in chat mode. */
   addon?: ReactNode;
 }) => {
+  const { locale, t, tError } = useI18n();
   const { preferences, ready: preferencesReady, setPreference } = useModelPreferences();
   const {
     capabilities,
@@ -154,7 +157,9 @@ const ChatInput = ({
       if (imageMode) {
         if (value.input.length > MAX_IMAGE_PROMPT_LENGTH) {
           toast.add({
-            title: `Image prompts are limited to ${MAX_IMAGE_PROMPT_LENGTH.toLocaleString()} characters.`,
+            title: t("chatInput.imagePromptTooLong", {
+              max: MAX_IMAGE_PROMPT_LENGTH.toLocaleString(locale),
+            }),
             type: "warning",
           });
           return;
@@ -177,7 +182,9 @@ const ChatInput = ({
       ]);
       if (totalChars > MODEL_CONTEXT_MAX_CHARS) {
         toast.add({
-          title: "Message and context attachments exceed the 64,000-character limit.",
+          title: t("chatInput.contextTooLong", {
+            max: MODEL_CONTEXT_MAX_CHARS.toLocaleString(locale),
+          }),
           type: "warning",
         });
         return;
@@ -283,7 +290,7 @@ const ChatInput = ({
     const combinedFiles = [...filesRef.current, ...newFiles];
     if (combinedFiles.length > MAX_IMAGE_PARTS) {
       toast.add({
-        title: `You can only attach up to ${MAX_IMAGE_PARTS} images.`,
+        title: t("chatInput.tooManyImages", { max: MAX_IMAGE_PARTS }),
         type: "warning",
       });
     }
@@ -295,7 +302,7 @@ const ChatInput = ({
   const appendAttachment = (attachment: ContextAttachmentData) => {
     if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
       toast.add({
-        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        title: t("chatInput.tooManyContextItems", { max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE }),
         type: "warning",
       });
       return;
@@ -309,7 +316,7 @@ const ChatInput = ({
     const compressed = await compressImage(file);
     if (!compressed) {
       toast.add({
-        title: `Unable to attach ${file.name}: unsupported or too large.`,
+        title: t("chatInput.imageUnsupported", { name: file.name }),
         type: "warning",
       });
       return null;
@@ -348,14 +355,14 @@ const ChatInput = ({
   const uploadDocument = async (file: File) => {
     if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
       toast.add({
-        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        title: t("chatInput.tooManyContextItems", { max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE }),
         type: "warning",
       });
       return;
     }
     if (file.size > MAX_DOCUMENT_BYTES) {
       toast.add({
-        title: `${file.name} exceeds the 4 MiB upload limit.`,
+        title: t("chatInput.documentTooLarge", { name: file.name }),
         type: "warning",
       });
       return;
@@ -381,7 +388,9 @@ const ChatInput = ({
       if (!response.ok) {
         const message = (await response.text()).trim();
         toast.add({
-          title: message || `Failed to read ${file.name}.`,
+          title: message
+            ? tError(parseAppError(message))
+            : t("chatInput.documentReadFailed", { name: file.name }),
           type: "error",
         });
         return;
@@ -391,7 +400,7 @@ const ChatInput = ({
       appendAttachment(data.attachment);
     } catch {
       toast.add({
-        title: `Failed to upload ${file.name}.`,
+        title: t("chatInput.documentUploadFailed", { name: file.name }),
         type: "error",
       });
     } finally {
@@ -403,7 +412,7 @@ const ChatInput = ({
     const availableSlots = MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE - attachmentsRef.current.length;
     if (availableSlots <= 0) {
       toast.add({
-        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        title: t("chatInput.tooManyContextItems", { max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE }),
         type: "warning",
       });
       return;
@@ -412,7 +421,7 @@ const ChatInput = ({
     const filesToUpload = selectedFiles.slice(0, availableSlots);
     if (selectedFiles.length > availableSlots) {
       toast.add({
-        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        title: t("chatInput.tooManyContextItems", { max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE }),
         type: "warning",
       });
     }
@@ -425,7 +434,7 @@ const ChatInput = ({
   const onAddDocuments = () => {
     if (attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE) {
       toast.add({
-        title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+        title: t("chatInput.tooManyContextItems", { max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE }),
         type: "warning",
       });
       return;
@@ -524,7 +533,7 @@ const ChatInput = ({
                     <ImageAttachmentItem
                       key={`${file.filename}-${file.url}`}
                       src={file.url}
-                      alt={file.filename ?? "image"}
+                      alt={file.filename ?? t("chatInput.image")}
                       onRemove={() => {
                         setFiles((prevState) => prevState.filter((_, i) => i !== index));
                       }}
@@ -550,8 +559,8 @@ const ChatInput = ({
                 name={field.name}
                 autoFocus
                 className="max-h-[50vh] scrollbar-auto scrollbar-thumb-border scrollbar-track-transparent"
-                placeholder="Text here..."
-                aria-label="Message"
+                placeholder={t("chatInput.placeholder")}
+                aria-label={t("chatInput.message")}
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -592,7 +601,7 @@ const ChatInput = ({
                         <InputGroupButton
                           size="icon-sm"
                           variant={referenceImages.length > 0 ? "secondary" : "ghost"}
-                          aria-label="Attach reference images"
+                          aria-label={t("chatInput.attachReferenceImages")}
                           onClick={onAddReferenceImages}
                         />
                       }
@@ -600,7 +609,9 @@ const ChatInput = ({
                       <ImagePlus />
                     </TooltipTrigger>
                     <TooltipContent>
-                      Attach up to {imageTurn.profile.maxReferenceImages} reference images
+                      {t("chatInput.referenceImagesHint", {
+                        max: imageTurn.profile.maxReferenceImages,
+                      })}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -608,12 +619,12 @@ const ChatInput = ({
                 {!imageMode && selectedModel?.input?.includes("search") && (
                   <Toggle
                     variant="primary"
-                    aria-label="Toggle web search"
+                    aria-label={t("chatInput.toggleSearch")}
                     pressed={searchEnabled}
                     onPressedChange={(pressed) => setPreference("searchEnabled", pressed)}
                   >
                     <Earth />
-                    Search
+                    {t("chatInput.search")}
                   </Toggle>
                 )}
 
@@ -621,7 +632,7 @@ const ChatInput = ({
                   (kbNeedsAuth ? (
                     <InputGroupButton
                       size="sm"
-                      aria-label="Knowledge Base"
+                      aria-label={t("chatInput.knowledgeBase")}
                       onClick={async () => {
                         const ok = await reloadKnowledgeBases();
                         if (!ok) {
@@ -632,7 +643,7 @@ const ChatInput = ({
                       }}
                     >
                       <Database />
-                      <span className="hidden sm:inline">KB</span>
+                      <span className="hidden sm:inline">{t("chatInput.knowledgeBaseShort")}</span>
                     </InputGroupButton>
                   ) : kbInstances.length > 0 ? (
                     <DropdownMenu>
@@ -641,13 +652,13 @@ const ChatInput = ({
                           <InputGroupButton
                             size="sm"
                             variant={selectedKb ? "secondary" : "ghost"}
-                            aria-label="Select Knowledge Base"
+                            aria-label={t("chatInput.selectKnowledgeBase")}
                           />
                         }
                       >
                         <Database />
                         <span className="hidden max-w-28 truncate sm:inline">
-                          {selectedKb ? selectedKb.name : "KB"}
+                          {selectedKb ? selectedKb.name : t("chatInput.knowledgeBaseShort")}
                         </span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" side="top">
@@ -660,7 +671,7 @@ const ChatInput = ({
                             )
                           }
                         >
-                          <DropdownMenuRadioItem value="">None</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="">{t("common.none")}</DropdownMenuRadioItem>
                           {kbInstances.map((instance) => (
                             <DropdownMenuRadioItem key={instance.id} value={instance.id}>
                               {instance.name}
@@ -677,7 +688,7 @@ const ChatInput = ({
                       render={
                         <InputGroupButton
                           size="icon-sm"
-                          aria-label="Attach context"
+                          aria-label={t("chatInput.attachContext")}
                           disabled={uploadingDocument}
                         />
                       }
@@ -688,13 +699,13 @@ const ChatInput = ({
                       {supportsImage && (
                         <DropdownMenuItem onClick={onAddImages}>
                           <ImagePlus />
-                          Upload image
+                          {t("chatInput.uploadImage")}
                         </DropdownMenuItem>
                       )}
                       {supportsDocument && (
                         <DropdownMenuItem onClick={onAddDocuments}>
                           <FileText />
-                          Upload document
+                          {t("chatInput.uploadDocument")}
                         </DropdownMenuItem>
                       )}
                       {supportsWebFetch && (
@@ -704,7 +715,9 @@ const ChatInput = ({
                               attachmentsRef.current.length >= MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE
                             ) {
                               toast.add({
-                                title: `You can only attach up to ${MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE} context items per message.`,
+                                title: t("chatInput.tooManyContextItems", {
+                                  max: MAX_CONTEXT_ATTACHMENTS_PER_MESSAGE,
+                                }),
                                 type: "warning",
                               });
                               return;
@@ -713,7 +726,7 @@ const ChatInput = ({
                           }}
                         >
                           <Globe />
-                          Attach webpage URL
+                          {t("chatInput.attachUrl")}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -728,7 +741,9 @@ const ChatInput = ({
                           <InputGroupButton
                             size="icon-sm"
                             variant={listening ? "destructive" : "ghost"}
-                            aria-label={listening ? "Stop voice input" : "Voice input"}
+                            aria-label={
+                              listening ? t("chatInput.stopVoiceInput") : t("chatInput.voiceInput")
+                            }
                             onClick={() => {
                               if (listening) {
                                 stopSpeech();
@@ -744,7 +759,7 @@ const ChatInput = ({
                         {listening ? <MicOff /> : <Mic />}
                       </TooltipTrigger>
                       <TooltipContent>
-                        {listening ? "Stop voice input" : "Voice input"}
+                        {listening ? t("chatInput.stopVoiceInput") : t("chatInput.voiceInput")}
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -753,7 +768,11 @@ const ChatInput = ({
                     size="icon-sm"
                     variant="default"
                     aria-label={
-                      status === "streaming" ? "Stop" : status === "error" ? "Retry" : "Send"
+                      status === "streaming"
+                        ? t("chatInput.stop")
+                        : status === "error"
+                          ? t("common.retry")
+                          : t("chatInput.send")
                     }
                     disabled={
                       models.length === 0 ||

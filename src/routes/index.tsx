@@ -9,11 +9,13 @@ import { toast } from "@/components/ui/toast";
 import { useAuthRetry } from "@/hooks/use-auth-retry";
 import { useImageTurn } from "@/hooks/use-image-turn";
 import { createConversation, createUserMessage } from "@/lib/conversation-store";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const models = useModelCatalog();
   const imageTurn = useImageTurn(useSelectedModel(models));
   const { authDialog, handleUnauthorized, resetAuthRetry } = useAuthRetry(() => {});
@@ -31,7 +33,7 @@ function Home() {
         replace: true,
       });
     } catch {
-      toast.add({ title: "Unable to start a new chat.", type: "error" });
+      toast.add({ title: t("home.startFailed"), type: "error" });
     }
   };
 
@@ -39,8 +41,8 @@ function Home() {
     <div className="flex flex-col items-center justify-center h-full">
       <div className="flex flex-col justify-center h-full w-full gap-4 px-4">
         <div className="font-bold text-2xl mx-auto font-mono">
-          <TextEffect per="word" preset="fade-in-blur">
-            How can I assist you today?
+          <TextEffect key={t("home.greeting")} per="word" preset="fade-in-blur">
+            {t("home.greeting")}
           </TextEffect>
         </div>
         <ChatInput

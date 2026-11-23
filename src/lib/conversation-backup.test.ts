@@ -16,7 +16,7 @@ import { db } from "@/lib/db";
 import { getImageBlobs } from "@/lib/image-turn";
 
 afterEach(async () => {
-  await Promise.all([db.session.clear(), db.message.clear()]);
+  await Promise.all([db.session.clear(), db.message.clear(), db.usage.clear()]);
 });
 
 test("exportConversationHistory filters attached images when disabled", async () => {
@@ -105,6 +105,47 @@ test("getStorageStats counts and clearAllConversations removes every conversatio
   await clearAllConversations();
 
   expect(await getStorageStats()).toEqual({ sessionCount: 0, messageCount: 0 });
+});
+
+const usageRecord = (id: string, cost?: number) => ({
+  id,
+  sessionId: "gone",
+  createdAt: new Date(Date.UTC(2026, 10, 1)),
+  modelId: "@cf/test/chat",
+  modelName: "chat",
+  inputTokens: 1000,
+  outputTokens: 500,
+  ...(cost === undefined ? {} : { cost }),
+});
+
+test("the Usage Ledger outlives cleared conversations and round-trips through a backup", async () => {
+  await createConversation(createUserMessage("hello"));
+  await db.usage.bulkAdd([usageRecord("r1", 0.002), usageRecord("r2")]);
+  await clearAllConversations();
+  expect(await db.usage.count()).toBe(2);
+
+  const backup = await exportConversationHistory({ includeImages: false });
+  expect(backup.usage?.map((record) => record.id)).toEqual(["r1", "r2"]);
+
+  await db.usage.delete("r2");
+  const result = await importConversationHistory(JSON.stringify(backup));
+  expect(result.ok).toBe(true);
+  const restored = await db.usage.orderBy("id").toArray();
+  expect(restored.map((record) => record.id)).toEqual(["r1", "r2"]);
+  expect(restored[0].cost).toBe(0.002);
+  expect(restored[1].createdAt).toBeInstanceOf(Date);
+});
+
+test("backups made before the Usage Ledger still import", async () => {
+  const result = await importConversationHistory(
+    JSON.stringify({
+      version: CONVERSATION_BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      sessions: [],
+    }),
+  );
+  expect(result.ok).toBe(true);
+  expect(await db.usage.count()).toBe(0);
 });
 
 const png = () => new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });

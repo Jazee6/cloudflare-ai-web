@@ -1,3 +1,4 @@
+import { type AppError, appError, parseAppError } from "@/lib/error-codes";
 import { generateId, type UIMessage } from "ai";
 import type { StoredImagesData } from "@/lib/db";
 import {
@@ -95,7 +96,7 @@ export const createImageResponseMessage = (
 
 export type ImageRequestResult =
   | { ok: true; image: Blob; params: NormalizedImageParams }
-  | { ok: false; unauthorized: boolean; message: string };
+  | { ok: false; unauthorized: boolean; error: AppError };
 
 const getBlobExtension = (blob: Blob) =>
   blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
@@ -121,7 +122,7 @@ export const requestImage = async ({
     return {
       ok: false,
       unauthorized: false,
-      message: "This Personal Model is no longer configured. Select another model.",
+      error: appError("personalModelMissing"),
     };
   }
 
@@ -156,14 +157,15 @@ export const requestImage = async ({
       });
     }
   } catch {
-    return { ok: false, unauthorized: false, message: "Network error. Please try again." };
+    return { ok: false, unauthorized: false, error: appError("networkError") };
   }
 
   if (!response.ok) {
+    const body = await response.text().catch(() => "");
     return {
       ok: false,
       unauthorized: response.status === 401,
-      message: (await response.text()) || "Image generation failed. Please try again.",
+      error: body.trim() ? parseAppError(body) : appError("imageGenerationFailed"),
     };
   }
   return { ok: true, image: await response.blob(), params: requestParams };

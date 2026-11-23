@@ -13,6 +13,7 @@ test("parseSettings merges valid fields and falls back per invalid field", () =>
       customInstructions: "Be concise.",
       skipGatewayCache: true,
       webFetchPolicy: "zero-quota",
+      contextMessageLimit: 12,
       asrLocale: "zh-CN",
       ttsVoiceURI: "voice-1",
       ttsRate: 1.5,
@@ -22,6 +23,7 @@ test("parseSettings merges valid fields and falls back per invalid field", () =>
     customInstructions: "Be concise.",
     skipGatewayCache: true,
     webFetchPolicy: "zero-quota",
+    contextMessageLimit: 12,
     asrLocale: "zh-CN",
     ttsVoiceURI: "voice-1",
     ttsRate: 1.5,
@@ -34,6 +36,7 @@ test("parseSettings merges valid fields and falls back per invalid field", () =>
       skipGatewayCache: "yes",
       webFetchPolicy: "unknown",
       asrLocale: "invalid",
+      contextMessageLimit: 0,
       ttsRate: 5,
     }),
   ).toEqual(DEFAULT_SETTINGS);

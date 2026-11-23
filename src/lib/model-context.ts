@@ -1,6 +1,7 @@
 import type { FileUIPart, UIMessage } from "ai";
 import { getContextAttachmentCharLength, isContextAttachmentPart } from "@/lib/context-attachments";
 import { blobToDataUrl } from "@/lib/image-compression";
+import { withoutFailedResponses } from "@/lib/failed-response";
 import { getImageBlobs } from "@/lib/image-turn";
 import { MAX_IMAGE_PARTS } from "@/lib/request-limits";
 
@@ -28,17 +29,22 @@ export const getMessageContentLength = (parts: UIMessage["parts"]): number =>
   }, 0);
 
 /**
- * Selects a contiguous Model Context from newest to oldest without truncating messages.
- * File payloads use their own count and byte limits and are excluded from the character budget.
+ * Selects a contiguous Model Context from newest to oldest without truncating messages, up to
+ * the Context Message Limit. Failed Responses are never included, and a context never starts
+ * with an assistant message. File payloads use their own count and byte limits and are excluded
+ * from the character budget.
  */
 export const buildModelContext = <Message extends UIMessage>(
   messages: Message[],
+  { maxMessages = MODEL_CONTEXT_MAX_MESSAGES }: { maxMessages?: number } = {},
 ): Message[] | null => {
-  if (messages.length === 0) {
+  const candidates = withoutFailedResponses(messages);
+  if (candidates.length === 0) {
     return [];
   }
+  const limit = Math.max(1, Math.min(MODEL_CONTEXT_MAX_MESSAGES, Math.floor(maxMessages)));
 
-  const newestFirst = [...messages].reverse();
+  const newestFirst = [...candidates].reverse();
   if (getMessageContentLength(newestFirst[0].parts) > MODEL_CONTEXT_MAX_CHARS) {
     return null;
   }
@@ -53,11 +59,15 @@ export const buildModelContext = <Message extends UIMessage>(
 
     selected.push(message);
     totalChars += messageChars;
-    if (selected.length === MODEL_CONTEXT_MAX_MESSAGES) {
+    if (selected.length === limit) {
       break;
     }
   }
   selected.reverse();
+  // Providers expect the conversation to open with the user.
+  while (selected.length > 1 && selected[0].role === "assistant") {
+    selected.shift();
+  }
 
   let remainingImages = MODEL_CONTEXT_MAX_IMAGES;
   const prunedNewestFirst = [...selected].reverse().map((message) => {

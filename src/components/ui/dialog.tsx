@@ -4,6 +4,13 @@ import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n";
+
+/** The translated name of a close button. */
+function CloseLabel({ visible = false }: { visible?: boolean }) {
+  const { t } = useI18n();
+  return visible ? t("common.close") : <span className="sr-only">{t("common.close")}</span>;
+}
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -60,7 +67,7 @@ function DialogContent({
             render={<Button variant="ghost" className="absolute top-2 right-2" size="icon-sm" />}
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <CloseLabel />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -93,7 +100,9 @@ function DialogFooter({
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>
+        <DialogPrimitive.Close render={<Button variant="outline" />}>
+          <CloseLabel visible />
+        </DialogPrimitive.Close>
       )}
     </div>
   );

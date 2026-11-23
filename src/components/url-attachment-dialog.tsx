@@ -1,3 +1,4 @@
+import { parseAppError } from "@/lib/error-codes";
 import { useForm } from "@tanstack/react-form";
 import { Globe } from "lucide-react";
 import { useState } from "react";
@@ -25,12 +26,13 @@ import { Toggle } from "@/components/ui/toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ContextAttachmentData } from "@/lib/context-attachments";
 import type { WebFetchMode } from "@/lib/context-url";
+import { useI18n } from "@/hooks/use-i18n";
 
 const urlInputSchema = v.object({
   url: v.pipe(
     v.string(),
     v.trim(),
-    v.minLength(1, "Enter a webpage URL."),
+    v.minLength(1, "urlDialog.urlRequired"),
     v.check((value) => {
       try {
         const parsed = new URL(value);
@@ -38,7 +40,7 @@ const urlInputSchema = v.object({
       } catch {
         return false;
       }
-    }, "Enter a valid http:// or https:// URL."),
+    }, "urlDialog.urlInvalid"),
   ),
 });
 
@@ -55,6 +57,7 @@ export const UrlAttachmentDialog = ({
   onAttached: (attachment: ContextAttachmentData) => void;
   onUnauthorized?: () => void;
 }) => {
+  const { t, tError, tText } = useI18n();
   const isMobile = useIsMobile();
   const { settings } = useSettings();
   const [useBrowser, setUseBrowser] = useState(false);
@@ -91,7 +94,7 @@ export const UrlAttachmentDialog = ({
 
         if (!response.ok) {
           const message = (await response.text()).trim();
-          setRequestError(message || "Failed to fetch webpage content.");
+          setRequestError(message ? tError(parseAppError(message)) : t("urlDialog.fetchFailed"));
           return;
         }
 
@@ -101,7 +104,7 @@ export const UrlAttachmentDialog = ({
         setUseBrowser(false);
         onOpenChange(false);
       } catch {
-        setRequestError("Network error while fetching webpage.");
+        setRequestError(t("urlDialog.networkError"));
       } finally {
         setLoading(false);
       }
@@ -120,15 +123,15 @@ export const UrlAttachmentDialog = ({
       <form.Field name="url">
         {(field) => {
           const firstError = field.state.meta.errors[0];
-          const errorMessage =
+          const fieldMessage =
             typeof firstError === "string"
               ? firstError
               : (firstError as { message?: string } | undefined)?.message;
-          const displayError = errorMessage ?? requestError;
+          const displayError = fieldMessage ? tText(fieldMessage) : requestError;
 
           return (
             <Field data-invalid={displayError ? "true" : undefined}>
-              <FieldLabel htmlFor="context-url-input">Webpage URL</FieldLabel>
+              <FieldLabel htmlFor="context-url-input">{t("urlDialog.url")}</FieldLabel>
               <Input
                 id="context-url-input"
                 type="url"
@@ -159,7 +162,7 @@ export const UrlAttachmentDialog = ({
             disabled={loading}
           >
             <Globe />
-            Browser rendering
+            {t("urlDialog.browserRendering")}
           </Toggle>
         </div>
       )}
@@ -174,11 +177,11 @@ export const UrlAttachmentDialog = ({
         onClick={() => handleOpenChange(false)}
         disabled={loading}
       >
-        Cancel
+        {t("common.cancel")}
       </Button>
       <Button type="submit" disabled={loading}>
         {loading && <Spinner />}
-        Attach
+        {t("urlDialog.attach")}
       </Button>
     </>
   );
@@ -195,7 +198,7 @@ export const UrlAttachmentDialog = ({
         <DrawerContent>
           <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-4">
             <DrawerHeader>
-              <DrawerTitle>Attach webpage</DrawerTitle>
+              <DrawerTitle>{t("urlDialog.title")}</DrawerTitle>
             </DrawerHeader>
             <div className="px-4">{fields}</div>
             <DrawerFooter className="flex-row justify-end">{actions}</DrawerFooter>
@@ -210,7 +213,7 @@ export const UrlAttachmentDialog = ({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Attach webpage</DialogTitle>
+            <DialogTitle>{t("urlDialog.title")}</DialogTitle>
           </DialogHeader>
           {fields}
           <DialogFooter>{actions}</DialogFooter>

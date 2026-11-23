@@ -49,8 +49,9 @@ test("splitSpeechChunks splits long text by sentences without exceeding maxChunk
   }
 });
 
-test("mapSpeechRecognitionError returns user-friendly messages", () => {
-  expect(mapSpeechRecognitionError("not-allowed")).toContain("permission");
-  expect(mapSpeechRecognitionError("audio-capture")).toContain("microphone");
-  expect(mapSpeechRecognitionError("network")).toContain("unavailable");
+test("mapSpeechRecognitionError returns message keys", () => {
+  expect(mapSpeechRecognitionError("not-allowed")).toBe("speech.permissionDenied");
+  expect(mapSpeechRecognitionError("audio-capture")).toBe("speech.noMicrophone");
+  expect(mapSpeechRecognitionError("network")).toBe("speech.serviceUnavailable");
+  expect(mapSpeechRecognitionError("other")).toBe("speech.failed");
 });

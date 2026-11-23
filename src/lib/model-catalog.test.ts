@@ -1,5 +1,6 @@
 import { afterEach, expect, mock, test } from "bun:test";
 import {
+  getModelPrice,
   getAppCapabilities,
   getCatalogModel,
   getModelCatalog,
@@ -245,4 +246,31 @@ test("getModelCatalog retains stale Catalog Snapshot when background refresh fai
     globalThis.fetch = originalFetch;
     catalogGlobal.cloudflareModelCatalogCache?.clear();
   }
+});
+
+test("reads the Model Price from the catalog's per-million-token USD entries", () => {
+  const withPrice = (value: unknown) =>
+    getModelPrice({
+      id: "m",
+      source: 1,
+      name: "m",
+      description: "",
+      task: { id: "t", name: "Text Generation", description: "" },
+      tags: [],
+      properties: [{ property_id: "price", value }],
+    });
+  expect(
+    withPrice([
+      { unit: "per M input tokens", price: 0.35, currency: "USD" },
+      { unit: "per M output tokens", price: 0.75, currency: "USD" },
+      { unit: "per M cached input tokens", price: 0.1, currency: "USD" },
+    ]),
+  ).toEqual({ input: 0.35, output: 0.75 });
+  expect(withPrice([{ unit: "per M input tokens", price: 0.1, currency: "USD" }])).toEqual({
+    input: 0.1,
+    output: 0,
+  });
+  expect(withPrice([{ unit: "token", price: 0.01 }])).toBeUndefined();
+  expect(withPrice([{ unit: "per M input tokens", price: 1, currency: "EUR" }])).toBeUndefined();
+  expect(withPrice("free")).toBeUndefined();
 });

@@ -16,9 +16,11 @@ import {
   parseModelLayout,
   readModelLayout,
   writeModelLayout,
+  EXTERNAL_GROUP_KEY,
 } from "@/lib/model-layout";
 import type { Model } from "@/lib/models";
 import { pickSelectedModel } from "@/lib/preferences";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface ModelLayoutContextValue {
   layout: ModelLayout;
@@ -69,12 +71,20 @@ export const useModelLayout = () => {
 };
 
 /** The Model Catalog arranged into the visitor's Model Groups. */
-export const useModelGroups = ({ includeHidden = false }: { includeHidden?: boolean } = {}) => {
+export const useModelGroups = ({
+  includeHidden = false,
+  includeHiddenGroups = includeHidden,
+}: { includeHidden?: boolean; includeHiddenGroups?: boolean } = {}) => {
   const { models } = useModelCatalogState();
   const { layout } = useModelLayout();
+  const { t } = useI18n();
   return useMemo(
-    () => applyModelLayout(models, layout, { includeHidden }).groups,
-    [models, layout, includeHidden],
+    () =>
+      applyModelLayout(models, layout, { includeHidden, includeHiddenGroups }).groups.map(
+        (group) =>
+          group.key === EXTERNAL_GROUP_KEY ? { ...group, name: t("modelGroups.external") } : group,
+      ),
+    [models, layout, includeHidden, includeHiddenGroups, t],
   );
 };
 

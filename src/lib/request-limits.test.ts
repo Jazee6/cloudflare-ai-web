@@ -19,6 +19,7 @@ test("readRequestBody rejects a declared oversized body before reading", async (
   expect(await readRequestBody(request, 4)).toEqual({
     ok: false,
     status: 413,
+    code: "bodyTooLarge",
     message: "Request body too large.",
   });
 });

@@ -40,6 +40,7 @@ import {
   MAX_SEED,
   sanitizeImageParams,
 } from "@/lib/image-models";
+import { useI18n } from "@/hooks/use-i18n";
 
 const extractFormErrorMessages = (errors: unknown[]): string[] => {
   const messages: string[] = [];
@@ -110,6 +111,7 @@ export const ImageParamsPanel = ({
   params: ImageGenerationParams;
   onChangeParams: (next: ImageGenerationParams) => void;
 }) => {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const adjustable = hasAdjustableImageParams(profile);
@@ -127,7 +129,7 @@ export const ImageParamsPanel = ({
         v.string(),
         v.maxLength(
           MAX_NEGATIVE_PROMPT_LENGTH,
-          `Negative prompt must be at most ${MAX_NEGATIVE_PROMPT_LENGTH} characters.`,
+          t("imageParams.negativePromptTooLong", { max: MAX_NEGATIVE_PROMPT_LENGTH }),
         ),
       ),
     }),
@@ -139,7 +141,7 @@ export const ImageParamsPanel = ({
       const h = parseOptionalInt(values.height);
       const check = sanitizeImageParams(model, { width: w, height: h });
       return check.ok;
-    }, "Dimensions must match the model range and step size."),
+    }, t("imageParams.dimensionsInvalid")),
     v.check(
       (values) => {
         if (!profile.steps) {
@@ -151,7 +153,10 @@ export const ImageParamsPanel = ({
           values.steps <= profile.steps.max
         );
       },
-      `Steps must be an integer between ${profile.steps?.min ?? 1} and ${profile.steps?.max ?? 50}.`,
+      t("imageParams.stepsInvalid", {
+        min: profile.steps?.min ?? 1,
+        max: profile.steps?.max ?? 50,
+      }),
     ),
     v.check(
       (values) => {
@@ -164,20 +169,26 @@ export const ImageParamsPanel = ({
           values.guidance <= profile.guidance.max
         );
       },
-      `Guidance must be between ${profile.guidance?.min ?? 0} and ${profile.guidance?.max ?? 20}.`,
+      t("imageParams.guidanceInvalid", {
+        min: profile.guidance?.min ?? 0,
+        max: profile.guidance?.max ?? 20,
+      }),
     ),
-    v.check((values) => {
-      if (!profile.supportsSeed || !values.seed.trim()) {
-        return true;
-      }
-      const parsedSeed = parseOptionalInt(values.seed);
-      return (
-        parsedSeed !== undefined &&
-        Number.isInteger(parsedSeed) &&
-        parsedSeed >= 0 &&
-        parsedSeed <= MAX_SEED
-      );
-    }, `Seed must be an integer between 0 and ${MAX_SEED}.`),
+    v.check(
+      (values) => {
+        if (!profile.supportsSeed || !values.seed.trim()) {
+          return true;
+        }
+        const parsedSeed = parseOptionalInt(values.seed);
+        return (
+          parsedSeed !== undefined &&
+          Number.isInteger(parsedSeed) &&
+          parsedSeed >= 0 &&
+          parsedSeed <= MAX_SEED
+        );
+      },
+      t("imageParams.seedInvalid", { max: MAX_SEED }),
+    ),
   );
 
   const form = useForm({
@@ -188,7 +199,7 @@ export const ImageParamsPanel = ({
         if (parsed.success) {
           return undefined;
         }
-        return parsed.issues[0]?.message ?? "Invalid image generation parameters.";
+        return parsed.issues[0]?.message ?? t("imageParams.invalid");
       },
     },
     onSubmit: async ({ value }) => {
@@ -267,7 +278,7 @@ export const ImageParamsPanel = ({
       {profile.highCostHint && (
         <Alert>
           <AlertTriangle />
-          <AlertDescription>{profile.highCostHint}</AlertDescription>
+          <AlertDescription>{t(profile.highCostHint)}</AlertDescription>
         </Alert>
       )}
 
@@ -275,7 +286,7 @@ export const ImageParamsPanel = ({
         <form.Field name="aspectRatio">
           {(field) => (
             <Field>
-              <FieldLabel>Aspect Ratio</FieldLabel>
+              <FieldLabel>{t("imageParams.aspectRatio")}</FieldLabel>
               <ToggleGroup
                 multiple={false}
                 variant="outline"
@@ -308,7 +319,7 @@ export const ImageParamsPanel = ({
 
             return (
               <Field>
-                <FieldLabel>Aspect Ratio & Size</FieldLabel>
+                <FieldLabel>{t("imageParams.aspectRatioAndSize")}</FieldLabel>
                 <ToggleGroup
                   multiple={false}
                   variant="outline"
@@ -333,7 +344,7 @@ export const ImageParamsPanel = ({
                   <form.Field name="width">
                     {(field) => (
                       <Field>
-                        <FieldLabel htmlFor="image-width">Width</FieldLabel>
+                        <FieldLabel htmlFor="image-width">{t("imageParams.width")}</FieldLabel>
                         <Input
                           id="image-width"
                           type="number"
@@ -349,7 +360,7 @@ export const ImageParamsPanel = ({
                   <form.Field name="height">
                     {(field) => (
                       <Field>
-                        <FieldLabel htmlFor="image-height">Height</FieldLabel>
+                        <FieldLabel htmlFor="image-height">{t("imageParams.height")}</FieldLabel>
                         <Input
                           id="image-height"
                           type="number"
@@ -374,7 +385,7 @@ export const ImageParamsPanel = ({
           {(field) => (
             <Field>
               <div className="flex items-center justify-between gap-2">
-                <FieldLabel>Steps</FieldLabel>
+                <FieldLabel>{t("imageParams.steps")}</FieldLabel>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {field.state.value}
                 </span>
@@ -401,7 +412,7 @@ export const ImageParamsPanel = ({
           {(field) => (
             <Field>
               <div className="flex items-center justify-between gap-2">
-                <FieldLabel>Guidance</FieldLabel>
+                <FieldLabel>{t("imageParams.guidance")}</FieldLabel>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {field.state.value}
                 </span>
@@ -428,12 +439,12 @@ export const ImageParamsPanel = ({
           <form.Field name="seed">
             {(field) => (
               <Field>
-                <FieldLabel htmlFor="image-seed">Seed</FieldLabel>
+                <FieldLabel htmlFor="image-seed">{t("imageParams.seed")}</FieldLabel>
                 <ButtonGroup className="w-full">
                   <Input
                     id="image-seed"
                     type="number"
-                    placeholder="Random"
+                    placeholder={t("imageParams.random")}
                     min={0}
                     max={MAX_SEED}
                     value={field.state.value}
@@ -447,7 +458,7 @@ export const ImageParamsPanel = ({
                     type="button"
                     variant="outline"
                     size="icon"
-                    aria-label="Randomize seed"
+                    aria-label={t("imageParams.randomizeSeed")}
                     onClick={() => {
                       field.handleChange(String(generateRandomSeed()));
                       form.setFieldValue("seedLocked", true);
@@ -463,7 +474,7 @@ export const ImageParamsPanel = ({
           <form.Field name="seedLocked">
             {(field) => (
               <Field orientation="horizontal" className="justify-between">
-                <FieldLabel htmlFor="image-seed-lock">Lock seed on retry</FieldLabel>
+                <FieldLabel htmlFor="image-seed-lock">{t("imageParams.lockSeed")}</FieldLabel>
                 <Switch
                   id="image-seed-lock"
                   checked={field.state.value}
@@ -481,12 +492,14 @@ export const ImageParamsPanel = ({
             const fieldErrors = extractFormErrorMessages(field.state.meta.errors);
             return (
               <Field data-invalid={fieldErrors.length > 0 ? "true" : undefined}>
-                <FieldLabel htmlFor="image-negative-prompt">Negative Prompt</FieldLabel>
+                <FieldLabel htmlFor="image-negative-prompt">
+                  {t("imageParams.negativePrompt")}
+                </FieldLabel>
                 <Textarea
                   id="image-negative-prompt"
                   rows={2}
                   maxLength={MAX_NEGATIVE_PROMPT_LENGTH}
-                  placeholder="Things to exclude..."
+                  placeholder={t("imageParams.negativePromptPlaceholder")}
                   value={field.state.value}
                   aria-invalid={fieldErrors.length > 0}
                   onChange={(event) => field.handleChange(event.target.value)}
@@ -510,9 +523,9 @@ export const ImageParamsPanel = ({
   const footerActions = (
     <>
       <Button type="button" variant="outline" onClick={handleReset}>
-        Reset
+        {t("imageParams.reset")}
       </Button>
-      <Button type="submit">Apply</Button>
+      <Button type="submit">{t("imageParams.apply")}</Button>
     </>
   );
 
@@ -529,7 +542,7 @@ export const ImageParamsPanel = ({
           <InputGroupButton
             size="sm"
             variant={hasCustomValues ? "secondary" : "ghost"}
-            aria-label="Image parameters"
+            aria-label={t("imageParams.title")}
             onClick={() => setOpen(true)}
           />
         }
@@ -537,7 +550,7 @@ export const ImageParamsPanel = ({
         <SlidersHorizontal />
         <span className="hidden sm:inline">Params</span>
       </TooltipTrigger>
-      <TooltipContent>Generation parameters</TooltipContent>
+      <TooltipContent>{t("imageParams.tooltip")}</TooltipContent>
     </Tooltip>
   );
 
@@ -549,7 +562,7 @@ export const ImageParamsPanel = ({
           <DrawerContent>
             <form onSubmit={handleSubmit} noValidate className="flex max-h-[85dvh] flex-col gap-4">
               <DrawerHeader>
-                <DrawerTitle>Image Parameters</DrawerTitle>
+                <DrawerTitle>{t("imageParams.title")}</DrawerTitle>
               </DrawerHeader>
               <div className="overflow-y-auto px-4">{formBody}</div>
               <DrawerFooter className="flex-row justify-end">{footerActions}</DrawerFooter>
@@ -567,7 +580,7 @@ export const ImageParamsPanel = ({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Image Parameters</DialogTitle>
+              <DialogTitle>{t("imageParams.title")}</DialogTitle>
             </DialogHeader>
             {formBody}
             <DialogFooter>{footerActions}</DialogFooter>

@@ -53,7 +53,7 @@ afterEach(async () => {
 test("upgrading from v2 keeps Conversation History and orders it by creation time", async () => {
   const history = await loadConversationHistory("legacy");
 
-  expect(db.verno).toBe(4);
+  expect(db.verno).toBe(5);
   expect(history.map(textOf)).toEqual(["message 1", "message 2"]);
 });
 

@@ -1,3 +1,4 @@
+import { appError, errorResponse } from "@/lib/error-codes";
 import { isRequestAuthorized } from "@/lib/auth";
 
 /**
@@ -20,7 +21,7 @@ export const checkApiAccess = async (request: Request): Promise<Response | null>
   }
 
   if (!(await isRequestAuthorized(request))) {
-    return new Response("Unauthorized", { status: 401 });
+    return errorResponse(appError("unauthorized"), { status: 401 });
   }
 
   return null;

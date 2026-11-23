@@ -2,22 +2,10 @@ import * as v from "valibot";
 
 export const SETTINGS_STORAGE_KEY = "cf-ai-settings-v1";
 export const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 4_000;
+export const MIN_CONTEXT_MESSAGE_LIMIT = 1;
+export const MAX_CONTEXT_MESSAGE_LIMIT = 100;
 
-export const ASR_LOCALE_OPTIONS = [
-  { value: "auto", label: "Auto (Browser default)" },
-  { value: "zh-CN", label: "Chinese (zh-CN)" },
-  { value: "en-US", label: "English (en-US)" },
-  { value: "ja-JP", label: "Japanese (ja-JP)" },
-  { value: "ko-KR", label: "Korean (ko-KR)" },
-  { value: "fr-FR", label: "French (fr-FR)" },
-  { value: "de-DE", label: "German (de-DE)" },
-  { value: "es-ES", label: "Spanish (es-ES)" },
-] as const;
-
-export type AsrLocale = (typeof ASR_LOCALE_OPTIONS)[number]["value"];
-export type WebFetchPolicy = "auto" | "zero-quota";
-
-const asrLocaleSchema = v.picklist([
+export const ASR_LOCALES = [
   "auto",
   "zh-CN",
   "en-US",
@@ -26,16 +14,29 @@ const asrLocaleSchema = v.picklist([
   "fr-FR",
   "de-DE",
   "es-ES",
-]);
+] as const;
+
+export type AsrLocale = (typeof ASR_LOCALES)[number];
+export type WebFetchPolicy = "auto" | "zero-quota";
+
+const asrLocaleSchema = v.picklist(ASR_LOCALES);
 
 const customInstructionsSchema = v.pipe(v.string(), v.maxLength(MAX_CUSTOM_INSTRUCTIONS_LENGTH));
 const webFetchPolicySchema = v.picklist(["auto", "zero-quota"]);
+const contextMessageLimitSchema = v.pipe(
+  v.number(),
+  v.integer(),
+  v.minValue(MIN_CONTEXT_MESSAGE_LIMIT),
+  v.maxValue(MAX_CONTEXT_MESSAGE_LIMIT),
+);
 const ttsRateSchema = v.pipe(v.number(), v.minValue(0.5), v.maxValue(2));
 
 export const settingsSchema = v.object({
   customInstructions: customInstructionsSchema,
   skipGatewayCache: v.boolean(),
   webFetchPolicy: webFetchPolicySchema,
+  /** The Context Message Limit. */
+  contextMessageLimit: contextMessageLimitSchema,
   asrLocale: asrLocaleSchema,
   ttsVoiceURI: v.string(),
   ttsRate: ttsRateSchema,
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   customInstructions: "",
   skipGatewayCache: false,
   webFetchPolicy: "auto",
+  contextMessageLimit: MAX_CONTEXT_MESSAGE_LIMIT,
   asrLocale: "auto",
   ttsVoiceURI: "",
   ttsRate: 1,
@@ -85,6 +87,11 @@ export const parseSettings = (input: unknown): AppSettings => {
       webFetchPolicySchema,
       record.webFetchPolicy,
       DEFAULT_SETTINGS.webFetchPolicy,
+    ),
+    contextMessageLimit: parseField(
+      contextMessageLimitSchema,
+      record.contextMessageLimit,
+      DEFAULT_SETTINGS.contextMessageLimit,
     ),
     asrLocale: parseField(asrLocaleSchema, record.asrLocale, DEFAULT_SETTINGS.asrLocale),
     ttsVoiceURI: parseField(v.string(), record.ttsVoiceURI, DEFAULT_SETTINGS.ttsVoiceURI),

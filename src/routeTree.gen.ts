@@ -21,6 +21,7 @@ import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsDataRouteImport } from './routes/settings.data'
 import { Route as SettingsModelsRouteImport } from './routes/settings.models'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
+import { Route as SettingsUsageRouteImport } from './routes/settings.usage'
 import { Route as SettingsVoiceRouteImport } from './routes/settings.voice'
 import { Route as ApiAiSearchInstancesRouteImport } from './routes/api/ai-search/instances'
 import { Route as ApiContextDocumentRouteImport } from './routes/api/context/document'
@@ -86,6 +87,11 @@ const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsUsageRoute = SettingsUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
   id: '/voice',
   path: '/voice',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/usage': typeof SettingsUsageRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/usage': typeof SettingsUsageRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/settings/data': typeof SettingsDataRoute
   '/settings/models': typeof SettingsModelsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/usage': typeof SettingsUsageRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/ai-search/instances': typeof ApiAiSearchInstancesRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/settings/data'
     | '/settings/models'
     | '/settings/providers'
+    | '/settings/usage'
     | '/settings/voice'
     | '/settings/'
     | '/api/ai-search/instances'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/settings/data'
     | '/settings/models'
     | '/settings/providers'
+    | '/settings/usage'
     | '/settings/voice'
     | '/settings'
     | '/api/ai-search/instances'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/settings/data'
     | '/settings/models'
     | '/settings/providers'
+    | '/settings/usage'
     | '/settings/voice'
     | '/settings/'
     | '/api/ai-search/instances'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsProvidersRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/usage': {
+      id: '/settings/usage'
+      path: '/usage'
+      fullPath: '/settings/usage'
+      preLoaderRoute: typeof SettingsUsageRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/voice': {
       id: '/settings/voice'
       path: '/voice'
@@ -352,6 +371,7 @@ interface SettingsRouteChildren {
   SettingsDataRoute: typeof SettingsDataRoute
   SettingsModelsRoute: typeof SettingsModelsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
+  SettingsUsageRoute: typeof SettingsUsageRoute
   SettingsVoiceRoute: typeof SettingsVoiceRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -360,6 +380,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsDataRoute: SettingsDataRoute,
   SettingsModelsRoute: SettingsModelsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
+  SettingsUsageRoute: SettingsUsageRoute,
   SettingsVoiceRoute: SettingsVoiceRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
