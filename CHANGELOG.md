@@ -1,19 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Added
-
-- **Announcement**: `APP_ANNOUNCEMENT` (JSON with `title`, optional `description` and `url`; texts may be per language as `{"en": …, "zh-CN": …}`) shows a toast that stays until closed, with the link as a Details action; once closed it returns only when its content changes.
-- **PWA**: web app manifest, app icons and a Service Worker; the app installs and opens offline (ADR-0010). `/api/*` is never cached.
-- **SEO / GEO**: descriptive title and meta, Open Graph / Twitter cards, JSON-LD, a `<noscript>` summary, `robots.txt` and `llms.txt`. Optional build-time `SITE_URL` adds a canonical link, absolute share-image URLs and `sitemap.xml`.
-
-### Changed
-
-- External Models declared in `CF_AI_GATEWAY_MODELS` now come first in the model picker, and new visitors start on the first one.
-- The browser UI color (`theme-color`) follows the app theme.
-- Toasts appear at the top right, so they no longer cover the chat input on phones.
-
 ## 6.0.0
 
 ### Breaking Changes
@@ -36,11 +22,18 @@
 - Image params panel and FLUX.2 multi-image reference editing.
 - Browser-native Web Speech voice input and read-aloud, Custom Instructions, gateway cache toggle, Conversation History JSON export/import (optionally with images).
 - Responses show the model name on hover.
+- **Announcement**: `APP_ANNOUNCEMENT` (JSON with `title`, optional `description` and `url`; texts may be per language as `{"en": …, "zh-CN": …}`) shows a toast that stays until closed, with the link as a Details action; once closed it returns only when its content changes.
+- **PWA**: web app manifest, app icons and a Service Worker; the app installs and opens offline (ADR-0010). `/api/*` is never cached.
+- **SEO / GEO**: descriptive title and meta, Open Graph / Twitter cards, JSON-LD, a `<noscript>` summary, `robots.txt` and `llms.txt`. Optional build-time `SITE_URL` adds a canonical link, absolute share-image URLs and `sitemap.xml`.
 
 ### Changed
 
 - Theme and model preferences move from cookies to localStorage; the chat and image model selections merge into one.
 - Dependencies: added `@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/react-form`, `vite`, `@vitejs/plugin-react`, `@tailwindcss/vite`, `@cloudflare/vite-plugin`, `nitro`, `wrangler`; removed `next`, `next-themes`, `react-hook-form`, `@hookform/resolvers`, `@tailwindcss/postcss`, `oxfmt`. React 19.3, Bun 1.4.4.
+- External Models declared in `CF_AI_GATEWAY_MODELS` now come first in the model picker, and new visitors start on the first one.
+- The browser UI color (`theme-color`) follows the app theme.
+- Toasts appear at the top right, so they no longer cover the chat input on phones.
+- The Markdown renderer (Streamdown, KaTeX, Shiki) loads only when a conversation needs it, keeping it off the home page; streamed responses re-render at most every 50 ms.
 
 ### Migration from 5.x
 
