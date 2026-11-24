@@ -169,8 +169,6 @@ const PERSONAL_ID_PREFIX = "personal:";
 export const getPersonalModelId = (providerId: string, modelId: string) =>
   `${PERSONAL_ID_PREFIX}${providerId}:${modelId}`;
 
-export const isPersonalModelId = (id: string) => id.startsWith(PERSONAL_ID_PREFIX);
-
 /** The AI Gateway model string: `dynamic/<route>` as is, otherwise `<provider>/<model>`. */
 export const getGatewayModelName = (provider: GatewayProviderId, modelId: string) =>
   isDynamicRoute(modelId) ? modelId : `${provider}/${modelId}`;

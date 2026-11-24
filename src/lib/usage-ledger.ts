@@ -15,15 +15,10 @@ export const estimateCost = (
 
 export const recordUsage = (record: UsageRecord) => db.usage.put(record);
 
-export const listUsageSince = (since: Date) =>
-  db.usage.where("createdAt").aboveOrEqual(since).sortBy("createdAt");
-
 export const listConversationUsage = (sessionId: string) =>
   db.usage.where("sessionId").equals(sessionId).toArray();
 
 export const listAllUsage = () => db.usage.orderBy("createdAt").toArray();
-
-export const countUsageRecords = () => db.usage.count();
 
 /** Empties the Usage Ledger; Conversation History is untouched. */
 export const clearUsageLedger = () => db.usage.clear();

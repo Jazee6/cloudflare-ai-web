@@ -8,7 +8,6 @@ import {
   getVisibleModels,
   hasStaleLayoutEntries,
   type ModelLayout,
-  moveGroup,
   moveModel,
   parseModelLayout,
   pruneModelLayout,
@@ -77,7 +76,12 @@ test("new models join the end of their default group", () => {
 });
 
 test("groups can be reordered and new groups are appended", () => {
-  const layout = moveGroup(EMPTY_MODEL_LAYOUT, catalog, "default:external", 0);
+  const layout = reorderGroups(EMPTY_MODEL_LAYOUT, catalog, [
+    "default:external",
+    "default:Meta",
+    "default:Qwen",
+    "default:Black Forest Labs",
+  ]);
   expect(shape(layout).map(([key]) => key)).toEqual([
     "default:external",
     "default:Meta",
@@ -95,7 +99,12 @@ test("custom groups hold assigned models and keep their place", () => {
 
   layout = moveModel(layout, catalog, "qwen-1", key);
   layout = moveModel(layout, catalog, "meta-2", key, 0);
-  layout = moveGroup(layout, catalog, key, 0);
+  layout = reorderGroups(layout, catalog, [
+    key,
+    "default:Meta",
+    "default:Black Forest Labs",
+    "default:external",
+  ]);
   expect(shape(layout)).toEqual([
     [key, ["meta-2", "qwen-1"]],
     ["default:Meta", ["meta-1"]],

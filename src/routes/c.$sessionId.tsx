@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import * as v from "valibot";
 import ChatInput, { type onSendMessageProps } from "@/components/chat-input";
 import ChatLayout from "@/components/chat-layout";
 import ContextIndicator from "@/components/context-indicator";
+import { preloadMarkdown } from "@/components/markdown";
 import ChatList from "@/components/chat-list";
 import { useModelCatalog } from "@/components/model-catalog-provider";
 import { useSelectedModel } from "@/components/model-layout-provider";
@@ -35,6 +37,8 @@ function Page() {
     handleUnauthorized,
   } = useConversation({ sessionId, isNew, models });
   const canUseAsReference = imageTurn.profile.maxReferenceImages > 0;
+
+  useEffect(preloadMarkdown, []);
 
   return (
     <ChatLayout

@@ -32,10 +32,14 @@ export const sitemapXml = (siteUrl: string) =>
 type Bundle = Parameters<NonNullable<Extract<Plugin["generateBundle"], Function>>>[1];
 
 /**
- * The client files the app needs to open any page offline: entry chunks and route chunks (TanStack
- * splits them by `/src/routes/`) with their static imports and CSS. Other lazy chunks, mostly
- * per-language syntax highlighting, are left to runtime caching to keep the first visit small.
+ * The client files the app needs to open any page offline: entry chunks and the app's own lazy
+ * chunks (TanStack route splits and lazy components under `/src/`) with their static imports and
+ * CSS. Lazy chunks from dependencies, mostly per-language syntax highlighting, are left to runtime
+ * caching to keep the first visit small.
  */
+const isAppModule = (id: string | null) =>
+  id !== null && id.includes("/src/") && !id.includes("/node_modules/");
+
 export const precacheFiles = (bundle: Bundle) => {
   const files = new Set<string>();
   const visit = (fileName: string) => {
@@ -54,7 +58,7 @@ export const precacheFiles = (bundle: Bundle) => {
   for (const output of Object.values(bundle)) {
     if (
       output.type === "chunk" &&
-      (output.isEntry || (output.isDynamicEntry && output.facadeModuleId?.includes("/src/routes/")))
+      (output.isEntry || (output.isDynamicEntry && isAppModule(output.facadeModuleId)))
     ) {
       visit(output.fileName);
     }

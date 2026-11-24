@@ -115,6 +115,8 @@ export const useConversation = ({
     regenerate,
   } = useChat({
     id: sessionId,
+    // Batches streamed chunks so fast models do not re-parse Markdown on every token.
+    throttle: 50,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       prepareSendMessagesRequest: async ({ messages }) => {

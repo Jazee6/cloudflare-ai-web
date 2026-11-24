@@ -106,10 +106,6 @@ export const constantTimeCompare = async (a: string, b: string): Promise<boolean
   return diff === 0;
 };
 
-export const getAuthCookieName = () => COOKIE_NAME;
-export const getAuthCookiePath = () => COOKIE_PATH;
-export const getAuthCookieMaxAge = () => COOKIE_MAX_AGE_SECONDS;
-
 /**
  * Builds the Set-Cookie header value for a session cookie.
  */

@@ -34,11 +34,15 @@ const subscribe = (onChange: () => void) => {
   };
 };
 
+// The SPA shell (sidebar included) is prerendered without a browser, where `readLocale` is "en".
+const PRERENDER_LOCALE = "en" as const;
+const readPrerenderLocale = () => PRERENDER_LOCALE;
+
 /**
- * The SPA shell is prerendered without any UI text, so the client value is safe to use for the
- * hydration snapshot too and the first paint is already in the visitor's language.
+ * Hydrates with the prerendered locale so the markup matches, then switches to the visitor's
+ * language; reading it during hydration made React discard the prerendered tree.
  */
-export const useLocale = () => useSyncExternalStore(subscribe, readLocale, readLocale);
+export const useLocale = () => useSyncExternalStore(subscribe, readLocale, readPrerenderLocale);
 
 export const useLanguagePreference = () => {
   const preference = useSyncExternalStore(
@@ -79,5 +83,3 @@ export const useI18n = () => {
   const tText = useCallback((text: string) => translateText(locale, text), [locale]);
   return { locale, t, tc, tError, tText };
 };
-
-export type Translate = ReturnType<typeof useI18n>["t"];

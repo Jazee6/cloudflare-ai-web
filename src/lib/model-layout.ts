@@ -216,26 +216,6 @@ export const moveModel = (
   return { ...layout, assignments, modelOrder };
 };
 
-/** Moves a group to `index` among all groups. */
-export const moveGroup = (
-  layout: ModelLayout,
-  catalog: Model[],
-  key: string,
-  index: number,
-): ModelLayout => {
-  const keys = allGroups(catalog, layout).map((group) => group.key);
-  if (!keys.includes(key)) {
-    return layout;
-  }
-  const stale = layout.groupOrder.filter((candidate) => !keys.includes(candidate));
-  const ordered = insertAt(
-    keys.filter((candidate) => candidate !== key),
-    key,
-    index,
-  );
-  return { ...layout, groupOrder: [...ordered, ...stale] };
-};
-
 /**
  * Places `ordered` into the slots that its items occupy in `full`, so items left out of `ordered`
  * (hidden models, groups with nothing to show) keep their positions.
