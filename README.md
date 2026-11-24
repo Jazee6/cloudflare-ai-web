@@ -102,8 +102,6 @@ CF_AI_GATEWAY_MODELS="google-ai-studio/gemini-4-hydrogen?name=Gemini+4+Hydrogen&
 
 ## 赞助
 
-[Click Me](https://jaze.top/sponsor)
-
 <div align="center">
 
 <img src="https://github.com/user-attachments/assets/c194ff8a-7d86-43bf-912e-f35bb5f9d1a0" alt="赞助位1" width="300">

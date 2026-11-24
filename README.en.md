@@ -99,7 +99,3 @@ Visitors add Personal Providers under **Settings → Providers**. Credentials ar
 
 - **Through this deployment's gateway**: requires `CF_ACCOUNT_ID`, `CF_AI_GATEWAY_NAME`, and `CF_AI_GATEWAY_TOKEN`. Visitors **must** provide their own provider key and cannot use `dynamic/*` routes, so the deployer's BYOK keys and credits are never used.
 - **Through the visitor's own gateway**: Account ID, Gateway name, and an optional token. The provider key is optional (the visitor's gateway BYOK / Unified Billing applies), and `dynamic/*` routes are allowed.
-
-## Sponsor
-
-[Click Me](https://jaze.top/sponsor)
