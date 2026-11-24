@@ -2,28 +2,42 @@
 
 [中文](./README.md) ｜ English
 
+A multi-model AI chat platform on Cloudflare Workers AI and AI Gateway, deployable to Vercel, Cloudflare Workers, and Docker.
+
+Example: https://ai.vuiki.com (quota may run out; deploying your own is recommended)
+
 ![readme](./.github/assets/readme.jpg)
 
+## Features
+
+- Workers AI models out of the box; External Models through AI Gateway (BYOK / Unified Billing / Gateway Routes)
+- Personal Providers: visitors add models with their own key or AI Gateway
+- Image generation in conversations, with params and up to 4 reference images
+- Document parsing, webpage extraction, and AI Search Knowledge Base (RAG)
+- Voice input and read-aloud, Custom Instructions, model groups and ordering
+- Data stays in the browser, with export and import
+- Works offline as a PWA; optional access password
+
 ## Deployment
+
+> [!WARNING]
+> Without `APP_PASSWORD`, anyone can use your inference APIs.
 
 ### Vercel
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJazee6%2Fcloudflare-ai-web&demo-title=Cloudflare%20AI%20Web&demo-url=https%3A%2F%2Fai.vuiki.com)
 
-Example: https://ai.vuiki.com
-
-> It may not respond when the quota is used up, it is recommended to deploy it yourself
+Upgrading from 5.x: set Framework Preset to **Other** under **Settings → Build and Deployment** and clear custom build settings.
 
 ### Cloudflare Workers
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Jazee6/cloudflare-ai-web)
 
-Or build and deploy manually:
+Or deploy locally:
 
 ```bash
 bun install
-bun run cf:build
-bun run cf:deploy
+bun run deploy
 ```
 
 ### Docker
@@ -37,65 +51,58 @@ docker run -d --name cloudflare-ai-web \
   jazee6/cloudflare-ai-web
 ```
 
-## Features
+## Environment Variables
 
-- Built on TanStack Start (SPA mode); one codebase deploys statelessly to Vercel, Docker, and Cloudflare Workers
-- Quickly build a multimodel AI platform using Cloudflare Workers AI
-- External Models through Cloudflare AI Gateway (BYOK / Unified Billing / Gateway Routes)
-- Personal Providers: visitors add their own provider key or their own AI Gateway in the browser and add Personal Models (text and image), fetched from the provider's model list or declared by hand
-- Image generation inside conversations: select a `Text to Image` model, tune its params, and add up to 4 Reference Images (FLUX.2, OpenAI Images, Gemini image output)
-- Model layout: hide models and arrange them into custom, ordered groups (stored locally)
-- Document parsing (Workers AI `toMarkdown`, 0 Neurons) and webpage extraction (three-tier fallback + SSRF protection) across all chat models
-- Read-only Cloudflare AI Search Knowledge Base retrieval (RAG) with lightweight Citations
-- `/settings` pages: theme, Custom Instructions, gateway cache, webpage extraction, browser-native Web Speech ASR/TTS, Conversation History JSON export/import
-- Chat history is stored locally (IndexedDB)
-- Image attachments are resized in the browser (long edge up to 1568px, at most 512 KiB each, up to 5 per request) so requests fit the Vercel Functions body limit
-- Access Session protection via deployment password
+All optional. With none set, visitors can still use Personal Providers.
 
-> **Note:** In public mode anyone can use your inference APIs. Set `APP_PASSWORD` to enable Access Session.
+| Name                         | Description                                                     |
+| ---------------------------- | --------------------------------------------------------------- |
+| `CF_ACCOUNT_ID`              | Cloudflare Account ID                                           |
+| `CF_WORKERS_AI_TOKEN`        | Workers AI token                                                |
+| `CF_AI_GATEWAY_NAME`         | AI Gateway name                                                 |
+| `CF_AI_GATEWAY_TOKEN`        | AI Gateway token                                                |
+| `CF_AI_GATEWAY_MODELS`       | External Model declarations, see below                          |
+| `CF_AI_SEARCH_TOKEN`         | AI Search token; enables the Knowledge Base                     |
+| `CF_AI_SEARCH_INSTANCES`     | Allowed AI Search instances, comma-separated, `id` or `id:Name` |
+| `CF_AI_SEARCH_NAMESPACE`     | AI Search namespace, default `default`                          |
+| `CF_AI_SEARCH_REWRITE_QUERY` | Enable `rewrite_query`, default `false`                         |
+| `CF_BROWSER_RUN_TOKEN`       | Browser Run token for dynamic webpages                          |
+| `APP_PASSWORD`               | Access password                                                 |
+| `APP_ANNOUNCEMENT`           | Announcement, see below                                         |
+| `SITE_URL`                   | Public site URL, read at build time, see below                  |
 
-## Deployment Instructions
+### CF_WORKERS_AI_TOKEN
 
-### Environment Variables
+Dashboard → **Manage Account → Account API Tokens → Create Token**, using the **Workers AI** template.
 
-Every variable is optional. With none set, visitors can still chat through Personal Providers on their own AI Gateway.
+### CF_AI_GATEWAY_MODELS
 
-| Name                       | Description                                                             | Needed for                    |
-| -------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
-| CF_ACCOUNT_ID              | Cloudflare Account ID                                                   | Workers AI / gateway          |
-| CF_WORKERS_AI_TOKEN        | Cloudflare Workers AI Token (inference & `toMarkdown` document parsing) | Workers AI models / documents |
-| CF_AI_GATEWAY_NAME         | Cloudflare AI Gateway Name                                              | Gateway / External Models     |
-| CF_AI_GATEWAY_TOKEN        | Cloudflare AI Gateway Auth Token                                        | Gateway / External Models     |
-| CF_AI_GATEWAY_MODELS       | Declarative External Models & Gateway Routes                            | External Models               |
-| CF_BROWSER_RUN_TOKEN       | Cloudflare Browser Run `/markdown` token (SPA dynamic fallback)         | Optional                      |
-| CF_AI_SEARCH_TOKEN         | Cloudflare AI Search read-only retrieval token                          | Knowledge Base                |
-| CF_AI_SEARCH_INSTANCES     | Allowlisted AI Search instances (`id` or `id:Display Name`)             | Knowledge Base                |
-| CF_AI_SEARCH_NAMESPACE     | AI Search namespace (default `default`)                                 |                               |
-| CF_AI_SEARCH_REWRITE_QUERY | Enable AI Search `rewrite_query` (default `false`)                      |                               |
-| APP_PASSWORD               | Access Password (Access Session)                                        | Recommended                   |
-| SITE_URL                   | Public site URL (**build time**) for canonical, share cards and sitemap | SEO                           |
-
-#### CF_WORKERS_AI_TOKEN
-
-- Manage Account - Account API Tokens - Create Token - Create with Workers AI template
-
-#### CF_AI_GATEWAY_MODELS (BYOK / Unified Billing)
-
-Configure upstream provider keys in Cloudflare Dashboard → **AI** → **AI Gateway** → **Provider Keys (BYOK)**, then declare models in `CF_AI_GATEWAY_MODELS`:
+Configure keys in Dashboard → **AI → AI Gateway → Provider Keys (BYOK)**, then declare models separated by commas:
 
 ```bash
 CF_AI_GATEWAY_MODELS="google-ai-studio/gemini-4-hydrogen?name=Gemini+4+Hydrogen&input=image,search&contextWindow=1048576,openai/gpt-5?input=image&reasoning=true&contextWindow=400000,dynamic/smart-chat?name=Smart+Chat"
 ```
 
-Supported query parameters: `name`, `input` (`image` / `search`), `reasoning` (`true` / `false`), `contextWindow`, `byokAlias`.
+Parameters: `name`, `input` (`image` / `search`), `reasoning`, `contextWindow`, `byokAlias`.
 
-#### SITE_URL
+### APP_ANNOUNCEMENT
 
-The public site URL, e.g. `https://ai.example.com`. Read at build time; when set, the build also emits a canonical link, absolute share-image URLs and `sitemap.xml`. On Vercel / Cloudflare Workers Builds, configure it as a **build** variable.
+A top-right announcement that returns after closing only when its content changes:
 
-#### Personal Providers
+```bash
+APP_ANNOUNCEMENT='{"title":"New feature","description":{"en":"...","zh-CN":"..."},"url":"https://..."}'
+```
 
-Visitors add Personal Providers under **Settings → Providers**. Credentials are stored in plaintext in the browser's localStorage and sent with each request, which the server forwards through AI Gateway. The server never stores them, logs them, or includes them in backups.
+### SITE_URL
 
-- **Through this deployment's gateway**: requires `CF_ACCOUNT_ID`, `CF_AI_GATEWAY_NAME`, and `CF_AI_GATEWAY_TOKEN`. Visitors **must** provide their own provider key and cannot use `dynamic/*` routes, so the deployer's BYOK keys and credits are never used.
-- **Through the visitor's own gateway**: Account ID, Gateway name, and an optional token. The provider key is optional (the visitor's gateway BYOK / Unified Billing applies), and `dynamic/*` routes are allowed.
+E.g. `https://ai.example.com`, used for canonical, share cards and sitemap. It is baked in at build time, so changes need a rebuild:
+
+- Vercel / Workers Builds: set it as a build variable
+- Docker: `docker build --build-arg SITE_URL=https://ai.example.com .`
+
+### Personal Providers
+
+Visitors add them under **Settings → Providers**. Credentials stay in the browser; the server never stores or logs them.
+
+- **Through this deployment's gateway**: requires the gateway variables; visitors must bring their own key and cannot use `dynamic/*`, so your credits are never used
+- **Through the visitor's own gateway**: key optional, `dynamic/*` allowed

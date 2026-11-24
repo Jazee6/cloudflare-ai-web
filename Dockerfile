@@ -14,6 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DEPLOY_TARGET=node
+# Optional site address baked into the client build (canonical, share images, sitemap.xml).
+ARG SITE_URL
+ENV SITE_URL=$SITE_URL
 RUN npm run build
 
 FROM base AS runner
