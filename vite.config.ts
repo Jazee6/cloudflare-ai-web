@@ -6,8 +6,11 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig, type PluginOption } from "vite";
 import { resolveDeploymentTarget } from "./scripts/deployment-target.ts";
+import { resolveSiteUrl } from "./scripts/site-url.ts";
+import { siteFiles } from "./scripts/vite-plugin-site-files.ts";
 
 const target = resolveDeploymentTarget();
+const siteUrl = resolveSiteUrl();
 
 const serverPlugins = (): PluginOption[] => {
   switch (target) {
@@ -22,6 +25,7 @@ const serverPlugins = (): PluginOption[] => {
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  define: { "import.meta.env.SITE_URL": JSON.stringify(siteUrl ?? "") },
   server: { port: 3000 },
   plugins: [
     ...serverPlugins(),
@@ -37,5 +41,6 @@ export default defineConfig({
     }),
     viteReact(),
     babel({ presets: [reactCompilerPreset()] }),
+    siteFiles({ siteUrl }),
   ],
 });

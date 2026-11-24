@@ -308,7 +308,8 @@ export const getModelCatalog = async (): Promise<Model[]> => {
     getTaskModels("Text-to-Image"),
   ]);
 
-  return [...chatModels, ...imageModels, ...getExternalModels()];
+  // External Models come first so a deployment's declared models lead the default picker order.
+  return [...getExternalModels(), ...chatModels, ...imageModels];
 };
 
 export const getPublicModelCatalog = async (): Promise<Model[]> =>

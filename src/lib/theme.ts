@@ -12,6 +12,9 @@ export const themeOptions = [
 export type ThemePreference = (typeof themeOptions)[number]["value"];
 export type ResolvedTheme = Exclude<ThemePreference, "system">;
 
+/** The page background per theme (`--background` in styles.css), for the browser UI color. */
+export const THEME_COLORS: Record<ResolvedTheme, string> = { light: "#ffffff", dark: "#0a0a0a" };
+
 export const parseThemePreference = (value: string | null | undefined): ThemePreference =>
   themeOptions.some((option) => option.value === value) ? (value as ThemePreference) : "system";
 
@@ -52,6 +55,9 @@ export const applyTheme = (preference: ThemePreference) => {
   const root = document.documentElement;
   root.classList.toggle("dark", resolved === "dark");
   root.style.colorScheme = resolved;
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", THEME_COLORS[resolved]);
 };
 
 export const writeThemePreference = (preference: ThemePreference) => {

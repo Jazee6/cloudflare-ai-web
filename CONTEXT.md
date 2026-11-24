@@ -45,7 +45,7 @@ A Cloudflare Model marked experimental by the remote catalog and presented with 
 _Avoid_: Beta model, community model
 
 **Model Group**:
-A named, ordered section of the model picker in a visitor's browser. Default groups come from Model Brands, the deployment's External Models, and each Personal Provider; a visitor may also create, rename, and delete their own groups and move models into them. Every model belongs to exactly one group, and models outside any visitor-created group fall back to their default group.
+A named, ordered section of the model picker in a visitor's browser. Default groups come from Model Brands, the deployment's External Models, and each Personal Provider, with the deployment's External Models shown first; a visitor may also create, rename, and delete their own groups and move models into them. Every model belongs to exactly one group, and models outside any visitor-created group fall back to their default group.
 _Avoid_: Category, folder, tag
 
 **Hidden Group**:
@@ -115,3 +115,7 @@ _Avoid_: Password cookie, user account, login session
 **Interface Language**:
 The language the application's own text is shown in, either following the visitor's system or chosen explicitly. It never changes model responses, prompts, or names the visitor entered; a Failed Response the application describes is shown in the current Interface Language, while failure text relayed from a provider is shown as received.
 _Avoid_: Locale, response language, translation
+
+**Announcement**:
+A short, dismissible notice the deployment shows to all of its visitors, optionally linking elsewhere and optionally worded per Interface Language. A visitor who dismisses it does not see it again until its content changes.
+_Avoid_: Banner, notice, alert

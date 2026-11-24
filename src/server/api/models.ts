@@ -1,3 +1,4 @@
+import { getAnnouncement } from "@/lib/announcement";
 import { getAppCapabilities, getPublicModelCatalog } from "@/lib/model-catalog";
 import type { ModelCatalogResponse } from "@/lib/models";
 import { runInBackground } from "@/lib/background";
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
   const payload: ModelCatalogResponse = {
     models: await getPublicModelCatalog(),
     capabilities: getAppCapabilities(),
+    announcement: getAnnouncement(),
   };
 
   const response = Response.json(payload, {

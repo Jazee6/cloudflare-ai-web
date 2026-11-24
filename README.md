@@ -73,6 +73,7 @@ docker run -d --name cloudflare-ai-web \
 | CF_AI_SEARCH_NAMESPACE     | AI Search 命名空间（默认 `default`）                           |                               |
 | CF_AI_SEARCH_REWRITE_QUERY | 是否开启 AI Search `rewrite_query`（默认 `false`）             |                               |
 | APP_PASSWORD               | 访问密码（Access Session）                                     | 建议设置                      |
+| SITE_URL                   | 站点地址（**构建期**读取），用于 canonical、分享卡片和 sitemap | SEO                           |
 
 #### CF_WORKERS_AI_TOKEN
 
@@ -87,6 +88,10 @@ CF_AI_GATEWAY_MODELS="google-ai-studio/gemini-4-hydrogen?name=Gemini+4+Hydrogen&
 ```
 
 支持的查询参数：`name`、`input`（`image` / `search`）、`reasoning`（`true` / `false`）、`contextWindow`、`byokAlias`。
+
+#### SITE_URL
+
+站点地址，如 `https://ai.example.com`。构建时读取，设置后会额外输出 canonical、绝对地址的分享图和 `sitemap.xml`。在 Vercel / Cloudflare Workers Builds 中需配置为**构建**环境变量。
 
 #### Personal Provider
 

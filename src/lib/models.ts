@@ -1,3 +1,4 @@
+import type { Announcement } from "@/lib/announcement";
 import * as v from "valibot";
 
 export type ModelType = "Text Generation" | "Text to Image";
@@ -47,6 +48,7 @@ export interface AppCapabilities {
 export interface ModelCatalogResponse {
   models: Model[];
   capabilities: AppCapabilities;
+  announcement?: Announcement;
 }
 
 const BRAND_NAMES: Record<string, string> = {

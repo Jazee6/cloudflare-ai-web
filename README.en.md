@@ -73,6 +73,7 @@ Every variable is optional. With none set, visitors can still chat through Perso
 | CF_AI_SEARCH_NAMESPACE     | AI Search namespace (default `default`)                                 |                               |
 | CF_AI_SEARCH_REWRITE_QUERY | Enable AI Search `rewrite_query` (default `false`)                      |                               |
 | APP_PASSWORD               | Access Password (Access Session)                                        | Recommended                   |
+| SITE_URL                   | Public site URL (**build time**) for canonical, share cards and sitemap | SEO                           |
 
 #### CF_WORKERS_AI_TOKEN
 
@@ -87,6 +88,10 @@ CF_AI_GATEWAY_MODELS="google-ai-studio/gemini-4-hydrogen?name=Gemini+4+Hydrogen&
 ```
 
 Supported query parameters: `name`, `input` (`image` / `search`), `reasoning` (`true` / `false`), `contextWindow`, `byokAlias`.
+
+#### SITE_URL
+
+The public site URL, e.g. `https://ai.example.com`. Read at build time; when set, the build also emits a canonical link, absolute share-image URLs and `sitemap.xml`. On Vercel / Cloudflare Workers Builds, configure it as a **build** variable.
 
 #### Personal Providers
 

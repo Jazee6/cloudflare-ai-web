@@ -8,6 +8,7 @@ const ENV_KEYS = [
   "CF_AI_GATEWAY_NAME",
   "CF_AI_GATEWAY_TOKEN",
   "CF_AI_GATEWAY_MODELS",
+  "APP_ANNOUNCEMENT",
 ] as const;
 
 const savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -82,6 +83,17 @@ test("GET /api/models returns public catalog, capabilities, and cache headers wi
   const external = body.models.find((model) => model.id === "openai/gpt-5");
   expect(external).toBeDefined();
   expect(external).not.toHaveProperty("byokAlias");
+  expect(body.models[0]?.id).toBe("openai/gpt-5");
+  expect(body).not.toHaveProperty("announcement");
+});
+
+test("GET /api/models includes the Announcement", async () => {
+  process.env.APP_ANNOUNCEMENT = JSON.stringify({ title: "New", url: "https://example.com" });
+
+  const body = (await (
+    await getModels(new Request("https://example.com/api/models"))
+  ).json()) as ModelCatalogResponse;
+  expect(body.announcement).toEqual({ title: "New", url: "https://example.com" });
 });
 
 test("GET /api/models reads and writes Workers caches.default when available", async () => {

@@ -55,6 +55,9 @@ test("loads catalog models with structured property values", async () => {
 
   process.env.CF_ACCOUNT_ID = "test-account";
   process.env.CF_WORKERS_AI_TOKEN = "test-token";
+  process.env.CF_AI_GATEWAY_NAME = "gw";
+  process.env.CF_AI_GATEWAY_TOKEN = "gw-token";
+  process.env.CF_AI_GATEWAY_MODELS = "openai/gpt-5";
   globalThis.fetch = mock(async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
     const task = url.searchParams.get("task") ?? "Text Generation";
@@ -118,6 +121,7 @@ test("loads catalog models with structured property values", async () => {
 
   try {
     const catalog = await getModelCatalog();
+    expect(catalog[0]).toMatchObject({ id: "openai/gpt-5", source: "external" });
     expect(catalog.find((model) => model.id === "@cf/test/chat")).toMatchObject({
       reasoning: true,
       contextWindow: 128000,

@@ -13,6 +13,8 @@ export const zhCN: Record<MessageKey, string> = {
   "common.confirm": "确认",
   "common.edit": "编辑",
 
+  "announcement.details": "详情",
+
   "sidebar.today": "今天",
   "sidebar.last7Days": "最近 7 天",
   "sidebar.last30Days": "最近 30 天",
@@ -24,6 +26,9 @@ export const zhCN: Record<MessageKey, string> = {
 
   "home.greeting": "今天有什么可以帮你？",
   "home.startFailed": "无法开始新对话。",
+
+  "notFound.title": "页面不存在",
+  "notFound.description": "该页面不存在或已被删除。",
 
   "settings.title": "设置",
   "settings.nav.general": "通用",

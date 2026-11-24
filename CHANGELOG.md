@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Announcement**: `APP_ANNOUNCEMENT` (JSON with `title`, optional `description` and `url`; texts may be per language as `{"en": …, "zh-CN": …}`) shows a toast that stays until closed, with the link as a Details action; once closed it returns only when its content changes.
+- **PWA**: web app manifest, app icons and a Service Worker; the app installs and opens offline (ADR-0010). `/api/*` is never cached.
+- **SEO / GEO**: descriptive title and meta, Open Graph / Twitter cards, JSON-LD, a `<noscript>` summary, `robots.txt` and `llms.txt`. Optional build-time `SITE_URL` adds a canonical link, absolute share-image URLs and `sitemap.xml`.
+
+### Changed
+
+- External Models declared in `CF_AI_GATEWAY_MODELS` now come first in the model picker, and new visitors start on the first one.
+- The browser UI color (`theme-color`) follows the app theme.
+- Toasts appear at the top right, so they no longer cover the chat input on phones.
+
 ## 6.0.0
 
 ### Breaking Changes

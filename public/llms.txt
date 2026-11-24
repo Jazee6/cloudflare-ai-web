@@ -1,0 +1,35 @@
+# Cloudflare AI Web
+
+> Open-source, self-hostable AI chat built on Cloudflare Workers AI and Cloudflare AI Gateway. One codebase deploys to Cloudflare Workers, Vercel or Docker; the server is stateless and conversations stay in the visitor's browser.
+
+## Features
+
+- Chat with Cloudflare Workers AI models, whose availability and capabilities come from the Cloudflare account's live model catalog.
+- External models (OpenAI, Google, Anthropic and other providers) routed through Cloudflare AI Gateway with BYOK, Unified Billing or Gateway Routes, declared with `CF_AI_GATEWAY_MODELS`.
+- Personal providers: visitors can add their own provider key or their own AI Gateway in the browser and use personal models, including image generation.
+- Image generation and editing inside conversations, with up to 4 reference images (FLUX.2, OpenAI Images, Gemini image output).
+- Documents (Workers AI `toMarkdown`) and web pages as context for any chat model.
+- Read-only Cloudflare AI Search knowledge bases (RAG) with citations.
+- Model layout: hide, group and reorder models; voice input and read-aloud; token usage ledger with estimated cost.
+- Conversations stored locally in IndexedDB, exportable and importable as JSON.
+- Optional shared access password (`APP_PASSWORD`); installable as a PWA that opens offline.
+
+## Links
+
+- [Source code and deployment guide](https://github.com/Jazee6/cloudflare-ai-web)
+- [English README](https://github.com/Jazee6/cloudflare-ai-web/blob/main/README.en.md)
+- [Changelog](https://github.com/Jazee6/cloudflare-ai-web/blob/main/CHANGELOG.md)
+
+## 中文简介
+
+Cloudflare AI Web 是一个开源、可自部署的 AI 对话平台，基于 Cloudflare Workers AI 与 Cloudflare AI Gateway 构建。一份代码可部署到 Cloudflare Workers、Vercel 或 Docker，服务端无状态，聊天记录保存在访客浏览器本地。
+
+- 使用 Cloudflare 账号实时模型目录中的 Workers AI 模型。
+- 通过 AI Gateway 接入外部模型（BYOK、Unified Billing、Gateway Route）。
+- 访客可在浏览器里配置自己的 provider Key 或 AI Gateway（Personal Provider）。
+- 会话内生图与改图，最多 4 张参考图。
+- 文档解析、网页提取，以及 Cloudflare AI Search 知识库检索（RAG）与引用展示。
+- 模型隐藏、分组与排序；语音输入与朗读；Token 用量与费用估算。
+- 可设置访问密码；可安装为 PWA，离线也能打开。
+
+- [源码与部署说明](https://github.com/Jazee6/cloudflare-ai-web)

@@ -13,6 +13,8 @@ const searchSchema = v.object({ new: v.optional(v.boolean()) });
 
 export const Route = createFileRoute("/c/$sessionId")({
   validateSearch: searchSchema,
+  // Conversations live only in the visitor's browser; the URL has nothing to index.
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   component: Page,
 });
 

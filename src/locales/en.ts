@@ -11,6 +11,8 @@ export const en = {
   "common.none": "None",
   "common.close": "Close",
 
+  "announcement.details": "Details",
+
   "sidebar.today": "Today",
   "sidebar.last7Days": "Last 7 days",
   "sidebar.last30Days": "Last 30 days",
@@ -22,6 +24,9 @@ export const en = {
 
   "home.greeting": "How can I assist you today?",
   "home.startFailed": "Unable to start a new chat.",
+
+  "notFound.title": "Page not found",
+  "notFound.description": "This page doesn't exist or has been removed.",
 
   "settings.title": "Settings",
   "settings.nav.general": "General",

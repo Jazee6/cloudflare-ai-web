@@ -10,7 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/hooks/use-i18n";
 
-export const Route = createFileRoute("/settings")({ component: SettingsLayout });
+export const Route = createFileRoute("/settings")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  component: SettingsLayout,
+});
 
 const SECTIONS = [
   { to: "/settings", labelKey: "settings.nav.general", icon: Settings2Icon },

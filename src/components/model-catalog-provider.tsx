@@ -12,6 +12,7 @@ import * as v from "valibot";
 import { usePersonalProviders } from "@/components/personal-providers-provider";
 import { toast } from "@/components/ui/toast";
 import type { AppCapabilities, Model, ModelType } from "@/lib/models";
+import { type Announcement, announcementSchema } from "@/lib/announcement";
 import { getPersonalCatalogModels } from "@/lib/personal-providers";
 import {
   type PreferenceKey,
@@ -57,11 +58,13 @@ export const catalogResponseSchema = v.object({
     // Optional so catalogs cached before Personal Providers existed still parse.
     personalViaDeploymentGateway: v.optional(v.boolean(), false),
   }),
+  announcement: v.optional(announcementSchema),
 });
 
 type ModelCatalogContextValue = {
   models: Model[];
   capabilities: AppCapabilities;
+  announcement: Announcement | undefined;
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -159,6 +162,7 @@ export const ModelCatalogProvider = ({
   const [capabilities, setCapabilities] = useState<AppCapabilities>(
     initialCapabilities ?? DEFAULT_CAPABILITIES,
   );
+  const [announcement, setAnnouncement] = useState<Announcement>();
   const [loading, setLoading] = useState(initialModels === undefined);
   const [error, setError] = useState<string | null>(null);
   const hasModelsRef = useRef((initialModels?.length ?? 0) > 0);
@@ -191,6 +195,7 @@ export const ModelCatalogProvider = ({
         return;
       }
 
+      setAnnouncement(parsed.output.announcement);
       if (parsed.output.models.length === 0) {
         if (!hasModelsRef.current) {
           setModels([]);
@@ -241,6 +246,7 @@ export const ModelCatalogProvider = ({
     if (cached) {
       setModels(cached.models);
       setCapabilities(cached.capabilities);
+      setAnnouncement(cached.announcement);
       hasModelsRef.current = true;
       setLoading(false);
     }
@@ -265,12 +271,13 @@ export const ModelCatalogProvider = ({
     () => ({
       models,
       capabilities,
+      announcement,
       // The selection must not fall back while a stored Personal Model is still loading.
       loading: loading || !personalReady,
       error: models.length > 0 ? null : error,
       reload,
     }),
-    [models, capabilities, loading, personalReady, error, reload],
+    [models, capabilities, announcement, loading, personalReady, error, reload],
   );
 
   return <ModelCatalogContext value={value}>{children}</ModelCatalogContext>;
