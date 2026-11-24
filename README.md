@@ -4,7 +4,7 @@
 
 基于 Cloudflare Workers AI 与 AI Gateway 的多模型 AI 对话平台，可部署到 Vercel、Cloudflare Workers 和 Docker。
 
-示例：https://ai.vuiki.com（额度可能用完，建议自行部署）
+示例：[ai.vuiki.com](https://ai.vuiki.com)（额度可能用完，建议自行部署）
 
 ![readme](./.github/assets/readme.jpg)
 

@@ -4,7 +4,7 @@
 
 A multi-model AI chat platform on Cloudflare Workers AI and AI Gateway, deployable to Vercel, Cloudflare Workers, and Docker.
 
-Example: https://ai.vuiki.com (quota may run out; deploying your own is recommended)
+Example: [ai.vuiki.com](https://ai.vuiki.com) (quota may run out; deploying your own is recommended)
 
 ![readme](./.github/assets/readme.jpg)
 
