@@ -23,6 +23,14 @@ test("getAnnouncement parses title, description and url from JSON", () => {
   });
 });
 
+test("getAnnouncement accepts a path on this site", () => {
+  process.env.APP_ANNOUNCEMENT = JSON.stringify({
+    title: "New",
+    url: " /settings/providers?x=1#a ",
+  });
+  expect(getAnnouncement()).toEqual({ title: "New", url: "/settings/providers?x=1#a" });
+});
+
 test("getAnnouncement ignores missing, invalid or unsafe values", () => {
   delete process.env.APP_ANNOUNCEMENT;
   expect(getAnnouncement()).toBeUndefined();
@@ -32,6 +40,9 @@ test("getAnnouncement ignores missing, invalid or unsafe values", () => {
     JSON.stringify({ title: "  " }),
     JSON.stringify({ title: {} }),
     JSON.stringify({ title: "Hi", url: "javascript:alert(1)" }),
+    JSON.stringify({ title: "Hi", url: "//evil.example" }),
+    JSON.stringify({ title: "Hi", url: "/\\evil.example" }),
+    JSON.stringify({ title: "Hi", url: "settings" }),
   ]) {
     process.env.APP_ANNOUNCEMENT = value;
     expect(getAnnouncement()).toBeUndefined();

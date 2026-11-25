@@ -1,8 +1,14 @@
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useModelCatalogState } from "@/components/model-catalog-provider";
 import { toast } from "@/components/ui/toast";
 import { useI18n } from "@/hooks/use-i18n";
-import { ANNOUNCEMENT_DISMISSED_KEY, announcementId, localizeText } from "@/lib/announcement";
+import {
+  ANNOUNCEMENT_DISMISSED_KEY,
+  announcementId,
+  isSitePath,
+  localizeText,
+} from "@/lib/announcement";
 
 const readDismissed = () => {
   try {
@@ -24,6 +30,7 @@ const writeDismissed = (id: string) => {
 const AnnouncementToast = () => {
   const { announcement } = useModelCatalogState();
   const { t, locale } = useI18n();
+  const router = useRouter();
   const shownRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -47,13 +54,17 @@ const AnnouncementToast = () => {
         ? {
             children: t("announcement.details"),
             onClick: () => {
-              window.open(url, "_blank", "noopener");
+              if (isSitePath(url)) {
+                router.history.push(url);
+              } else {
+                window.open(url, "_blank", "noopener");
+              }
               toast.close(toastId);
             },
           }
         : undefined,
     });
-  }, [announcement, locale, t]);
+  }, [announcement, locale, t, router]);
 
   return null;
 };

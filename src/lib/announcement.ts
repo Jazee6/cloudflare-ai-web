@@ -19,10 +19,13 @@ const httpUrl = v.pipe(
   v.check((value) => /^https?:\/\//i.test(value)),
 );
 
+/** A path on this site such as `/settings/providers`; `//host` and `/\host` would leave it. */
+const sitePath = v.pipe(v.string(), v.trim(), v.regex(/^\/(?![/\\])\S*$/));
+
 export const announcementSchema = v.object({
   title: localizedText,
   description: v.optional(localizedText),
-  url: v.optional(httpUrl),
+  url: v.optional(v.union([httpUrl, sitePath])),
 });
 
 /** The deployment's Announcement, shown to all visitors until dismissed. */
@@ -33,7 +36,8 @@ export const ANNOUNCEMENT_DISMISSED_KEY = "cf-ai-announcement-dismissed";
 
 /**
  * Reads the Announcement from the `APP_ANNOUNCEMENT` JSON, e.g.
- * `{"title":"New","description":{"en":"...","zh-CN":"..."},"url":"https://..."}`.
+ * `{"title":"New","description":{"en":"...","zh-CN":"..."},"url":"https://..."}`;
+ * `url` is an http(s) URL or a path on this site such as `/settings/providers`.
  * Without it there is none; an invalid value is ignored with a warning.
  */
 export const getAnnouncement = (): Announcement | undefined => {
@@ -67,3 +71,6 @@ export const announcementId = (announcement: Announcement) => {
   }
   return (hash >>> 0).toString(36);
 };
+
+/** Whether the url is a path on this site, opened in place rather than in a new tab. */
+export const isSitePath = (url: string) => url.startsWith("/");

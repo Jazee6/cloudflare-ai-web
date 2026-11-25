@@ -117,5 +117,5 @@ The language the application's own text is shown in, either following the visito
 _Avoid_: Locale, response language, translation
 
 **Announcement**:
-A short, dismissible notice the deployment shows to all of its visitors, optionally linking elsewhere and optionally worded per Interface Language. A visitor who dismisses it does not see it again until its content changes.
+A short, dismissible notice the deployment shows to all of its visitors, optionally linking elsewhere or to a page of the application and optionally worded per Interface Language. A visitor who dismisses it does not see it again until its content changes.
 _Avoid_: Banner, notice, alert

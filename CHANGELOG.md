@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Announcement**: `url` in `APP_ANNOUNCEMENT` may also be a path on this site such as `/settings/providers`, opened in place instead of a new tab.
+
 ## 6.0.0
 
 ### Breaking Changes
